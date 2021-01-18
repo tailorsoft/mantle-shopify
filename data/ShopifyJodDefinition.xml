@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-facade-xml>
+    <moqui.service.job.ServiceJob jobName="ShopifyFetching" paused="N" description="Shopify data import" serviceName="mantle.shopify.ShopifyServices.import#ShopifyReturns" cronExpression="0 0/15 * * * ?" expireLockTime="15"/>
+</entity-facade-xml>
