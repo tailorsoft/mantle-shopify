@@ -66,8 +66,8 @@
                     <set field="prodVariants" from="[]"/>
                     <set field="prodOptions" from="[]"/>
                     <script><![CDATA[
-                    //keySet returns a list of the features types for the product
                     String[] keyList = listFeatures.keySet()
+                    //keySet returns a list of the features types for the product
                     def firstFeature = listFeatures.get(keyList[0])
                     def variantList = []
                     def jsonSlurper = new JsonSlurper()
@@ -84,31 +84,51 @@
                         def prodOptionValues2 = []
                         for(i = 0; i < firstFeature.size(); i++){
                             /**
-                               Iterating on the first feature list, get the 2nd feature list and
-                                for each value create a shopify format variant with combination of both 1st and 2nd list values.
+                               Iterating on the first feature list, get the 2nd feature list and for each value create a shopify format variant with combination of both 1st and 2nd list values.
+                               If the product has more than 2 features repeat the process to make the combination with the 3rd value.
+
+                               NOTE: Shopify only supports products that has at most 3 features.
                             **/
                             prodOptionValues.add('"'+firstFeature.get(i).description+'"')
-                            def feature = listFeatures.get(keyList[1])
-                            for(k = 0; k < feature.size(); k++){
-                                if(prodOptionValues2.size() != feature.size()){
-                                    prodOptionValues2.add('"'+feature.get(k).description+'"')
+                            def secondFeature = listFeatures.get(keyList[1])
+                            if(keyList.length > 2){
+                                def thirdFeature = listFeatures.get(keyList[2])
+                                def prodOptionValues3 = []
+                                for(j = 0; j < secondFeature.size(); j++){
+                                    if(prodOptionValues2.size() != secondFeature.size()){
+                                        prodOptionValues2.add('"'+secondFeature.get(j).description+'"')
+                                    }
+                                    for(k = 0; k < thirdFeature.size(); k++){
+                                        if(prodOptionValues3.size() != thirdFeature.size()){
+                                            prodOptionValues3.add('"'+prodOptionValues3.get(k).description+'"')
+                                        }
+                                        variantList.add(jsonSlurper.parseText('{ "name":"'+firstFeature.get(i).description+'/'+secondFeature.get(j).description+'/'+thirdFeature.get(k).description
+                                                        +'","option1":"'+firstFeature.get(i).description
+                                                        +'", "option2":"'+secondFeature.get(j).description
+                                                        +'", "option3":"'+thirdFeature.get(k).description
+                                                        +'", "price":'+thirdFeature.get(k).price.price+'}'))
+                                    }
                                 }
-                                variantList.add(jsonSlurper.parseText('{ "name":"'+firstFeature.get(i).description+'/'+feature.get(k).description+'","option1":"'+firstFeature.get(i).description+'", "option2":"'+feature.get(k).description+'", "price":'+feature.get(k).price.price+'}'))
+                            }else{
+                                for(j = 0; j < secondFeature.size(); j++){
+                                    if(prodOptionValues2.size() != secondFeature.size()){
+                                        prodOptionValues2.add('"'+secondFeature.get(j).description+'"')
+                                    }
+                                    variantList.add(jsonSlurper.parseText('{ "name":"'+firstFeature.get(i).description+'/'+secondFeature.get(j).description+'","option1":"'+firstFeature.get(i).description+'", "option2":"'+secondFeature.get(j).description+'", "price":'+secondFeature.get(j).price.price+'}'))
+                                }
                             }
                         }
                         prodOptions.add(jsonSlurper.parseText('{ "name":"'+keyList[0]+'","values":'+prodOptionValues+'}'))
                         prodOptions.add(jsonSlurper.parseText('{ "name":"'+keyList[1]+'","values":'+prodOptionValues2+'}'))
                         if(keyList.length > 2){
-                            /**
-                               If the product has more than 2 features repeat the process to make the 3rd combination.
-                            **/
-                            def prodOptionValues3 = []
+
                             for(i = 0; i < variantList.size(); i++){
                                 def feature = listFeatures.get(keyList[2])
                                 for(k = 0; k < feature.size(); k++){
                                     if(prodOptionValues3.size() != feature.size()){
                                         prodOptionValues3.add('"'+feature.get(k).description+'"')
                                     }
+                                    variantList.get(i).add(jsonSlurper.parseText('{"option3":"'+feature.get(k).description+'"}'))
                                     variantList.add(jsonSlurper.parseText('{ "name":"'+variantList.get(i).description+'/'+feature.get(k).description+'"}'))
                                     variantList.get(i).add(jsonSlurper.parseText('{"option3":"'+feature.get(k).description+'"}'))
                                 }
@@ -133,7 +153,7 @@
                         <econdition field-name="fromDate" operator="is-not-null"/>
                         <econdition field-name="thruDate" from="null"/>
                     </entity-find>
-                    <set field="prodPrice" from="productPrices.first()"/>
+                    <set field="prodPrice" from="productPrices.first()"/>ghl
                     <set field="featureDescription" from="productFeatApplList?.first().productFeatureDescription"/>
                     <set field="prodVariant" from="[title: featureDescription,
                                         option1: featureDescription,
