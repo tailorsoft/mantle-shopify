@@ -1,4 +1,274 @@
-
 <?xml version="1.0" encoding="UTF-8"?>
-<services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
+<services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
+    <service verb="send" noun="SystemMessageRest">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="response"/>
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
+            <set field="systemMessageType" from="systemMessage.'moqui.service.message.SystemMessageType'"/>
+
+            <if condition="!systemMessage.systemMessageRemoteId">
+                <return error="true"
+                        message="System message ${systemMessageId} has no systemMessageRemoteId, not sending."/>
+            </if>
+            <set field="systemMessageRemote" from="systemMessage.'moqui.service.message.SystemMessageRemote'"/>
+
+            <script><![CDATA[
+                String urlExpand = ec.resource.expand(systemMessageRemote.sendUrl, "systemMessage", [remoteMessageId:systemMessage.systemMessageId,
+                        systemMessageTypeId:systemMessage.systemMessageTypeId, systemMessageRemoteId:systemMessage.systemMessageRemoteId], false)
+                logger.info("SENDING MESSAGE TEXT ${systemMessage.messageText}")
+                org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.POST).uri(urlExpand)
+                        .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
+                restClient.basicAuth("70085f12deca125c586aaf311c198735","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")
+                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
+                if (restResponse.statusCode < 200 || restResponse.statusCode >= 300) {
+                    String errMsg = restResponse.text()
+                    ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${errMsg}")
+                    return
+                }
+                println "RESPONSE"  + restResponse.text()
+            ]]></script>
+
+            <!-- TODO: WebFacadeImpl.handleSystemMessage() will need to return a message ID before we can do this: <set field="remoteMessageId" from=""/> -->
+        </actions>
+    </service>
+    <service verb="generate" noun="ProductJson">
+        <in-parameters>
+            <parameter name="productId" required="true"/>
+            <parameter name="productStoreId"/>
+        </in-parameters>
+        <actions>
+            <script>import groovy.json.JsonSlurper</script>
+            <entity-find-one entity-name="mantle.product.Product" value-field="product">
+                <field-map field-name="productId"/>
+            </entity-find-one>
+            <entity-find-one entity-name="mantle.product.ProductContent" value-field="productContent">
+                <field-map field-name="productId"/>
+                <field-map field-name="productContentTypeEnumId" value="PcntImageDetail"/>
+            </entity-find-one>
+            <set field="images" from="[]"/>
+            <if condition="productContent">
+                <set field="image"
+                     from="[src: 'https://www.rcherbals.com/store/content/productImage/' + productContent.productContentId]"/>
+                <script>images.add(image)</script>
+            </if>
+            <!-- When the product is PtVirtual means that is a product parent, therefore has variants that we need to map in the needed format  /-->
+            <if condition="product.productTypeEnumId == 'PtVirtual'">
+                <then>
+                    <service-call name="mantle.shopify.ApiServices.get#ProductVariantsDisplayInfo"
+                                  in-map="[productId: productId]" out-map="context"/>
+                    <set field="prodVariants" from="[]"/>
+                    <set field="prodOptions" from="[]"/>
+                    <script><![CDATA[
+                    //keySet returns a list of the features types for the product
+                    String[] keyList = listFeatures.keySet()
+                    def firstFeature = listFeatures.get(keyList[0])
+                    def variantList = []
+                    def jsonSlurper = new JsonSlurper()
+                    def prodOptionValues = []
+                    //When the keyList has only 1 feature we don't need to make combinations so we add it directly to the options and final variant list.
+                    //When the product has more than 1 feature we have to create all the possible combinations for those features.
+                    if(keyList.length == 1 ){
+                        for(i = 0; i < firstFeature.size(); i++){
+                            prodOptionValues.add('"'+firstFeature.get(i).description+'"')
+                            variantList.add(jsonSlurper.parseText('{ "name":"'+firstFeature.get(i).description+'", "option1":"'+firstFeature.get(i).description+'","price":"'+firstFeature.get(i).price.price+'"}'))
+                        }
+                        prodOptions.add(jsonSlurper.parseText('{ "name":"'+keyList[0]+'","values":'+prodOptionValues+'}'))
+                    }else if(keyList.length > 1 ){
+                        def prodOptionValues2 = []
+                        for(i = 0; i < firstFeature.size(); i++){
+                            /**
+                               Iterating on the first feature list, get the 2nd feature list and
+                                for each value create a shopify format variant with combination of both 1st and 2nd list values.
+                            **/
+                            prodOptionValues.add('"'+firstFeature.get(i).description+'"')
+                            def feature = listFeatures.get(keyList[1])
+                            for(k = 0; k < feature.size(); k++){
+                                if(prodOptionValues2.size() != feature.size()){
+                                    prodOptionValues2.add('"'+feature.get(k).description+'"')
+                                }
+                                variantList.add(jsonSlurper.parseText('{ "name":"'+firstFeature.get(i).description+'/'+feature.get(k).description+'","option1":"'+firstFeature.get(i).description+'", "option2":"'+feature.get(k).description+'", "price":'+feature.get(k).price.price+'}'))
+                            }
+                        }
+                        prodOptions.add(jsonSlurper.parseText('{ "name":"'+keyList[0]+'","values":'+prodOptionValues+'}'))
+                        prodOptions.add(jsonSlurper.parseText('{ "name":"'+keyList[1]+'","values":'+prodOptionValues2+'}'))
+                        if(keyList.length > 2){
+                            /**
+                               If the product has more than 2 features repeat the process to make the 3rd combination.
+                            **/
+                            def prodOptionValues3 = []
+                            for(i = 0; i < variantList.size(); i++){
+                                def feature = listFeatures.get(keyList[2])
+                                for(k = 0; k < feature.size(); k++){
+                                    if(prodOptionValues3.size() != feature.size()){
+                                        prodOptionValues3.add('"'+feature.get(k).description+'"')
+                                    }
+                                    variantList.add(jsonSlurper.parseText('{ "name":"'+variantList.get(i).description+'/'+feature.get(k).description+'"}'))
+                                    variantList.get(i).add(jsonSlurper.parseText('{"option3":"'+feature.get(k).description+'"}'))
+                                }
+                            }
+                            prodOptions.add(jsonSlurper.parseText('{ "name":"'+keyList[2]+',"values":'+prodOptionValues3+'}'))
+                        }
+                    }
+                    prodVariants = variantList
+                ]]></script>
+                </then>
+                <else-if condition="product.productTypeEnumId == 'PtAsset'">
+                    <!-- When the product is PtAsset means that has no product parent and we need to create the product and the variant with the same data /-->
+                    <entity-find entity-name="mantle.product.ProductPrice" list="productPrices">
+                        <econdition field-name="productId" from="product.productId"/>
+                        <econdition field-name="fromDate" operator="is-not-null"/>
+                        <econdition field-name="thruDate" from="null"/>
+                        <econdition field-name="customerPartyId" from="null"/>
+                    </entity-find>
+                    <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl"
+                                 list="productFeatApplList">
+                        <econdition field-name="productId" from="product.productId"/>
+                        <econdition field-name="fromDate" operator="is-not-null"/>
+                        <econdition field-name="thruDate" from="null"/>
+                    </entity-find>
+                    <set field="prodPrice" from="productPrices.first()"/>
+                    <set field="featureDescription" from="productFeatApplList?.first().productFeatureDescription"/>
+                    <set field="prodVariant" from="[title: featureDescription,
+                                        option1: featureDescription,
+                                        price: productPrice]"/>
+                    <script>prodVariants.add(prodVariant)</script>
+                </else-if>
+            </if>
+            <!-- Map the product info into the prodMap field in order to follow the shopify API JSON format /-->
+            <set field="prodMap" from="[title: product.productName,
+                                        body_html: '',
+                                        vendor: '',
+                                        images: images,
+                                        variants: prodVariants,
+                                        options: prodOptions]"/>
+            <set field="shopifyProduct" from="[product: prodMap]"/>
+            <set field="messageText" from="groovy.json.JsonOutput.toJson(shopifyProduct)"/>
+            <log message="MESSAGE TEXT ${messageText}"/>
+            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
+            <service-call name="create#moqui.service.message.SystemMessage" out-map="context" transaction="force-new"
+                          in-map="[systemMessageTypeId: 'ShopifyAPIMessage', messageText: messageText, systemMessageRemoteId: 'ShopifyAPIMessageRemote',
+                          statusId: 'SmsgProduced', docType: 'JSON', docSubType: 'product', isOutgoing:'N', initDate:ec.user.nowTimestamp]"/>
+            <!-- Line above for testing on local /-->
+            <!--service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" out-map="context" in-map="[systemMessageId: systemMessageId]"/-->
+            <log message="SYSTEM MESSAGE ID ${systemMessageId}"/>
+        </actions>
+    </service>
+    <service verb="get" noun="ProductVariantsDisplayInfo">
+        <in-parameters>
+            <parameter name="productId">
+                <description>Only id of a virtual product make sense to get relevant data.</description>
+            </parameter>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="featureType"></parameter>
+            <parameter name="variantOptions" type="Map">
+                <description>
+                    A map where key is feature type (Enumeration) and value is another map
+                    with productId, description and price data exactly as it returned by get#ProductPrice.
+                </description>
+            </parameter>
+            <parameter name="isDiscounted" type="Boolean">
+                <description>We use this flag in UI to emphasis discounted products if they are variants</description>
+            </parameter>
+            <parameter name="listFeatures"/>
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="mantle.product.Product" value-field="product"/>
+
+            <set field="variantOptions" type="NewMap" value="null"/>
+            <script>variantOptions = new HashMap()</script>
+            <set field="isDiscounted" type="Boolean" value="false"/>
+
+            <service-call name="mantle.product.PriceServices.get#ProductPrice" in-map="context" out-map="mainPriceSet"/>
+
+            <if condition="product &amp;&amp; product.productTypeEnumId == 'PtVirtual'">
+                <entity-find entity-name="mantle.product.ProductAssocAndToFeatureAppl" list="assocs">
+                    <econdition field-name="productAssocTypeEnumId" value="PatVariant"/>
+                    <econdition field-name="applTypeEnumId" operator="in" value="PfatDistinguishing, PfatStandard"/>
+                    <econdition field-name="productId" from="product.productId"/>
+                    <date-filter/>
+                </entity-find>
+                <set field="listFeatures" type="NewMap" value="null"/>
+                <script>listFeatures = new HashMap()</script>
+                <iterate list="assocs" entry="variantProductAssoc">
+                    <!-- find variant price first -->
+                    <service-call name="mantle.product.PriceServices.get#ProductPrice" out-map="priceSet"
+                                  in-map="context + [productId:variantProductAssoc.toProductId]"/>
+                    <entity-find entity-name="mantle.product.feature.ProductFeatureAndAppl" list="features">
+                        <date-filter/>
+                        <econdition field-name="productId" from="variantProductAssoc.toProductId"/>
+                        <econdition field-name="productFeatureId" from="variantProductAssoc.productFeatureId"/>
+                    </entity-find>
+
+                    <!-- we return map keyed by feature type and should find the proper value for the assoc -->
+                    <entity-find-one entity-name="mantle.product.feature.ProductFeature" value-field="productFeature"
+                                     cache="true">
+                        <field-map field-name="productFeatureId" from="variantProductAssoc.productFeatureId"/>
+                    </entity-find-one>
+                    <service-call name="popstore.ProductServices.get#ProductQuantity" out-map="productQuantity"
+                                  in-map="[productId:variantProductAssoc.toProductId]"/>
+                    <entity-find-one entity-name="moqui.basic.Enumeration" value-field="featureType" cache="true">
+                        <field-map field-name="enumId" from="productFeature.productFeatureTypeEnumId"/>
+                    </entity-find-one>
+
+                    <!-- Find variant contents -->
+                    <service-call name="popstore.ProductServices.find#ProductContentList" out-map="context"
+                                  in-map="[productId:variantProductAssoc.toProductId]"/>
+
+                    <!-- Find product sales dates -->
+                    <service-call name="popstore.ProductServices.find#ProductSalesDates" out-map="context"
+                                  in-map="[productId:variantProductAssoc.toProductId]"/>
+
+                    <set field="item" from="[enumId:featureType.enumId, enumTypeId:featureType.enumTypeId,
+                        description:featureType.description, lastUpdatedStamp:featureType.lastUpdatedStamp]"/>
+                    <set field="content" from="productFeature.productFeatureTypeEnumId"/>
+                    <script><![CDATA[
+                        selectedPrices = (priceSet.price != null && priceSet != 0) ? priceSet : mainPriceSet
+                        // we use this flag in UI to emphasis discounted products but important to know if any of variants of discounted
+                        if (!isDiscounted) {
+                            isDiscounted = (selectedPrices.price && selectedPrices.listPrice) ? selectedPrices.price < selectedPrices.listPrice : false
+                        }
+
+                        def featureSet = listFeatures.get(content)
+                        if (!featureSet) {
+                            listFeatures.put(content,
+                            [[productFeatureId:productFeature.productFeatureId,
+                            productFeatureTypeEnumId:productFeature.productFeatureTypeEnumId,
+                            description:productFeature.description, abbrev:productFeature.abbrev, price:selectedPrices]])
+                        } else {
+                            boolean isItemInList = false
+                            for(int i=0; i < featureSet.size(); i++) {
+                                if(featureSet.get(i).productFeatureId.equals(productFeature.productFeatureId)) {
+                                    isItemInList = true
+                                    break
+                                }
+                            }
+                            if(!isItemInList) {
+                                featureSet.add([productFeatureId:productFeature.productFeatureId,
+                                productFeatureTypeEnumId:productFeature.productFeatureTypeEnumId,
+                                description:productFeature.description, abbrev:productFeature.abbrev, price:selectedPrices])
+                            }
+                        }
+
+                        def optionSet = variantOptions.get(item)
+                        if (!optionSet) {
+                            variantOptions.put(item, [[productId: variantProductAssoc.toProductId, description:productFeature.description, quantity: productQuantity.productQuantity,
+                            prices:selectedPrices, contentList:productContentList, isReadyForSales:isReadyForSales, salesDates:salesDates]])
+                        } else {
+                            optionSet.add([productId: variantProductAssoc.toProductId, description:productFeature.description, quantity: productQuantity.productQuantity,
+                            prices:selectedPrices, contentList:productContentList, isReadyForSales:isReadyForSales, salesDates:salesDates])
+                        }
+                        priceSet = null
+                    ]]></script>
+                </iterate>
+            </if>
+        </actions>
+    </service>
 </services>

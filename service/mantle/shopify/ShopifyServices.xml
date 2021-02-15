@@ -1,13 +1,3 @@
-
 <?xml version="1.0" encoding="UTF-8"?>
 <services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
-    <service verb="consume" noun="ReturnMessage">
-        <implements service="org.moqui.impl.SystemMessageServices.consume#SystemMessage"/>
-        <actions>
-            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
-            <set field="apiResponse" from="new groovy.json.JsonSlurper().parseText(systemMessage.messageText)"/>
-            <log message="\nThe apiResponse is ${apiResponse}\n"/>
-            <service-call name="mantle.shopify.ApiServices.map#JsonReturns" in-map="apiResponse" out-map="moquiReturn" out-map-add-to-existing="false"/>
-        </actions>
-    </service>
 </services>
