@@ -7,7 +7,7 @@
             <parameter name="systemMessageId" required="true"/>
         </in-parameters>
         <out-parameters>
-            <parameter name="response"/>
+            <parameter name="shopifyProductId"/>
         </out-parameters>
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
@@ -18,8 +18,10 @@
                         message="System message ${systemMessageId} has no systemMessageRemoteId, not sending."/>
             </if>
             <set field="systemMessageRemote" from="systemMessage.'moqui.service.message.SystemMessageRemote'"/>
-
+            <set field="shopifyProductId" value=""/>
+            <script>import groovy.json.JsonSlurper</script>
             <script><![CDATA[
+                def jsonSlurper = new JsonSlurper()
                 String urlExpand = ec.resource.expand(systemMessageRemote.sendUrl, "systemMessage", [remoteMessageId:systemMessage.systemMessageId,
                         systemMessageTypeId:systemMessage.systemMessageTypeId, systemMessageRemoteId:systemMessage.systemMessageRemoteId], false)
                 logger.info("SENDING MESSAGE TEXT ${systemMessage.messageText}")
@@ -32,7 +34,8 @@
                     ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${errMsg}")
                     return
                 }
-                println "RESPONSE"  + restResponse.text()
+                def map = jsonSlurper.parseText(restResponse.text())
+                shopifyProductId = map.product.id
             ]]></script>
 
             <!-- TODO: WebFacadeImpl.handleSystemMessage() will need to return a message ID before we can do this: <set field="remoteMessageId" from=""/> -->
@@ -53,6 +56,8 @@
                 <field-map field-name="productContentTypeEnumId" value="PcntImageDetail"/>
             </entity-find-one>
             <set field="images" from="[]"/>
+            <set field="prodVariants" from="[]"/>
+            <set field="prodOptions" from="[]"/>
             <if condition="productContent">
                 <set field="image"
                      from="[src: 'https://www.rcherbals.com/store/content/productImage/' + productContent.productContentId]"/>
@@ -63,8 +68,6 @@
                 <then>
                     <service-call name="mantle.shopify.ApiServices.get#ProductVariantsDisplayInfo"
                                   in-map="[productId: productId]" out-map="context"/>
-                    <set field="prodVariants" from="[]"/>
-                    <set field="prodOptions" from="[]"/>
                     <script><![CDATA[
                     String[] keyList = listFeatures.keySet()
                     //keySet returns a list of the features types for the product
@@ -147,18 +150,19 @@
                         <econdition field-name="thruDate" from="null"/>
                         <econdition field-name="customerPartyId" from="null"/>
                     </entity-find>
-                    <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl"
-                                 list="productFeatApplList">
+                    <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl" list="productFeatApplList">
                         <econdition field-name="productId" from="product.productId"/>
                         <econdition field-name="fromDate" operator="is-not-null"/>
                         <econdition field-name="thruDate" from="null"/>
                     </entity-find>
-                    <set field="prodPrice" from="productPrices.first()"/>ghl
-                    <set field="featureDescription" from="productFeatApplList?.first().productFeatureDescription"/>
-                    <set field="prodVariant" from="[title: featureDescription,
+                    <if condition="productFeatApplList">
+                        <set field="prodPrice" from="productPrices.first()"/>
+                        <set field="featureDescription" from="productFeatApplList?.first().productFeatureDescription"/>
+                        <set field="prodVariant" from="[title: featureDescription,
                                         option1: featureDescription,
                                         price: productPrice]"/>
-                    <script>prodVariants.add(prodVariant)</script>
+                        <script>prodVariants.add(prodVariant)</script>
+                    </if>
                 </else-if>
             </if>
             <!-- Map the product info into the prodMap field in order to follow the shopify API JSON format /-->
@@ -170,14 +174,59 @@
                                         options: prodOptions]"/>
             <set field="shopifyProduct" from="[product: prodMap]"/>
             <set field="messageText" from="groovy.json.JsonOutput.toJson(shopifyProduct)"/>
-            <log message="MESSAGE TEXT ${messageText}"/>
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
             <service-call name="create#moqui.service.message.SystemMessage" out-map="context" transaction="force-new"
                           in-map="[systemMessageTypeId: 'ShopifyAPIMessage', messageText: messageText, systemMessageRemoteId: 'ShopifyAPIMessageRemote',
                           statusId: 'SmsgProduced', docType: 'JSON', docSubType: 'product', isOutgoing:'N', initDate:ec.user.nowTimestamp]"/>
-            <!-- Line above for testing on local /-->
-            <!--service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" out-map="context" in-map="[systemMessageId: systemMessageId]"/-->
-            <log message="SYSTEM MESSAGE ID ${systemMessageId}"/>
+            <!-- Executing the system message request /-->
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" out-map="context" in-map="[systemMessageId: systemMessageId]"/>
+            <log message="BEFORE PID"/>
+            <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:productId, productIdTypeEnumId:'PidtShopify', idValue: shopifyProductId]"/>
+            <log message="AFTER PID"/>
+        </actions>
+    </service>
+    <service verb="generate" noun="ProductCategoryJson">
+        <in-parameters>
+            <parameter name="productCategoryId" required="true"/>
+        </in-parameters>
+        <actions>
+            <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
+                <field-map field-name="productCategoryId"/>
+            </entity-find-one>
+            <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productCategoryMembers">
+                <econdition field-name="productCategoryId"/>
+                <econdition field-name="thruDate" from="null"/>
+            </entity-find>
+            <script>import groovy.json.JsonSlurper</script>
+            <set field="shopifyCollectItems" from="[]"/>
+            <log message="CATEGORY ${productCategory}"/>
+            <log message="MEMBERS ${productCategoryMembers}"/>
+            <iterate list="productCategoryMembers" entry="productCategoryMember">
+                <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
+                    <field-map field-name="productId" from="productCategoryMember.productId"/>
+                    <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
+                </entity-find-one>
+                <if condition="!productIdentification">
+                    <service-call name="mantle.shopify.ApiServices.generate#ProductJson" out-map="context" in-map="[productId: productCategoryMember.productId]"/>
+                    <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
+                        <field-map field-name="productId" from="productCategoryMember.productId"/>
+                        <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
+                    </entity-find-one>
+                </if>
+                <script>
+                    <![CDATA[
+                        def jsonSlurper = new JsonSlurper()
+                        shopifyCollectItems.add(jsonSlurper.parseText('{"product_id":"'+productIdentification.idValue+'"}'))
+                    ]]>
+                </script>
+            </iterate>
+            <set field="categoryMap" from="[title: productCategory.categoryName, collects: shopifyCollectItems]"/>
+            <set field="shopifyCollection" from="[custom_collection: categoryMap]"/>
+            <set field="messageText" from="groovy.json.JsonOutput.toJson(shopifyCollection)"/>
+            <log message="MESSAGE TEXT ${messageText}"/>
+            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the Collection JSON as messageText/-->
+            <service-call name="create#moqui.service.message.SystemMessage" out-map="context" in-map="[systemMessageTypeId: 'ShopifyAPIMessage', messageText: messageText, systemMessageRemoteId: 'ShopifyAPIMessageRemoteCollection', statusId: 'SmsgProduced', docType: 'JSON', docSubType: 'product', isOutgoing:'N', initDate:ec.user.nowTimestamp]"/>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" transaction="force-new" out-map="context" in-map="[systemMessageId: systemMessageId]"/>
         </actions>
     </service>
     <service verb="get" noun="ProductVariantsDisplayInfo">
