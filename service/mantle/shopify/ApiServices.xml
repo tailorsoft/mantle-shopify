@@ -7,7 +7,7 @@
             <parameter name="systemMessageId" required="true"/>
         </in-parameters>
         <out-parameters>
-            <parameter name="shopifyProductId"/>
+            <parameter name="response"/>
         </out-parameters>
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
@@ -18,12 +18,13 @@
                         message="System message ${systemMessageId} has no systemMessageRemoteId, not sending."/>
             </if>
             <set field="systemMessageRemote" from="systemMessage.'moqui.service.message.SystemMessageRemote'"/>
-            <set field="shopifyProductId" value=""/>
+            <set field="response" value=""/>
             <script>import groovy.json.JsonSlurper</script>
             <script><![CDATA[
                 def jsonSlurper = new JsonSlurper()
                 String urlExpand = ec.resource.expand(systemMessageRemote.sendUrl, "systemMessage", [remoteMessageId:systemMessage.systemMessageId,
                         systemMessageTypeId:systemMessage.systemMessageTypeId, systemMessageRemoteId:systemMessage.systemMessageRemoteId], false)
+                logger.info("URL EXPAND ${urlExpand}")
                 logger.info("SENDING MESSAGE TEXT ${systemMessage.messageText}")
                 org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.POST).uri(urlExpand)
                         .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
@@ -34,8 +35,7 @@
                     ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${errMsg}")
                     return
                 }
-                def map = jsonSlurper.parseText(restResponse.text())
-                shopifyProductId = map.product.id
+                response = jsonSlurper.parseText(restResponse.text())
             ]]></script>
 
             <!-- TODO: WebFacadeImpl.handleSystemMessage() will need to return a message ID before we can do this: <set field="remoteMessageId" from=""/> -->
@@ -181,6 +181,8 @@
             <!-- Executing the system message request /-->
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" out-map="context" in-map="[systemMessageId: systemMessageId]"/>
             <log message="BEFORE PID"/>
+            <set field="shopifyProductId" value=""/>
+            <script>shopifyProductId = response.product.id</script>
             <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:productId, productIdTypeEnumId:'PidtShopify', idValue: shopifyProductId]"/>
             <log message="AFTER PID"/>
         </actions>
