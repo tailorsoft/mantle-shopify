@@ -8,6 +8,7 @@
         </in-parameters>
         <out-parameters>
             <parameter name="response"/>
+            <parameter name="systemMessage"/>
         </out-parameters>
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
@@ -44,7 +45,6 @@
     <service verb="get" noun="ProductData">
         <in-parameters>
             <parameter name="productId" required="true"/>
-            <parameter name="productStoreId"/>
         </in-parameters>
         <out-parameters>
             <parameter name="productData"/>
@@ -179,32 +179,41 @@
         </actions>
     </service>
 
-    <service verb="create" noun="ProductSystemMessage">
+    <service verb="queue" noun="ProductSystemMessage">
         <in-parameters>
             <parameter name="productId" required="true"/>
-            <parameter name="productStoreId"/>
+            <parameter name="systemMessageRemoteId"/>
         </in-parameters>
-        <out-parameters>
-            <parameter name="json"/>
-        </out-parameters>
         <actions>
-            <service-call name="generate#ProductJson" 
+            <service-call name="mantle.shopify.ApiServices.get#ProductData" 
                           in-map="[productId: productId, productStoreId: productStoreId]"
                           out-map="context" />
 
             <set field="json" from="groovy.json.JsonOutput.toJson([product: productData])"/>
 
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
-            <service-call name="create#moqui.service.message.SystemMessage" out-map="context" 
-                          in-map="[systemMessageTypeId: 'ShopifyAPIMessage', messageText: json, systemMessageRemoteId: 'ShopifyAPIMessageRemote',
-                          statusId: 'SmsgProduced', docType: 'JSON', docSubType: 'product', isOutgoing:'N', initDate:ec.user.nowTimestamp]"/>
-            <!-- Executing the system message request /-->
-            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" out-map="context" in-map="[systemMessageId: systemMessageId]"/>
-            <log message="BEFORE PID"/>
-            <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:productId, productIdTypeEnumId:'PidtShopify', idValue: response.product.id]"/>
-            <log message="AFTER PID"/>
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                    in-map="[systemMessageTypeId:'ShopifyProductMessage', systemMessageRemoteId:systemMessageRemoteId,
+                        messageText:json, docVersion:productId]"/>
         </actions>
     </service>
+
+    <service verb="send" noun="ProductSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
+
+            <!-- storing the productId on the doc version... its bad, but what alternative? -->
+            <set field="productId" from="systemMessage.docVersion" />
+            <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:productId, productIdTypeEnumId:'PidtShopify', idValue: response.product.id]"/>
+        </actions>
+    </service>
+
 
     <service verb="generate" noun="ProductCategoryJson">
         <in-parameters>
