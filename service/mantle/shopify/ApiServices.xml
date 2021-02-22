@@ -8,6 +8,7 @@
         </in-parameters>
         <out-parameters>
             <parameter name="response"/>
+            <parameter name="systemMessage"/>
         </out-parameters>
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
@@ -41,11 +42,13 @@
             <!-- TODO: WebFacadeImpl.handleSystemMessage() will need to return a message ID before we can do this: <set field="remoteMessageId" from=""/> -->
         </actions>
     </service>
-    <service verb="generate" noun="ProductJson">
+    <service verb="get" noun="ProductData">
         <in-parameters>
             <parameter name="productId" required="true"/>
-            <parameter name="productStoreId"/>
         </in-parameters>
+        <out-parameters>
+            <parameter name="productData"/>
+        </out-parameters>
         <actions>
             <script>import groovy.json.JsonSlurper</script>
             <entity-find-one entity-name="mantle.product.Product" value-field="product">
@@ -66,7 +69,7 @@
             <!-- When the product is PtVirtual means that is a product parent, therefore has variants that we need to map in the needed format  /-->
             <if condition="product.productTypeEnumId == 'PtVirtual'">
                 <then>
-                    <service-call name="mantle.shopify.ApiServices.get#ProductVariantsDisplayInfo"
+                    <service-call name="mantle.shopify.ApiServices.get#VirtualProductData"
                                   in-map="[productId: productId]" out-map="context"/>
                     <script><![CDATA[
                     String[] keyList = listFeatures.keySet()
@@ -166,27 +169,52 @@
                 </else-if>
             </if>
             <!-- Map the product info into the prodMap field in order to follow the shopify API JSON format /-->
-            <set field="prodMap" from="[title: product.productName,
+            <set field="productData" from="[title: product.productName,
                                         body_html: '',
                                         vendor: '',
                                         images: images,
                                         variants: prodVariants,
                                         options: prodOptions]"/>
-            <set field="shopifyProduct" from="[product: prodMap]"/>
-            <set field="messageText" from="groovy.json.JsonOutput.toJson(shopifyProduct)"/>
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
-            <service-call name="create#moqui.service.message.SystemMessage" out-map="context" transaction="force-new"
-                          in-map="[systemMessageTypeId: 'ShopifyAPIMessage', messageText: messageText, systemMessageRemoteId: 'ShopifyAPIMessageRemote',
-                          statusId: 'SmsgProduced', docType: 'JSON', docSubType: 'product', isOutgoing:'N', initDate:ec.user.nowTimestamp]"/>
-            <!-- Executing the system message request /-->
-            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" out-map="context" in-map="[systemMessageId: systemMessageId]"/>
-            <log message="BEFORE PID"/>
-            <set field="shopifyProductId" value=""/>
-            <script>shopifyProductId = response.product.id</script>
-            <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:productId, productIdTypeEnumId:'PidtShopify', idValue: shopifyProductId]"/>
-            <log message="AFTER PID"/>
+            
         </actions>
     </service>
+
+    <service verb="queue" noun="ProductSystemMessage">
+        <in-parameters>
+            <parameter name="productId" required="true"/>
+            <parameter name="systemMessageRemoteId"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.get#ProductData" 
+                          in-map="[productId: productId, productStoreId: productStoreId]"
+                          out-map="context" />
+
+            <set field="json" from="groovy.json.JsonOutput.toJson([product: productData])"/>
+
+            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                    in-map="[systemMessageTypeId:'ShopifyProductMessage', systemMessageRemoteId:systemMessageRemoteId,
+                        messageText:json, docVersion:productId]"/>
+        </actions>
+    </service>
+
+    <service verb="send" noun="ProductSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
+
+            <!-- storing the productId on the doc version... its bad, but what alternative? -->
+            <set field="productId" from="systemMessage.docVersion" />
+            <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:productId, productIdTypeEnumId:'PidtShopify', idValue: response.product.id]"/>
+        </actions>
+    </service>
+
+
     <service verb="generate" noun="ProductCategoryJson">
         <in-parameters>
             <parameter name="productCategoryId" required="true"/>
@@ -231,7 +259,7 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" transaction="force-new" out-map="context" in-map="[systemMessageId: systemMessageId]"/>
         </actions>
     </service>
-    <service verb="get" noun="ProductVariantsDisplayInfo">
+    <service verb="get" noun="VirtualProductData">
         <in-parameters>
             <parameter name="productId">
                 <description>Only id of a virtual product make sense to get relevant data.</description>
@@ -283,19 +311,23 @@
                                      cache="true">
                         <field-map field-name="productFeatureId" from="variantProductAssoc.productFeatureId"/>
                     </entity-find-one>
-                    <service-call name="popstore.ProductServices.get#ProductQuantity" out-map="productQuantity"
+
+                    <service-call name="mantle.product.AssetServices.get#AvailableInventory" out-map="atpTotal"
                                   in-map="[productId:variantProductAssoc.toProductId]"/>
+
                     <entity-find-one entity-name="moqui.basic.Enumeration" value-field="featureType" cache="true">
                         <field-map field-name="enumId" from="productFeature.productFeatureTypeEnumId"/>
                     </entity-find-one>
 
-                    <!-- Find variant contents -->
+                    <!-- Find variant contents ... need to use services in Mantle USL
                     <service-call name="popstore.ProductServices.find#ProductContentList" out-map="context"
                                   in-map="[productId:variantProductAssoc.toProductId]"/>
+                    -->
 
-                    <!-- Find product sales dates -->
+                    <!-- Find product sales dates ... need to use services in Mantle USL
                     <service-call name="popstore.ProductServices.find#ProductSalesDates" out-map="context"
                                   in-map="[productId:variantProductAssoc.toProductId]"/>
+                    -->
 
                     <set field="item" from="[enumId:featureType.enumId, enumTypeId:featureType.enumTypeId,
                         description:featureType.description, lastUpdatedStamp:featureType.lastUpdatedStamp]"/>
@@ -330,10 +362,10 @@
 
                         def optionSet = variantOptions.get(item)
                         if (!optionSet) {
-                            variantOptions.put(item, [[productId: variantProductAssoc.toProductId, description:productFeature.description, quantity: productQuantity.productQuantity,
+                            variantOptions.put(item, [[productId: variantProductAssoc.toProductId, description:productFeature.description, quantity: atpTotal,
                             prices:selectedPrices, contentList:productContentList, isReadyForSales:isReadyForSales, salesDates:salesDates]])
                         } else {
-                            optionSet.add([productId: variantProductAssoc.toProductId, description:productFeature.description, quantity: productQuantity.productQuantity,
+                            optionSet.add([productId: variantProductAssoc.toProductId, description:productFeature.description, quantity: atpTotal,
                             prices:selectedPrices, contentList:productContentList, isReadyForSales:isReadyForSales, salesDates:salesDates])
                         }
                         priceSet = null
