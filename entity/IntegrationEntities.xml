@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entities xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/entity-definition-2.1.xsd">
+    <extend-entity entity-name="SystemMessage" package="moqui.service.message">
+        <field name="productId" type="id"/>
+        <relationship type="one" related="mantle.product.Product"/>
+    </extend-entity>
+    <extend-entity entity-name="SystemMessage" package="moqui.service.message">
+        <field name="productCategoryId" type="id"/>
+        <relationship type="one" related="mantle.product.category.ProductCategory"/>
+    </extend-entity>
+</entities>

@@ -19,17 +19,25 @@
                         message="System message ${systemMessageId} has no systemMessageRemoteId, not sending."/>
             </if>
             <set field="systemMessageRemote" from="systemMessage.'moqui.service.message.SystemMessageRemote'"/>
+            <set field="docSubType" from="systemMessage.docSubType"/>
             <set field="response" value=""/>
             <script>import groovy.json.JsonSlurper</script>
             <script><![CDATA[
                 def jsonSlurper = new JsonSlurper()
                 String urlExpand = ec.resource.expand(systemMessageRemote.sendUrl, "systemMessage", [remoteMessageId:systemMessage.systemMessageId,
                         systemMessageTypeId:systemMessage.systemMessageTypeId, systemMessageRemoteId:systemMessage.systemMessageRemoteId], false)
-                logger.info("URL EXPAND ${urlExpand}")
                 logger.info("SENDING MESSAGE TEXT ${systemMessage.messageText}")
-                org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.POST).uri(urlExpand)
-                        .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
-                restClient.basicAuth("70085f12deca125c586aaf311c198735","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")
+                org.moqui.util.RestClient restClient = ec.service.rest()
+                if(docSubType.equals("deleteCollection")){
+                    urlExpand = urlExpand + systemMessage.messageText + ".json"
+                    logger.info("URL EXPAND ${urlExpand}")
+                    restClient = ec.service.rest().method(org.moqui.util.RestClient.DELETE).uri(urlExpand)
+                }else{
+                    logger.info("URL EXPAND ${urlExpand}")
+                    restClient = ec.service.rest().method(org.moqui.util.RestClient.POST).uri(urlExpand)
+                            .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
+                }
+                restClient.basicAuth(systemMessageRemote.username,systemMessageRemote.password)
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
                 if (restResponse.statusCode < 200 || restResponse.statusCode >= 300) {
                     String errMsg = restResponse.text()
@@ -42,6 +50,7 @@
             <!-- TODO: WebFacadeImpl.handleSystemMessage() will need to return a message ID before we can do this: <set field="remoteMessageId" from=""/> -->
         </actions>
     </service>
+
     <service verb="get" noun="ProductData">
         <in-parameters>
             <parameter name="productId" required="true"/>
@@ -82,10 +91,10 @@
                     //When the product has more than 1 feature we have to create all the possible combinations for those features.
                     if(keyList.length == 1 ){
                         for(i = 0; i < firstFeature.size(); i++){
-                            prodOptionValues.add('"'+firstFeature.get(i).description+'"')
-                            variantList.add(jsonSlurper.parseText('{ "name":"'+firstFeature.get(i).description+'", "option1":"'+firstFeature.get(i).description+'","price":"'+firstFeature.get(i).price.price+'"}'))
+                            prodOptionValues.add(firstFeature.get(i).description)
+                            variantList.add(new HashMap([name:firstFeature.get(i).description, option1:firstFeature.get(i).description, price:firstFeature.get(i).price.price]))
                         }
-                        prodOptions.add(jsonSlurper.parseText('{ "name":"'+keyList[0]+'","values":'+prodOptionValues+'}'))
+                        prodOptions.add(new HashMap([name:keyList[0], values:prodOptionValues]))
                     }else if(keyList.length > 1 ){
                         def prodOptionValues2 = []
                         for(i = 0; i < firstFeature.size(); i++){
@@ -95,52 +104,41 @@
 
                                NOTE: Shopify only supports products that has at most 3 features.
                             **/
-                            prodOptionValues.add('"'+firstFeature.get(i).description+'"')
+                            prodOptionValues.add(firstFeature.get(i).description)
                             def secondFeature = listFeatures.get(keyList[1])
                             if(keyList.length > 2){
                                 def thirdFeature = listFeatures.get(keyList[2])
                                 def prodOptionValues3 = []
                                 for(j = 0; j < secondFeature.size(); j++){
                                     if(prodOptionValues2.size() != secondFeature.size()){
-                                        prodOptionValues2.add('"'+secondFeature.get(j).description+'"')
+                                        prodOptionValues2.add(secondFeature.get(j).description)
                                     }
                                     for(k = 0; k < thirdFeature.size(); k++){
                                         if(prodOptionValues3.size() != thirdFeature.size()){
-                                            prodOptionValues3.add('"'+prodOptionValues3.get(k).description+'"')
+                                            prodOptionValues3.add(prodOptionValues3.get(k).description)
                                         }
-                                        variantList.add(jsonSlurper.parseText('{ "name":"'+firstFeature.get(i).description+'/'+secondFeature.get(j).description+'/'+thirdFeature.get(k).description
-                                                        +'","option1":"'+firstFeature.get(i).description
-                                                        +'", "option2":"'+secondFeature.get(j).description
-                                                        +'", "option3":"'+thirdFeature.get(k).description
-                                                        +'", "price":'+thirdFeature.get(k).price.price+'}'))
+                                        variantList.add(new HashMap([name:firstFeature.get(i).description+'/'+secondFeature.get(j).description+'/'+thirdFeature.get(k).description,
+                                                                    option1:firstFeature.get(i).description,
+                                                                    option2:secondFeature.get(j).description,
+                                                                    option3:thirdFeature.get(k).description,
+                                                                    price:thirdFeature.get(k).price.price]))
                                     }
                                 }
+                                prodOptions.add(new HashMap([name:keyList[2], values:prodOptionValues3]))
                             }else{
                                 for(j = 0; j < secondFeature.size(); j++){
                                     if(prodOptionValues2.size() != secondFeature.size()){
-                                        prodOptionValues2.add('"'+secondFeature.get(j).description+'"')
+                                        prodOptionValues2.add(secondFeature.get(j).description)
                                     }
-                                    variantList.add(jsonSlurper.parseText('{ "name":"'+firstFeature.get(i).description+'/'+secondFeature.get(j).description+'","option1":"'+firstFeature.get(i).description+'", "option2":"'+secondFeature.get(j).description+'", "price":'+secondFeature.get(j).price.price+'}'))
+                                    variantList.add(new HashMap([name:firstFeature.get(i).description+'/'+secondFeature.get(j).description,
+                                                                    option1:firstFeature.get(i).description,
+                                                                    option2:secondFeature.get(j).description,
+                                                                    price:secondFeature.get(j).price.price]))
                                 }
                             }
                         }
-                        prodOptions.add(jsonSlurper.parseText('{ "name":"'+keyList[0]+'","values":'+prodOptionValues+'}'))
-                        prodOptions.add(jsonSlurper.parseText('{ "name":"'+keyList[1]+'","values":'+prodOptionValues2+'}'))
-                        if(keyList.length > 2){
-
-                            for(i = 0; i < variantList.size(); i++){
-                                def feature = listFeatures.get(keyList[2])
-                                for(k = 0; k < feature.size(); k++){
-                                    if(prodOptionValues3.size() != feature.size()){
-                                        prodOptionValues3.add('"'+feature.get(k).description+'"')
-                                    }
-                                    variantList.get(i).add(jsonSlurper.parseText('{"option3":"'+feature.get(k).description+'"}'))
-                                    variantList.add(jsonSlurper.parseText('{ "name":"'+variantList.get(i).description+'/'+feature.get(k).description+'"}'))
-                                    variantList.get(i).add(jsonSlurper.parseText('{"option3":"'+feature.get(k).description+'"}'))
-                                }
-                            }
-                            prodOptions.add(jsonSlurper.parseText('{ "name":"'+keyList[2]+',"values":'+prodOptionValues3+'}'))
-                        }
+                        prodOptions.add(new HashMap([name:keyList[0], values:prodOptionValues]))
+                        prodOptions.add(new HashMap([name:keyList[1], values:prodOptionValues2]))
                     }
                     prodVariants = variantList
                 ]]></script>
@@ -168,14 +166,14 @@
                     </if>
                 </else-if>
             </if>
-            <!-- Map the product info into the prodMap field in order to follow the shopify API JSON format /-->
+            <!-- Map the product info into the productData field in order to follow the shopify API JSON format /-->
             <set field="productData" from="[title: product.productName,
                                         body_html: '',
                                         vendor: '',
                                         images: images,
                                         variants: prodVariants,
                                         options: prodOptions]"/>
-            
+
         </actions>
     </service>
 
@@ -194,7 +192,7 @@
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                     in-map="[systemMessageTypeId:'ShopifyProductMessage', systemMessageRemoteId:systemMessageRemoteId,
-                        messageText:json, docVersion:productId]"/>
+                        messageText:json, productId:productId]"/>
         </actions>
     </service>
 
@@ -208,17 +206,17 @@
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
 
-            <!-- storing the productId on the doc version... its bad, but what alternative? -->
-            <set field="productId" from="systemMessage.docVersion" />
-            <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:productId, productIdTypeEnumId:'PidtShopify', idValue: response.product.id]"/>
+            <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:systemMessage.productId, productIdTypeEnumId:'PidtShopify', idValue: response.product.id]"/>
         </actions>
     </service>
 
-
-    <service verb="generate" noun="ProductCategoryJson">
+    <service verb="get" noun="ProductCategoryData">
         <in-parameters>
             <parameter name="productCategoryId" required="true"/>
         </in-parameters>
+        <out-parameters>
+            <parameter name="productCategoryData"/>
+        </out-parameters>
         <actions>
             <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
                 <field-map field-name="productCategoryId"/>
@@ -229,36 +227,116 @@
             </entity-find>
             <script>import groovy.json.JsonSlurper</script>
             <set field="shopifyCollectItems" from="[]"/>
-            <log message="CATEGORY ${productCategory}"/>
-            <log message="MEMBERS ${productCategoryMembers}"/>
             <iterate list="productCategoryMembers" entry="productCategoryMember">
                 <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
                     <field-map field-name="productId" from="productCategoryMember.productId"/>
                     <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
                 </entity-find-one>
-                <if condition="!productIdentification">
-                    <service-call name="mantle.shopify.ApiServices.generate#ProductJson" out-map="context" in-map="[productId: productCategoryMember.productId]"/>
-                    <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
+                <if condition="productIdentification">
+                    <entity-find-one entity-name="mantle.product.Product" value-field="product">
                         <field-map field-name="productId" from="productCategoryMember.productId"/>
-                        <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
                     </entity-find-one>
+                    <script>
+                        <![CDATA[
+                            shopifyCollectItems.add(new HashMap([product_id:productIdentification.idValue]))
+                        ]]>
+                    </script>
                 </if>
-                <script>
-                    <![CDATA[
-                        def jsonSlurper = new JsonSlurper()
-                        shopifyCollectItems.add(jsonSlurper.parseText('{"product_id":"'+productIdentification.idValue+'"}'))
-                    ]]>
-                </script>
             </iterate>
-            <set field="categoryMap" from="[title: productCategory.categoryName, collects: shopifyCollectItems]"/>
-            <set field="shopifyCollection" from="[custom_collection: categoryMap]"/>
-            <set field="messageText" from="groovy.json.JsonOutput.toJson(shopifyCollection)"/>
-            <log message="MESSAGE TEXT ${messageText}"/>
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the Collection JSON as messageText/-->
-            <service-call name="create#moqui.service.message.SystemMessage" out-map="context" in-map="[systemMessageTypeId: 'ShopifyAPIMessage', messageText: messageText, systemMessageRemoteId: 'ShopifyAPIMessageRemoteCollection', statusId: 'SmsgProduced', docType: 'JSON', docSubType: 'product', isOutgoing:'N', initDate:ec.user.nowTimestamp]"/>
-            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" transaction="force-new" out-map="context" in-map="[systemMessageId: systemMessageId]"/>
+            <set field="productCategoryData" from="[title: productCategory.categoryName, collects: shopifyCollectItems]"/>
         </actions>
     </service>
+
+    <service verb="queue" noun="CreateCollectionSystemMessage">
+        <in-parameters>
+            <parameter name="productCategoryId" required="true"/>
+            <parameter name="systemMessageRemoteId"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.get#ProductCategoryData"
+                          in-map="[productCategoryId: productCategoryId, productStoreId: productStoreId]"
+                          out-map="context" />
+
+            <set field="json" from="groovy.json.JsonOutput.toJson([custom_collection: productCategoryData])"/>
+
+            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                          in-map="[systemMessageTypeId:'ShopifyCreateCollectionMessage', systemMessageRemoteId:systemMessageRemoteId,
+                        messageText:json, productCategoryId:productCategoryId]"/>
+        </actions>
+    </service>
+
+    <service verb="send" noun="CreateCollectionSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
+
+            <service-call name="update#mantle.product.category.ProductCategory" out-map="context" in-map="[productCategoryId:systemMessage.productCategoryId, pseudoId:response.custom_collection.id]"/>
+        </actions>
+    </service>
+
+    <service verb="get" noun="ShopifyProductCategoryData">
+        <in-parameters>
+            <parameter name="productCategoryId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="shopifyCollectionId"/>
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
+                <field-map field-name="productCategoryId"/>
+            </entity-find-one>
+            <set field="shopifyCollectionId" from="productCategory.pseudoId"/>
+        </actions>
+    </service>
+
+    <service verb="queue" noun="DeleteCollectionSystemMessage">
+        <in-parameters>
+            <parameter name="productCategoryId" required="true"/>
+            <parameter name="systemMessageRemoteId"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.get#ShopifyProductCategoryData"
+                          in-map="[productCategoryId: productCategoryId]"
+                          out-map="context" />
+
+            <set field="idParam" from="shopifyCollectionId"/>
+
+            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', systemMessageRemoteId:systemMessageRemoteId,
+                            messageText:idParam, productCategoryId:productCategoryId, docSubType: 'deleteCollection']"/>
+        </actions>
+    </service>
+
+    <service verb="send" noun="DeleteCollectionSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
+
+            <service-call name="update#mantle.product.category.ProductCategory" out-map="context" in-map="[productCategoryId:systemMessage.productCategoryId, pseudoId:'']"/>
+
+            <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productCategoryMembers">
+                <econdition field-name="productCategoryId"/>
+                <econdition field-name="thruDate" from="null"/>
+            </entity-find>
+
+            <iterate list="productCategoryMembers" entry="productCategoryMember">
+                <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, pseudoId:'']"/>
+            </iterate>
+        </actions>
+    </service>
+    
     <service verb="get" noun="VirtualProductData">
         <in-parameters>
             <parameter name="productId">
@@ -374,4 +452,5 @@
             </if>
         </actions>
     </service>
+
 </services>
