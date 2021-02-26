@@ -180,7 +180,6 @@
     <service verb="queue" noun="ProductSystemMessage">
         <in-parameters>
             <parameter name="productId" required="true"/>
-            <parameter name="systemMessageRemoteId"/>
         </in-parameters>
         <actions>
             <service-call name="mantle.shopify.ApiServices.get#ProductData" 
@@ -191,7 +190,7 @@
 
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyProductMessage', systemMessageRemoteId:systemMessageRemoteId,
+                    in-map="[systemMessageTypeId:'ShopifyProductMessage', systemMessageRemoteId:'DEMO_SHOPIFY_PRODUCTS_REMOTE',
                         messageText:json, productId:productId]"/>
         </actions>
     </service>
@@ -250,7 +249,6 @@
     <service verb="queue" noun="CreateCollectionSystemMessage">
         <in-parameters>
             <parameter name="productCategoryId" required="true"/>
-            <parameter name="systemMessageRemoteId"/>
         </in-parameters>
         <actions>
             <service-call name="mantle.shopify.ApiServices.get#ProductCategoryData"
@@ -261,7 +259,7 @@
 
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyCreateCollectionMessage', systemMessageRemoteId:systemMessageRemoteId,
+                          in-map="[systemMessageTypeId:'ShopifyCreateCollectionMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CREATE_COLLECTIONS_REMOTE',
                         messageText:json, productCategoryId:productCategoryId]"/>
         </actions>
     </service>
@@ -298,7 +296,6 @@
     <service verb="queue" noun="DeleteCollectionSystemMessage">
         <in-parameters>
             <parameter name="productCategoryId" required="true"/>
-            <parameter name="systemMessageRemoteId"/>
         </in-parameters>
         <actions>
             <service-call name="mantle.shopify.ApiServices.get#ShopifyProductCategoryData"
@@ -309,7 +306,7 @@
 
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', systemMessageRemoteId:systemMessageRemoteId,
+                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', systemMessageRemoteId:DEMO_SHOPIFY_DELETE_COLLECTIONS_REMOTE,
                             messageText:idParam, productCategoryId:productCategoryId, docSubType: 'deleteCollection']"/>
         </actions>
     </service>
