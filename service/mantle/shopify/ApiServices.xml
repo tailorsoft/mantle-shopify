@@ -306,7 +306,7 @@
 
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', systemMessageRemoteId:DEMO_SHOPIFY_DELETE_COLLECTION_REMOTE,
+                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', systemMessageRemoteId:'DEMO_SHOPIFY_DELETE_COLLECTION_REMOTE',
                             messageText:idParam, productCategoryId:productCategoryId, docSubType: 'deleteCollection']"/>
         </actions>
     </service>
