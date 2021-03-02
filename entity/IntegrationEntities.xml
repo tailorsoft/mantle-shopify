@@ -9,4 +9,7 @@
         <field name="productCategoryId" type="id"/>
         <relationship type="one" related="mantle.product.category.ProductCategory"/>
     </extend-entity>
+    <extend-entity entity-name="ProductCategoryMember" package="mantle.product.category">
+        <field name="pseudoId" type="id"/>
+    </extend-entity>
 </entities>

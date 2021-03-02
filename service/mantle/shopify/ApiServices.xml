@@ -259,7 +259,7 @@
 
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyCreateCollectionMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CREATE_COLLECTIONS_REMOTE',
+                          in-map="[systemMessageTypeId:'ShopifyCreateCollectionMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CREATE_COLLECTION_REMOTE',
                         messageText:json, productCategoryId:productCategoryId]"/>
         </actions>
     </service>
@@ -306,7 +306,7 @@
 
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', systemMessageRemoteId:DEMO_SHOPIFY_DELETE_COLLECTIONS_REMOTE,
+                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', systemMessageRemoteId:DEMO_SHOPIFY_DELETE_COLLECTION_REMOTE,
                             messageText:idParam, productCategoryId:productCategoryId, docSubType: 'deleteCollection']"/>
         </actions>
     </service>
@@ -333,7 +333,68 @@
             </iterate>
         </actions>
     </service>
-    
+
+    <service verb="get" noun="ProductCollectData">
+        <in-parameters>
+            <parameter name="productCategoryId" required="true"/>
+            <parameter name="productId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="collectData"/>
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
+                <field-map field-name="productCategoryId" from="productCategoryId"/>
+            </entity-find-one>
+
+            <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
+                <field-map field-name="productId" from="productId"/>
+                <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
+            </entity-find-one>
+
+            <set field="collectData" from=""/>
+            <if condition="productIdentification">
+                <script>
+                    <![CDATA[
+                        collectData = new HashMap([product_id:productIdentification.idValue, collection_id:productCategory.pseudoId])
+                    ]]>
+                </script>
+            </if>
+        </actions>
+    </service>
+
+    <service verb="queue" noun="CreateCollectSystemMessage">
+        <in-parameters>
+            <parameter name="productCategoryId" required="true"/>
+            <parameter name="productId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.get#ProductCollectData"
+                          in-map="[productCategoryId: productCategoryId, productId: productId]"
+                          out-map="context" />
+
+            <set field="json" from="groovy.json.JsonOutput.toJson([collect: collectData])"/>
+            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                          in-map="[systemMessageTypeId:'ShopifyCreateCollectMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CREATE_COLLECT_REMOTE',
+                        messageText:json, productCategoryId:productCategoryId, productId:productId]"/>
+        </actions>
+    </service>
+
+    <service verb="send" noun="CreateCollectSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
+
+            <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productCategoryId:systemMessage.productCategoryId, productId:systemMessage.productId, pseudoId:response.collect.id]"/>
+        </actions>
+    </service>
+
     <service verb="get" noun="VirtualProductData">
         <in-parameters>
             <parameter name="productId">
