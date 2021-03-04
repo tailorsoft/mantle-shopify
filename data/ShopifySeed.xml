@@ -9,6 +9,8 @@
                                              sendServiceName="mantle.shopify.ApiServices.send#DeleteCollectionSystemMessage" />
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCreateCollectMessage" description="Create Shopify Collect SystemMessage Type"
                                              sendServiceName="mantle.shopify.ApiServices.send#CreateCollectSystemMessage" />
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyGetCollectMessage" description="Get Shopify Collect SystemMessage Type"
+                                             sendServiceName="mantle.shopify.ApiServices.send#GetCollectSystemMessage" />
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyDeleteCollectMessage" description="Delete Shopify Collect SystemMessage Type"
                                              sendServiceName="mantle.shopify.ApiServices.send#DeleteCollectSystemMessage" />
 </entity-facade-xml>
