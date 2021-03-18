@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
+
     <service verb="send" noun="SystemMessageRest">
         <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
         <in-parameters>
@@ -19,7 +20,7 @@
                         message="System message ${systemMessageId} has no systemMessageRemoteId, not sending."/>
             </if>
             <set field="systemMessageRemote" from="systemMessage.'moqui.service.message.SystemMessageRemote'"/>
-            <set field="docSubType" from="systemMessage.docSubType"/>
+            <set field="docSubType" from="systemMessage.docSubType?:''"/>
             <set field="response" value=""/>
             <script>import groovy.json.JsonSlurper</script>
             <script><![CDATA[
@@ -208,8 +209,26 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
-
-            <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:systemMessage.productId, productIdTypeEnumId:'PidtShopify', idValue: response.product.id]"/>
+            <if condition="response.product.variants.size &gt; 0">
+                <service-call name="mantle.shopify.ApiServices.get#VirtualProductData"
+                              in-map="[productId: systemMessage.productId]" out-map="context"/>
+                <set field="shopifyVariants" from="response.product.variants"/>
+                <log message="OPTIONS ${response.product.options}"/>
+                <iterate list="variantOptions" entry="variantOption">
+                    <set field="valueList" from="variantOption.getValue()"/>
+                    <iterate list="valueList" entry="value">
+                        <set field="shopifyId" from="shopifyVariants.find{it -> it.title == value.description}"/>
+                        <log message="VARIANT ${shopifyId}"/>
+                        <!--iterate list="shopifyVariants" entry="shopifyVariant">
+                            <if condition="value.description.equals(shopifyVariant.title)">
+                                <log message="CORRECT VARIANT" />
+                                <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:value.productId, productIdTypeEnumId:'PidtVariantShopify', idValue: shopifyVariant.id]"/>
+                            </if>
+                        </iterate-->
+                    </iterate>
+                </iterate>
+            </if>
+            <!--service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:systemMessage.productId, productIdTypeEnumId:'PidtShopify', idValue: response.product.id]"/-->
         </actions>
     </service>
 
@@ -333,7 +352,7 @@
             </entity-find>
 
             <iterate list="productCategoryMembers" entry="productCategoryMember">
-                <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, pseudoId:'']"/>
+                <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="productCategoryMember + [pseudoId:'']"/>
             </iterate>
         </actions>
     </service>
@@ -394,7 +413,8 @@
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
 
-            <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productCategoryId:systemMessage.productCategoryId, productId:systemMessage.productId, pseudoId:response.collect.id]"/>
+            <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:systemMessage.productId, productCategoryId:systemMessage.productCategoryId, pseudoId:response.collect.id]"/>
+
         </actions>
     </service>
 
@@ -409,6 +429,7 @@
                           out-map="context"/>
             <set field="shopifyGetCollectParams" from="'?product_id='+collectData.product_id+'&amp;'+'collection_id='+collectData.collection_id"/>
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
+
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                           in-map="[systemMessageTypeId:'ShopifyGetCollectMessage', systemMessageRemoteId:'DEMO_SHOPIFY_GET_COLLECT_REMOTE',
                             messageText:shopifyGetCollectParams, productCategoryId:productCategoryId, productId:productId, docSubType: 'getCollect']"/>
@@ -420,10 +441,15 @@
         <in-parameters>
             <parameter name="systemMessageId" required="true"/>
         </in-parameters>
+        <out-parameters>
+            <parameter name="shopifyId"/>
+        </out-parameters>
         <actions>
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context"/>
+
+            <set field="shopifyId" from="response.collects[0].id"/>
         </actions>
     </service>
 
@@ -437,7 +463,7 @@
                           in-map="[productCategoryId: productCategoryId, productId: productId]"
                           out-map="context"/>
 
-            <set field="idParam" from="shopifyCollectId"/>
+            <log message="ID ${shopifyId}"/>
 
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
@@ -457,6 +483,46 @@
                           out-map="context"/>
 
             <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productCategoryId:systemMessage.productCategoryId, productId:systemMessage.productId, pseudoId:'']"/>
+        </actions>
+    </service>
+
+    <service verb="queue" noun="GetOrdersSystemMessage">
+        <in-parameters>
+            <parameter name="ordersStatus" required="true">
+                <description>
+                    The shopify status of the orders we want to retrieve, supported statuses are:
+                    any: Show orders of any financial status.
+                    authorized: Show only authorized orders
+                    pending: Show only pending orders
+                    paid: Show only paid orders
+                    partially_paid: Show only partially paid orders
+                    refunded: Show only refunded orders
+                    voided: Show only voided orders
+                    partially_refunded: Show only partially refunded orders
+                    unpaid: Show authorized and partially paid orders.
+                </description>
+            </parameter>
+        </in-parameters>
+        <actions>
+            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
+
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                          in-map="[systemMessageTypeId:'ShopifyGetOrdersMessage', systemMessageRemoteId:'DEMO_SHOPIFY_GET_ORDERS_REMOTE', messageText: ordersStatus, docSubType: 'getOrders']"/>
+        </actions>
+    </service>
+
+    <service verb="send" noun="GetOrdersSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context"/>
+            <set field="orderList" from="response.orders"/>
+            <log message="ORDER LENGTH ${orderList[0]}"/>
+
         </actions>
     </service>
 

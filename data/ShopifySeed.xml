@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <entity-facade-xml type="seed">
     <moqui.basic.Enumeration description="Shopify Product ID" enumId="PidtShopify"  enumTypeId="ProductIdentificationType"/>
+    <moqui.basic.Enumeration description="Shopify Product Variant ID" enumId="PidtVariantShopify"  enumTypeId="ProductIdentificationType"/>
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyProductMessage" description="Shopify Product SystemMessage Type"
             sendServiceName="mantle.shopify.ApiServices.send#ProductSystemMessage" />
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCreateCollectionMessage" description="Create Shopify Collection SystemMessage Type"
@@ -13,4 +14,6 @@
                                              sendServiceName="mantle.shopify.ApiServices.send#GetCollectSystemMessage" />
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyDeleteCollectMessage" description="Delete Shopify Collect SystemMessage Type"
                                              sendServiceName="mantle.shopify.ApiServices.send#DeleteCollectSystemMessage" />
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyGetOrdersMessage" description="Get Shopify Orders SystemMessage Type"
+                                             sendServiceName="mantle.shopify.ApiServices.send#GetOrdersSystemMessage" />
 </entity-facade-xml>
