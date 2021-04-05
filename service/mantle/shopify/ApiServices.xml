@@ -76,7 +76,8 @@
             <set field="prodVariants" from="[]"/>
             <set field="prodOptions" from="[]"/>
             <set field="prodOptionsMap" from="new HashMap()"/>
-            <!-- HOW TO GET THIS ROUTE WITHOUT BURNED IT -->
+            <log message="DOMAIN ${storeDomain}"/>
+            <!-- HOW TO GET THIS ROUTE WITHOUT BURNED IT ${storeDomain} -->
             <if condition="productContent">
                 <set field="image" from="[src: 'https://www.rcherbals.com/store/content/productImage/' + productContent.productContentId]"/>
                 <script>images.add(image)</script>
@@ -90,7 +91,7 @@
                         <econdition field-name="thruDate" operator="is-null"/>
                     </entity-find>
                     <iterate list="assocList" entry="assoc">
-                        <!-- Each product associated has at least one feature so we get all posible features /-->
+                        <!-- Each product associated has at least one feature so we get all possible features /-->
                         <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl" list="featureList">
                             <econdition field-name="productId" from="assoc.toProductId"/>
                             <econdition field-name="fromDate" operator="is-not-null"/>
@@ -168,7 +169,7 @@
                                         options: prodOptions]"/>
         </actions>
     </service>
-    
+
     <service verb="queue" noun="ProductSystemMessage">
         <in-parameters>
             <parameter name="productId" required="true"/>
@@ -310,7 +311,7 @@
 
             <set field="idParam" from="shopifyCollectionId"/>
 
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
+            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection Id as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                           in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', systemMessageRemoteId:'DEMO_SHOPIFY_DELETE_COLLECTION_REMOTE',
                             messageText:idParam, productCategoryId:productCategoryId, docSubType: 'deleteCollection']"/>
@@ -379,7 +380,7 @@
                           out-map="context" />
 
             <set field="json" from="groovy.json.JsonOutput.toJson([collect: collectData])"/>
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
+            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collect JSON as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                           in-map="[systemMessageTypeId:'ShopifyCreateCollectMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CREATE_COLLECT_REMOTE',
                         messageText:json, productCategoryId:productCategoryId, productId:productId]"/>
@@ -411,7 +412,7 @@
                           in-map="[productCategoryId: productCategoryId, productId: productId]"
                           out-map="context"/>
             <set field="shopifyGetCollectParams" from="'?product_id='+collectData.product_id+'&amp;'+'collection_id='+collectData.collection_id"/>
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
+            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collect params as messageText/-->
 
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                           in-map="[systemMessageTypeId:'ShopifyGetCollectMessage', systemMessageRemoteId:'DEMO_SHOPIFY_GET_COLLECT_REMOTE',
@@ -424,15 +425,10 @@
         <in-parameters>
             <parameter name="systemMessageId" required="true"/>
         </in-parameters>
-        <out-parameters>
-            <parameter name="shopifyId"/>
-        </out-parameters>
         <actions>
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context"/>
-
-            <set field="shopifyId" from="response.collects[0].id"/>
         </actions>
     </service>
 
@@ -442,13 +438,10 @@
             <parameter name="productId" required="true"/>
         </in-parameters>
         <actions>
-            <service-call name="mantle.shopify.ApiServices.queue#GetCollectSystemMessage"
-                          in-map="[productCategoryId: productCategoryId, productId: productId]"
-                          out-map="context"/>
+            <!-- Here should be a call to the getCollect service in order to get the ID of the Collect we will delete -->
 
-            <log message="ID ${shopifyId}"/>
-
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
+            <set field="idParam" from=""/>
+            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collect Id as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                           in-map="[systemMessageTypeId:'ShopifyDeleteCollectMessage', systemMessageRemoteId:'DEMO_SHOPIFY_DELETE_COLLECT_REMOTE',
                             messageText:idParam, productCategoryId:productCategoryId, productId:productId, docSubType: 'deleteCollect']"/>
@@ -465,7 +458,6 @@
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context"/>
 
-            <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productCategoryId:systemMessage.productCategoryId, productId:systemMessage.productId, pseudoId:'']"/>
         </actions>
     </service>
 
@@ -487,8 +479,6 @@
             </parameter>
         </in-parameters>
         <actions>
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
-
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                           in-map="[systemMessageTypeId:'ShopifyGetOrdersMessage', systemMessageRemoteId:'DEMO_SHOPIFY_GET_ORDERS_REMOTE', messageText: ordersStatus, docSubType: 'getOrders']"/>
         </actions>
@@ -506,90 +496,6 @@
             <set field="orderList" from="response.orders"/>
             <log message="ORDER LENGTH ${orderList[0]}"/>
 
-        </actions>
-    </service>
-
-    <service verb="get" noun="VirtualProductData">
-        <in-parameters>
-            <parameter name="productId">
-                <description>Only id of a virtual product make sense to get relevant data.</description>
-            </parameter>
-        </in-parameters>
-        <out-parameters>
-            <parameter name="featureType"></parameter>
-            <parameter name="variantOptions" type="Map">
-                <description>
-                    A map where key is feature type (Enumeration) and value is another map
-                    with productId, description and price data exactly as it returned by get#ProductPrice.
-                </description>
-            </parameter>
-        </out-parameters>
-        <actions>
-            <entity-find-one entity-name="mantle.product.Product" value-field="product"/>
-
-            <set field="variantOptions" type="NewMap" value="null"/>
-            <script>variantOptions = new HashMap()</script>
-            <set field="isDiscounted" type="Boolean" value="false"/>
-
-            <service-call name="mantle.product.PriceServices.get#ProductPrice" in-map="context" out-map="mainPriceSet"/>
-
-            <if condition="product &amp;&amp; product.productTypeEnumId == 'PtVirtual'">
-                <entity-find entity-name="mantle.product.ProductAssocAndToFeatureAppl" list="assocs">
-                    <econdition field-name="productAssocTypeEnumId" value="PatVariant"/>
-                    <econdition field-name="applTypeEnumId" operator="in" value="PfatDistinguishing, PfatStandard"/>
-                    <econdition field-name="productId" from="product.productId"/>
-                    <econdition field-name="thruDate" operator="is-null"/>
-                    <date-filter/>
-                </entity-find>
-                <set field="listFeatures" type="NewMap" value="null"/>
-                <script>listFeatures = new HashMap()</script>
-                <iterate list="assocs" entry="variantProductAssoc">
-                    <!-- find variant price first -->
-                    <service-call name="mantle.product.PriceServices.get#ProductPrice" out-map="priceSet"
-                                  in-map="context + [productId:variantProductAssoc.toProductId]"/>
-                    <entity-find entity-name="mantle.product.feature.ProductFeatureAndAppl" list="features">
-                        <date-filter/>
-                        <econdition field-name="productId" from="variantProductAssoc.toProductId"/>
-                        <econdition field-name="productFeatureId" from="variantProductAssoc.productFeatureId"/>
-                        <econdition field-name="thruDate" operator="is-null"/>
-                    </entity-find>
-
-                    <!-- we return map keyed by feature type and should find the proper value for the assoc -->
-                    <entity-find-one entity-name="mantle.product.feature.ProductFeature" value-field="productFeature"
-                                     cache="true">
-                        <field-map field-name="productFeatureId" from="variantProductAssoc.productFeatureId"/>
-                    </entity-find-one>
-
-                    <service-call name="mantle.product.AssetServices.get#AvailableInventory" out-map="atpTotal"
-                                  in-map="[productId:variantProductAssoc.toProductId]"/>
-
-                    <entity-find-one entity-name="moqui.basic.Enumeration" value-field="featureType" cache="true">
-                        <field-map field-name="enumId" from="productFeature.productFeatureTypeEnumId"/>
-                    </entity-find-one>
-
-                    <!-- Find variant contents ... need to use services in Mantle USL
-                    <service-call name="popstore.ProductServices.find#ProductContentList" out-map="context"
-                                  in-map="[productId:variantProductAssoc.toProductId]"/>
-                    -->
-
-                    <!-- Find product sales dates ... need to use services in Mantle USL
-                    <service-call name="popstore.ProductServices.find#ProductSalesDates" out-map="context"
-                                  in-map="[productId:variantProductAssoc.toProductId]"/>
-                    -->
-
-                    <set field="item" from="[enumId:featureType.enumId]"/>
-                    <set field="content" from="productFeature.productFeatureTypeEnumId"/>
-                    <script><![CDATA[
-                        def optionSet = variantOptions.get(item)
-                        if (!optionSet) {
-                            variantOptions.put(item, [[productId: variantProductAssoc.toProductId, description:productFeature.description]])
-                        } else {
-                            optionSet.add([productId: variantProductAssoc.toProductId, description:productFeature.description])
-                        }
-                        priceSet = null
-                    ]]></script>
-                </iterate>
-            </if>
         </actions>
     </service>
 
