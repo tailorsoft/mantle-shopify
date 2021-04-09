@@ -282,6 +282,9 @@
                           out-map="context" />
 
             <service-call name="update#mantle.product.category.ProductCategory" out-map="context" in-map="[productCategoryId:systemMessage.productCategoryId, pseudoId:response.custom_collection.id]"/>
+
+            <service-call name="mantle.shopify.ApiServices.queue#GetCollectsSystemMessage" out-map="context"
+                          in-map="[productCategoryId:systemMessage.productCategoryId]"/>
         </actions>
     </service>
 
@@ -397,30 +400,34 @@
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
 
-            <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:systemMessage.productId, productCategoryId:systemMessage.productCategoryId, pseudoId:response.collect.id]"/>
-
+            <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productCategoryMembers">
+                <econdition field-name="productCategoryId" from="systemMessage.productCategoryId"/>
+                <econdition field-name="productId" from="systemMessage.productId"/>
+                <econdition field-name="thruDate" from="null"/>
+            </entity-find>
+            <set field="productCategoryMember" from="productCategoryMembers.first()"/>
+            <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, shopifyId:response.collect.id]"/>
         </actions>
     </service>
 
-    <service verb="queue" noun="GetCollectSystemMessage">
+    <service verb="queue" noun="GetCollectsSystemMessage">
         <in-parameters>
             <parameter name="productCategoryId" required="true"/>
-            <parameter name="productId" required="true"/>
         </in-parameters>
         <actions>
-            <service-call name="mantle.shopify.ApiServices.get#ProductCategoryMemberData"
-                          in-map="[productCategoryId: productCategoryId, productId: productId]"
-                          out-map="context"/>
-            <set field="shopifyGetCollectParams" from="'?product_id='+collectData.product_id+'&amp;'+'collection_id='+collectData.collection_id"/>
+            <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
+                <field-map field-name="productCategoryId" from="productCategoryId"/>
+            </entity-find-one>
+            <set field="shopifyGetCollectsParam" from="'?collection_id='+productCategory.pseudoId"/>
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collect params as messageText/-->
-
+            <log message="MESSAGE PARAMS ${shopifyGetCollectsParam}"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyGetCollectMessage', systemMessageRemoteId:'DEMO_SHOPIFY_GET_COLLECT_REMOTE',
-                            messageText:shopifyGetCollectParams, productCategoryId:productCategoryId, productId:productId, docSubType: 'getCollect']"/>
+                          in-map="[systemMessageTypeId:'ShopifyGetCollectsMessage', systemMessageRemoteId:'DEMO_SHOPIFY_GET_COLLECTS_REMOTE',
+                            messageText:shopifyGetCollectsParam, productCategoryId:productCategoryId, productId:productId, docSubType: 'getCollects']"/>
         </actions>
     </service>
 
-    <service verb="send" noun="GetCollectSystemMessage">
+    <service verb="send" noun="GetCollectsSystemMessage">
         <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
         <in-parameters>
             <parameter name="systemMessageId" required="true"/>
@@ -429,6 +436,24 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context"/>
+
+            <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productCategoryMembers">
+                <econdition field-name="productCategoryId" from="systemMessage.productCategoryId"/>
+                <econdition field-name="thruDate" from="null"/>
+            </entity-find>
+
+            <set field="productCategoryMember" from="productCategoryMembers.first()"/>
+
+            <iterate list="productCategoryMembers" entry="productCategoryMember">
+                <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
+                    <field-map field-name="productId" from="productCategoryMember.productId"/>
+                    <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
+                </entity-find-one>
+                <set field="collect" from="response.collects.find{it.product_id.toString().equals(productIdentification.idValue.toString())}"/>
+                <if condition="collect">
+                    <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, shopifyId:collect.id]"/>
+                </if>
+            </iterate>
         </actions>
     </service>
 
@@ -438,9 +463,13 @@
             <parameter name="productId" required="true"/>
         </in-parameters>
         <actions>
-            <!-- Here should be a call to the getCollect service in order to get the ID of the Collect we will delete -->
+            <entity-find-one entity-name="mantle.product.category.ProductCategoryMember" value-field="productCategoryMember">
+                <field-map field-name="productCategoryId" from="productCategoryId"/>
+                <field-map field-name="productId" from="productId"/>
+                <field-map field-name="thruDate" from="null"/>
+            </entity-find-one>
 
-            <set field="idParam" from=""/>
+            <set field="idParam" from="productCategoryMember.shopifyId"/>
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collect Id as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                           in-map="[systemMessageTypeId:'ShopifyDeleteCollectMessage', systemMessageRemoteId:'DEMO_SHOPIFY_DELETE_COLLECT_REMOTE',
@@ -458,29 +487,19 @@
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context"/>
 
+            <entity-find-one entity-name="mantle.product.category.ProductCategoryMember" value-field="productCategoryMember">
+                <field-map field-name="productCategoryId" from="systemMessage.productCategoryId"/>
+                <field-map field-name="productId" from="systemMessage.productId"/>
+                <field-map field-name="thruDate" from="null"/>
+            </entity-find-one>
+            <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, shopifyId:'']"/>
         </actions>
     </service>
 
     <service verb="queue" noun="GetOrdersSystemMessage">
-        <in-parameters>
-            <parameter name="ordersStatus" required="true">
-                <description>
-                    The shopify status of the orders we want to retrieve, supported statuses are:
-                    any: Show orders of any financial status.
-                    authorized: Show only authorized orders
-                    pending: Show only pending orders
-                    paid: Show only paid orders
-                    partially_paid: Show only partially paid orders
-                    refunded: Show only refunded orders
-                    voided: Show only voided orders
-                    partially_refunded: Show only partially refunded orders
-                    unpaid: Show authorized and partially paid orders.
-                </description>
-            </parameter>
-        </in-parameters>
         <actions>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyGetOrdersMessage', systemMessageRemoteId:'DEMO_SHOPIFY_GET_ORDERS_REMOTE', messageText: ordersStatus, docSubType: 'getOrders']"/>
+                          in-map="[systemMessageTypeId:'ShopifyGetOrdersMessage', systemMessageRemoteId:'DEMO_SHOPIFY_GET_ORDERS_REMOTE', messageText: 'paid', docSubType: 'getOrders']"/>
         </actions>
     </service>
 

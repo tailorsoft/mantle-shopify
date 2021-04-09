@@ -10,6 +10,6 @@
         <relationship type="one" related="mantle.product.category.ProductCategory"/>
     </extend-entity>
     <extend-entity entity-name="ProductCategoryMember" package="mantle.product.category">
-        <field name="pseudoId" type="id"/>
+        <field name="shopifyId" type="id"/>
     </extend-entity>
 </entities>
