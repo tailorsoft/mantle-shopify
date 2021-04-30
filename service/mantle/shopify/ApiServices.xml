@@ -116,11 +116,11 @@
                                 NOTE: Shopify supports products that has at most 3 features.
                             **/
                             if(featureList.size() == 1){
-                                prodVariants.add(new HashMap([name:featureList[0].productFeatureDescription, option1:featureList[0].productFeatureDescription, price:priceSet.price, barcode: prodUPC.idValue]))
+                                prodVariants.add(new HashMap([name:featureList[0].productFeatureDescription, option1:featureList[0].productFeatureDescription, price:priceSet.price, inventory_management:'shopify', barcode: prodUPC.idValue]))
                             }else if(featureList.size() == 2){
-                                prodVariants.add(new HashMap([name:featureList[0].productFeatureDescription + "/" + featureList[1].productFeatureDescription, option1:featureList[0].productFeatureDescription, option2:featureList[1].productFeatureDescription, price:priceSet.price, barcode: prodUPC.idValue]))
+                                prodVariants.add(new HashMap([name:featureList[0].productFeatureDescription + "/" + featureList[1].productFeatureDescription, option1:featureList[0].productFeatureDescription, option2:featureList[1].productFeatureDescription, price:priceSet.price, inventory_management:'shopify', barcode: prodUPC.idValue]))
                             }else if(featureList.size() == 3){
-                                prodVariants.add(new HashMap([name:featureList[0].productFeatureDescription + "/" + featureList[1].productFeatureDescription + "/" + featureList[2].productFeatureDescription, option1:featureList[0].productFeatureDescription, option2:featureList[1].productFeatureDescription, option3:featureList[2].productFeatureDescription, price:priceSet.price, barcode: prodUPC.idValue]))
+                                prodVariants.add(new HashMap([name:featureList[0].productFeatureDescription + "/" + featureList[1].productFeatureDescription + "/" + featureList[2].productFeatureDescription, option1:featureList[0].productFeatureDescription, option2:featureList[1].productFeatureDescription, option3:featureList[2].productFeatureDescription, price:priceSet.price, inventory_management:'shopify', barcode: prodUPC.idValue]))
                             }
                         ]]>
                         </script>
