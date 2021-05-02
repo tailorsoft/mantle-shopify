@@ -512,9 +512,92 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context"/>
-            <set field="orderList" from="response.orders"/>
-            <log message="ORDER LENGTH ${orderList[0]}"/>
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemMessageRemote">
+                <field-map field-name="systemMessageRemoteId" from="systemMessage.systemMessageRemoteId"/>
+            </entity-find-one>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
+                <field-map field-name="productStoreId" value="systemMessageRemote.productStoreId"/>
+            </entity-find-one>
+            <!-- removed for testing iterate list="response.orders" entry="order" -->
+            <set field="order" from="response.orders[0]"/>
+            <set field="customer" from="order.customer"/>
+            <set field="shippingAddress" from="order.shipping_address"/>
+            <set field="billingAddress" from="order.billing_address"/>
+            <set field="orderItems" from="order.line_items"/>
+            <service-call name="popstore.CustomerServices.find#PartyByEmail" in-map="[emailAddress:customer.email]" out-map="context"/>
+            <if condition="partyIds.size() &gt; 0"><then>
+                <set field="partyId" from="partyIds.first()"/>
+                <service-call name="mantle.party.ContactServices.get#PartyContactInfo" in-map="[partyId:partyId, postalContactMechPurposeId: 'PostalPrimary', telecomContactMechPurposeId: 'PhonePrimary', emailContactMechPurposeId:'EmailPrimary']" out-map="context"/>
+            </then><else>
+                <service-call name="mantle.party.PartyServices.create#Account" in-map="[firstName:customer.first_name,
+                                                                                                  lastName:customer.last_name,
+                                                                                                  username: customer.email,
+                                                                                                  newPassword: 'shopify_123*',
+                                                                                                  newPasswordVerify: 'shopify_123*',
+                                                                                                  emailAddress:customer.email,
+                                                                                                  loginAfterCreate:false]" out-map="context"/>
+            </else></if>
+            <entity-find entity-name="moqui.basic.Geo" list="shippingCountryList">
+                <econdition field-name="geoTypeEnumId" value="GEOT_COUNTRY"/>
+                <econdition field-name="geoCodeAlpha2" from="shippingAddress.country_code"/>
+            </entity-find>
+            <entity-find entity-name="moqui.basic.Geo" list="shippingStateList">
+                <econdition field-name="geoTypeEnumId" value="GEOT_STATE"/>
+                <econdition field-name="geoCodeAlpha2" from="shippingAddress.province_code"/>
+            </entity-find>
+            <entity-find entity-name="moqui.basic.Geo" list="billingCountryList">
+                <econdition field-name="geoTypeEnumId" value="GEOT_COUNTRY"/>
+                <econdition field-name="geoCodeAlpha2" from="billingAddress.country_code"/>
+            </entity-find>
+            <entity-find entity-name="moqui.basic.Geo" list="billingStateList">
+                <econdition field-name="geoTypeEnumId" value="GEOT_STATE"/>
+                <econdition field-name="geoCodeAlpha2" from="billingAddress.province_code"/>
+            </entity-find>
+            <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
+                                                                                                      address1:shippingAddress.address1,
+                                                                                                      address2:shippingAddress.address2,
+                                                                                                      contactMechPurposeId: 'PostalPrimary',
+                                                                                                      toName: shippingAddress.name,
+                                                                                                      postalCode:shippingAddress.zip,
+                                                                                                      countryGeoId: shippingCountryList.first().geoId,
+                                                                                                      stateProvinceGeoId: shippingStateList.first().geoId,
+                                                                                                      city: shippingAddress.city,
+                                                                                                      contactNumber: shippingAddress.phone,
+                                                                                                      emailAddress: customer.email]" out-map="context"/>
 
+            <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
+                                                                                                      address1:billingAddress.address1,
+                                                                                                      address2:billingAddress.address2,
+                                                                                                      contactMechPurposeId: 'PostalBilling',
+                                                                                                      toName: billingAddress.name,
+                                                                                                      postalCode:billingAddress.zip,
+                                                                                                      countryGeoId: billingCountryList.first().geoId,
+                                                                                                      stateProvinceGeoId: billingStateList.first().geoId,
+                                                                                                      city: billingAddress.city,
+                                                                                                      contactNumber: billingAddress.phone,
+                                                                                                      emailAddress: customer.email]" out-map="context"/>
+
+
+            <!-- Create order based on shopify data
+                <service-call name="mantle.order.OrderServices.create#Order" in-map="[productStoreId:remote.productStoreId,
+                                                                                      displayId:order.order_number,
+                                                                                      externalId:order.id]" out-map="context"/> -->
+            <!-- Adding product to created order
+            <iterate list="orderItems" entry="orderItem">
+                <entity-find entity-name="mantle.product.ProductIdentification" list="productIdList">
+                    <econdition field-name="idValue" from="orderItem.variant_id"/>
+                    <econdition field-name="productIdTypeEnumId" value="PidtVariantShopify"/>
+                </entity-find>
+                <set field="productId" from="productIdList.first().productId"/>
+
+                <service-call name="mantle.order.OrderServices.create#OrderItem" in-map="[orderId: orderId,
+                                                                                            productId: productId,
+                                                                                            itemTypeEnumId: 'ItemProduct',
+                                                                                            quantity: orderItem.quantity,
+                                                                                            unitAmount:orderItem.price]" out-map="context"/>
+            </iterate> -->
+
+            <!-- removed for testing /iterate-->
         </actions>
     </service>
 
