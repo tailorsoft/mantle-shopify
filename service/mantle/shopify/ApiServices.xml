@@ -206,6 +206,7 @@
                     </entity-find>
                     <set field="productId" from="prodUPCs.first().productId"/>
                     <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:productId, productIdTypeEnumId:'PidtVariantShopify', idValue: shopifyVariant.id]"/>
+                    <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:productId, productIdTypeEnumId:'PidtInventoryItemShopify', idValue: shopifyVariant.inventory_item_id]"/>
                 </iterate>
             </if>
             <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:systemMessage.productId, productIdTypeEnumId:'PidtShopify', idValue: response.product.id]"/>
