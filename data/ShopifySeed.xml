@@ -3,6 +3,8 @@
     <moqui.basic.Enumeration description="Shopify Product ID" enumId="PidtShopify"  enumTypeId="ProductIdentificationType"/>
     <moqui.basic.Enumeration description="Shopify Product Variant ID" enumId="PidtVariantShopify"  enumTypeId="ProductIdentificationType"/>
     <moqui.basic.Enumeration description="Shopify Product Inventory Item ID" enumId="PidtInventoryItemShopify"  enumTypeId="ProductIdentificationType"/>
+    <moqui.basic.Enumeration description="Shopify Store Id" enumId="ShopifyStoreId"  enumTypeId="ProductStoreSettingType"/>
+    <mantle.product.store.ProductStoreSetting productStoreId="RCHERBALS" settingTypeEnumId="ShopifyStoreId"  settingValue="59386101956"/>
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyProductMessage" description="Shopify Product SystemMessage Type"
             sendServiceName="mantle.shopify.ApiServices.send#ProductSystemMessage" />
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCreateCollectionMessage" description="Create Shopify Collection SystemMessage Type"
