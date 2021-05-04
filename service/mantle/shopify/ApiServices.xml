@@ -519,4 +519,74 @@
         </actions>
     </service>
 
+    <service verb="queue" noun="UpdateInventoryLevelSystemMessage">
+        <in-parameters>
+            <parameter name="productId" required="true"/>
+            <parameter name="available" required="true" type="BigDecimal">
+                <description>Quantity available in stock</description>
+            </parameter>
+        </in-parameters>
+        <actions>
+
+            <if condition="available &lt; 0">
+                <return error="true"
+                        message="The Quantity available must be greater or equals to zero"/>
+            </if>
+
+           
+            <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="shopifyInvenotoryItem">
+                <field-map field-name="productId" from="productId"/>
+                <field-map field-name="productIdTypeEnumId" value="PidtInventoryItemShopify"/>
+            </entity-find-one>
+
+            <if condition="!shopifyInvenotoryItem">
+                <return error="true"
+                        message="The productId ${productId} does not exist"/>
+            </if>
+
+            <set field="inventoryItemId" from="shopifyInvenotoryItem.idValue"/>
+
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemRemoteIdentification">
+                <field-map field-name="systemMessageRemoteId" value="DEMO_SHOPIFY_SET_INVENTORY_LEVEL_REMOTE"/>
+            </entity-find-one>
+
+            <set field="productStoreId" from ="systemRemoteIdentification.productStoreId"/>
+
+            <entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productLocation">
+                <field-map field-name="productStoreId" from="productStoreId"/>
+                <field-map field-name="settingTypeEnumId" value="ShopifyStoreId"/>
+            </entity-find-one>
+            <set field="locationId" from="productLocation.settingValue"/>
+
+            <set field="json" from="groovy.json.JsonOutput.toJson([
+                location_id:locationId,
+                inventory_item_id:inventoryItemId,
+                available:available
+                ])"/>
+
+            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                    in-map="[systemMessageTypeId:'ShopifyUpdateInventoryLevelMessage', systemMessageRemoteId:'DEMO_SHOPIFY_SET_INVENTORY_LEVEL_REMOTE',
+                        messageText:json,docSubType: 'upDateInventoryLevel']"/>
+        </actions>
+    </service>
+
+    <service verb="send" noun="UpdateInventoryLevelSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
+
+            <set field="InventoryLevel" from="response"/>
+
+            
+
+             
+        </actions>
+    </service>
+
 </services>
