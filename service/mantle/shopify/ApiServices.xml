@@ -520,6 +520,7 @@
     </service>
 
     <service verb="queue" noun="UpdateInventoryLevelSystemMessage">
+        <description>Service to update the quantity available in stock for a product</description>
         <in-parameters>
             <parameter name="productId" required="true"/>
             <parameter name="available" required="true" type="BigDecimal">
@@ -529,10 +530,8 @@
         <actions>
 
             <if condition="available &lt; 0">
-                <return error="true"
-                        message="The Quantity available must be greater or equals to zero"/>
+                <return error="true" message="The Quantity available must be greater or equals to zero"/>
             </if>
-
            
             <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="shopifyInvenotoryItem">
                 <field-map field-name="productId" from="productId"/>
@@ -582,10 +581,6 @@
                           out-map="context" />
 
             <set field="InventoryLevel" from="response"/>
-
-            
-
-             
         </actions>
     </service>
 
