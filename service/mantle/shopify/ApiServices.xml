@@ -519,7 +519,7 @@
         </actions>
     </service>
 
-    <service verb="queue" noun="UpdateInventoryLevelSystemMessage">
+    <service verb="queue" noun="SetInventorySystemMessage">
         <description>Service to update the quantity available in stock for a product</description>
         <in-parameters>
             <parameter name="productId" required="true"/>
@@ -565,12 +565,12 @@
 
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyUpdateInventoryLevelMessage', systemMessageRemoteId:'DEMO_SHOPIFY_SET_INVENTORY_LEVEL_REMOTE',
+                    in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', systemMessageRemoteId:'DEMO_SHOPIFY_SET_INVENTORY_LEVEL_REMOTE',
                         messageText:json,docSubType: 'upDateInventoryLevel']"/>
         </actions>
     </service>
 
-    <service verb="send" noun="UpdateInventoryLevelSystemMessage">
+    <service verb="send" noun="SetInventorySystemMessage">
         <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
         <in-parameters>
             <parameter name="systemMessageId" required="true"/>

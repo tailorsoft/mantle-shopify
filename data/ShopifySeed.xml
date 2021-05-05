@@ -19,7 +19,7 @@
                                              sendServiceName="mantle.shopify.ApiServices.send#DeleteCollectSystemMessage" />
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyGetOrdersMessage" description="Get Shopify Orders SystemMessage Type"
                                              sendServiceName="mantle.shopify.ApiServices.send#GetOrdersSystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyUpdateInventoryLevelMessage" 
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifySetInventoryMessage" 
                                               description="Update Shopify Inventory Level SystemMessage Type"
-                                              sendServiceName="mantle.shopify.ApiServices.send#UpdateInventoryLevelSystemMessage" />
+                                              sendServiceName="mantle.shopify.ApiServices.send#SetInventorySystemMessage" />
 </entity-facade-xml>
