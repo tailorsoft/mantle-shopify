@@ -538,6 +538,7 @@
 
             <set field="inventoryItemId" from="shopifyInvenotoryItem.idValue"/>
 
+            <!-- get the store id -->
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemRemoteIdentification">
                 <field-map field-name="systemMessageRemoteId" value="DEMO_SHOPIFY_SET_INVENTORY_LEVEL_REMOTE"/>
             </entity-find-one>
