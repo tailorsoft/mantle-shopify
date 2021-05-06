@@ -523,16 +523,9 @@
         <description>Service to update the quantity available in stock for a product</description>
         <in-parameters>
             <parameter name="productId" required="true"/>
-            <parameter name="available" required="true" type="BigDecimal">
-                <description>Quantity available in stock</description>
-            </parameter>
         </in-parameters>
         <actions>
 
-            <if condition="available &lt; 0">
-                <return error="true" message="The Quantity available must be greater or equals to zero"/>
-            </if>
-           
             <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="shopifyInvenotoryItem">
                 <field-map field-name="productId" from="productId"/>
                 <field-map field-name="productIdTypeEnumId" value="PidtInventoryItemShopify"/>
@@ -557,13 +550,24 @@
             </entity-find-one>
             <set field="locationId" from="productLocation.settingValue"/>
 
+            <!-- we need to find the available quantity for the current product -->
+            <entity-find entity-name="mantle.product.asset.Asset" list="assetList">
+                <econdition field-name="productId"/>
+                <econdition field-name="quantityOnHandTotal" operator="greater" value="0"/>
+                <econdition field-name="availableToPromiseTotal" operator="greater" value="0"/>
+                <econdition field-name="assetTypeEnumId" value="AstTpInventory"/>
+            </entity-find>
+            
+            <set field="avilableToPromiseList" from="assetList*.availableToPromiseTotal"/>
+            <set field="available" from="avilableToPromiseList.findAll{it != null}.sum()?:0"/>
+
             <set field="json" from="groovy.json.JsonOutput.toJson([
                 location_id:locationId,
                 inventory_item_id:inventoryItemId,
                 available:available
                 ])"/>
 
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
+            <!--the api is called for update the available quantity-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                     in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', systemMessageRemoteId:'DEMO_SHOPIFY_SET_INVENTORY_LEVEL_REMOTE',
                         messageText:json,docSubType: 'upDateInventoryLevel']"/>
