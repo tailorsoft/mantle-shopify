@@ -584,8 +584,6 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
-
-            <set field="InventoryLevel" from="response"/>
         </actions>
     </service>
 
