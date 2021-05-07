@@ -535,12 +535,12 @@
                 <return error="true"
                         message="The productId ${productId} does not exist"/>
             </if>
-
+ 
             <set field="inventoryItemId" from="shopifyInvenotoryItem.idValue"/>
 
             <!-- get the store id -->
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemRemoteIdentification">
-                <field-map field-name="systemMessageRemoteId" value="DEMO_SHOPIFY_SET_INVENTORY_LEVEL_REMOTE"/>
+                <field-map field-name="systemMessageRemoteId" value="DEMO_SHOPIFY_SET_INVENTORY_REMOTE"/>
             </entity-find-one>
 
             <set field="productStoreId" from ="systemRemoteIdentification.productStoreId"/>
@@ -570,7 +570,7 @@
 
             <!--the api is called for update the available quantity-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', systemMessageRemoteId:'DEMO_SHOPIFY_SET_INVENTORY_LEVEL_REMOTE',
+                    in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', systemMessageRemoteId:'DEMO_SHOPIFY_SET_INVENTORY_REMOTE',
                         messageText:json,docSubType: 'upDateInventoryLevel']"/>
         </actions>
     </service>
