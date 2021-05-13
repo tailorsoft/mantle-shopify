@@ -1,3 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
+	<service verb="get" noun="CustomerInfo">
+		<out-parameters>
+				<parameter name="reportList" type="List">
+						<parameter name="customerMap" type="Map"/>
+				</parameter>
+		</out-parameters>
+		<actions>
+				<set field="reportList" from="[]"/>
+				<entity-find entity-name="brokerageengine.party.customer.CustomerInfoView" list="customerList"/>
+				<iterate list="customerList" entry="customer">
+						<script>
+								def customerTemp = reportList.find{it.partyId == customer.partyId}
+								// if the customer info exist csv list this is updated
+								
+								if(customerTemp){
+										// update the field only if its has value
+										tmpMap = [:]
+										tmpMap['partyId'] = customerTemp.partyId ?: customer.partyId
+										tmpMap['firstName'] = customerTemp.fisrtName ?: customer.firstName
+										tmpMap['lastName'] = customerTemp.lastName ?: customer.lastName
+										tmpMap['email'] = customerTemp.email ?: customer.email
+										tmpMap['company'] = ''
+										tmpMap['address1'] = customerTemp.address1 ?: customer.address1
+										tmpMap['address2'] = customerTemp.address2 ?: customer.address2
+										tmpMap['city'] = customerTemp.city ?: customer.city
+										tmpMap['province'] = ''
+										tmpMap['provinceCode'] = ''
+										tmpMap['country'] = customerTemp.country ?: customer.country
+										tmpMap['countryCode'] = customerTemp.countryCode ?: customer.countryCode
+										tmpMap['zip'] = customerTemp.zip ?: customer.zip
+										tmpMap['phone'] = customerTemp.phone ?: customer.phone
+										tmpMap['acceptsMarketin'] = 'yes'
+										tmpMap['totalSpent'] = 0
+										tmpMap['totalOrders'] = 0
+										tmpMap['tags'] = ''
+										tmpMap['note'] = ''
+										tmpMap['taxExempt'] = ''
+										reportList.remove(customerTemp)
+										reportList.add(tmpMap)
+								}else{
+										// create customerInfo
+										tmpMap = [:]
+										tmpMap['partyId'] = customer.partyId
+										tmpMap['firstName'] = customer.firstName
+										tmpMap['lastName'] = customer.lastName
+										tmpMap['email'] = customer.email
+										tmpMap['company'] = ''
+										tmpMap['address1'] = customer.address1
+										tmpMap['address2'] = customer.address2
+										tmpMap['city'] = customer.city
+										tmpMap['province'] = ''
+										tmpMap['provinceCode'] = ''
+										tmpMap['country'] = customer.country
+										tmpMap['countryCode'] = customer.countryCode
+										tmpMap['zip'] = customer.zip
+										tmpMap['phone'] = customer.phone
+										tmpMap['acceptsMarketin'] = 'yes'
+										tmpMap['totalSpent'] = 0
+										tmpMap['totalOrders'] = 0
+										tmpMap['tags'] = ''
+										tmpMap['note'] = ''
+										tmpMap['taxExempt'] = ''
+										reportList.add(tmpMap)
+								}
+						</script>
+				</iterate>
+		</actions>
+</service>
+<service verb="get" noun="CustomerInfoCsv">
+		<out-parameters>
+				<parameter name="csvFormat" type="String"/>
+		</out-parameters>
+		<actions>
+				<service-call  name="mantle.shopify.ShopifyServices.get#CustomerInfo" out-map="context"/>
+						<script>
+								def headers = []
+								def entries = reportList[0].entrySet()
+								final StringBuffer sb = new StringBuffer();
+								entries.each { entry -&gt;
+										headers.add(entry.key);
+									}
+
+									def headersSize = headers.size()
+									for (int i = 0; i &lt; headersSize; i++) {
+										sb.append(headers.get(i));
+										sb.append(i == headersSize-1 ? "\n" : ",");
+									}
+
+								 	for ( map in reportList) {
+										for (int i = 0; i &lt; headersSize; i++) {
+												sb.append(map.get(headers.get(i)));
+												sb.append(i == headersSize-1 ? "\n" : ",");
+										}
+									}
+							 csvFormat = sb.toString()
+					 </script>
+			 </actions>
+</service>
 </services>
