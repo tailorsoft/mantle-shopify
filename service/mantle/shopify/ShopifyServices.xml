@@ -17,51 +17,49 @@
 								if(customerTemp){
 										// update the field only if its has value
 										tmpMap = [:]
-										tmpMap['partyId'] = customerTemp.partyId ?: customer.partyId
-										tmpMap['firstName'] = customerTemp.fisrtName ?: customer.firstName
-										tmpMap['lastName'] = customerTemp.lastName ?: customer.lastName
-										tmpMap['email'] = customerTemp.email ?: customer.email
-										tmpMap['company'] = ''
-										tmpMap['address1'] = customerTemp.address1 ?: customer.address1
-										tmpMap['address2'] = customerTemp.address2 ?: customer.address2
-										tmpMap['city'] = customerTemp.city ?: customer.city
-										tmpMap['province'] = ''
-										tmpMap['provinceCode'] = ''
-										tmpMap['country'] = customerTemp.country ?: customer.country
-										tmpMap['countryCode'] = customerTemp.countryCode ?: customer.countryCode
-										tmpMap['zip'] = customerTemp.zip ?: customer.zip
-										tmpMap['phone'] = customerTemp.phone ?: customer.phone
-										tmpMap['acceptsMarketin'] = 'yes'
-										tmpMap['totalSpent'] = 0
-										tmpMap['totalOrders'] = 0
-										tmpMap['tags'] = ''
-										tmpMap['note'] = ''
-										tmpMap['taxExempt'] = ''
+										tmpMap['First Name'] = customerTemp.fisrtName ?: customer.firstName
+										tmpMap['Last Name'] = customerTemp.lastName ?: customer.lastName
+										tmpMap['Email'] = customerTemp.email ?: customer.email
+										tmpMap['Company'] = ''
+										tmpMap['Address1'] = customerTemp.address1 ?: customer.address1
+										tmpMap['Address2'] = customerTemp.address2 ?: customer.address2
+										tmpMap['City'] = customerTemp.city ?: customer.city
+										tmpMap['Province'] = ''
+										tmpMap['Province Code'] = ''
+										tmpMap['Country'] = customerTemp.country ?: customer.country
+										tmpMap['Country Code'] = customerTemp.countryCode ?: customer.countryCode
+										tmpMap['Zip'] = customerTemp.zip ?: customer.zip
+										tmpMap['Phone'] = customerTemp.phone ?: customer.phone
+										tmpMap['Accepts Marketing'] = 'yes'
+										tmpMap['Total Spent'] = 0
+										tmpMap['Total Orders'] = 0
+										tmpMap['Tags'] = ''
+										tmpMap['Note'] = ''
+										tmpMap['Tax Exempt'] = ''
 										reportList.remove(customerTemp)
 										reportList.add(tmpMap)
 								}else{
 										// create customerInfo
 										tmpMap = [:]
-										tmpMap['partyId'] = customer.partyId
-										tmpMap['firstName'] = customer.firstName
-										tmpMap['lastName'] = customer.lastName
-										tmpMap['email'] = customer.email
-										tmpMap['company'] = ''
-										tmpMap['address1'] = customer.address1
-										tmpMap['address2'] = customer.address2
-										tmpMap['city'] = customer.city
-										tmpMap['province'] = ''
-										tmpMap['provinceCode'] = ''
-										tmpMap['country'] = customer.country
-										tmpMap['countryCode'] = customer.countryCode
-										tmpMap['zip'] = customer.zip
-										tmpMap['phone'] = customer.phone
-										tmpMap['acceptsMarketin'] = 'yes'
-										tmpMap['totalSpent'] = 0
-										tmpMap['totalOrders'] = 0
-										tmpMap['tags'] = ''
-										tmpMap['note'] = ''
-										tmpMap['taxExempt'] = ''
+										tmpMap['First Name'] = customer.fisrtName ?: ''
+										tmpMap['Last Name'] = customer.lastName ?: ''
+										tmpMap['Email'] = customer.email ?: ''
+										tmpMap['Company'] = ''
+										tmpMap['Address1'] = customer.address1 ?: ''
+										tmpMap['Address2'] = customer.address2 ?: ''
+										tmpMap['City'] = customer.city ?: ''
+										tmpMap['Province'] = ''
+										tmpMap['Province Code'] = ''
+										tmpMap['Country'] = customer.country ?: ''
+										tmpMap['Country Code'] = customer.countryCode ?: ''
+										tmpMap['Zip'] = customer.zip ?: ''
+										tmpMap['Phone'] = customer.phone ?: ''
+										tmpMap['Accepts Marketing'] = 'yes'
+										tmpMap['Total Spent'] = 0
+										tmpMap['Total Orders'] = 0
+										tmpMap['Tags'] = ''
+										tmpMap['Note'] = ''
+										tmpMap['Tax Exempt'] = ''
 										reportList.add(tmpMap)
 								}
 						</script>
