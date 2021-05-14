@@ -17,7 +17,7 @@
 								if(customerTemp){
 										// update the field only if its has value
 										tmpMap = [:]
-										tmpMap['First Name'] = customerTemp.fisrtName ?: customer.firstName
+										tmpMap['First Name'] = customerTemp.firstName ?: customer.firstName
 										tmpMap['Last Name'] = customerTemp.lastName ?: customer.lastName
 										tmpMap['Email'] = customerTemp.email ?: customer.email
 										tmpMap['Company'] = ''
@@ -41,7 +41,7 @@
 								}else{
 										// create customerInfo
 										tmpMap = [:]
-										tmpMap['First Name'] = customer.fisrtName ?: ''
+										tmpMap['First Name'] = customer.firstName ?: ''
 										tmpMap['Last Name'] = customer.lastName ?: ''
 										tmpMap['Email'] = customer.email ?: ''
 										tmpMap['Company'] = ''
