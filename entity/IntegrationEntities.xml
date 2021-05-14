@@ -57,7 +57,7 @@
         <alias entity-alias="PSTA" field="address2" name="address2"/>
         <alias entity-alias="PSTA" field="city" name="city"/>
         <alias entity-alias="GEO" field="geoName" name="country"/>
-        <alias entity-alias="GEO" field="geoId" name="countryCode"/>
+        <alias entity-alias="GEO" field="geoCodeAlpha2" name="countryCode"/>
         <alias entity-alias="PSTA" field="postalCode" name="zip"/>
         <alias entity-alias="TEL" field="contactNumber" name="phone"/>
 
