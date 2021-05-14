@@ -529,6 +529,7 @@
             <if condition="partyIds.size() &gt; 0"><then>
                 <set field="partyId" from="partyIds.first()"/>
                 <service-call name="mantle.party.ContactServices.get#PartyContactInfo" in-map="[partyId:partyId, postalContactMechPurposeId: 'PostalPrimary', telecomContactMechPurposeId: 'PhonePrimary', emailContactMechPurposeId:'EmailPrimary']" out-map="context"/>
+                <log message="ORDER CREATED ${createdOrder}"/>
             </then><else>
                 <service-call name="mantle.party.PartyServices.create#Account" in-map="[firstName:customer.first_name,
                                                                                                   lastName:customer.last_name,
@@ -579,10 +580,14 @@
                                                                                                       emailAddress: customer.email]" out-map="context"/>
 
 
-            <!-- Create order based on shopify data
+            <!-- Create order based on shopify data -->
                 <service-call name="mantle.order.OrderServices.create#Order" in-map="[productStoreId:remote.productStoreId,
                                                                                       displayId:order.order_number,
-                                                                                      externalId:order.id]" out-map="context"/> -->
+                                                                                      externalId:order.id]" out-map="context"/>
+                <entity-find-one entity-name="mantle.order.OrderHeader" value-field="createdOrder">
+                    <field-map field-name="orderId" from="orderId"/>
+                </entity-find-one>
+            <log message="ORDER CREATED ${createdOrder}"/>
             <!-- Adding product to created order
             <iterate list="orderItems" entry="orderItem">
                 <entity-find entity-name="mantle.product.ProductIdentification" list="productIdList">
