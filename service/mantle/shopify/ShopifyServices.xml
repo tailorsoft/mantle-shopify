@@ -17,19 +17,20 @@
 								if(customerTemp){
 										// update the field only if its has value
 										tmpMap = [:]
-										tmpMap['First Name'] = customerTemp.firstName ?: customer.firstName
-										tmpMap['Last Name'] = customerTemp.lastName ?: customer.lastName
-										tmpMap['Email'] = customerTemp.email ?: customer.email
+										tmpMap['partyId'] = customerTemp.partyId ?: customer.partyId ?: ''
+										tmpMap['First Name'] = customerTemp.firstName ?: customer.firstName ?: ''
+										tmpMap['Last Name'] = customerTemp.lastName ?: customer.lastName ?: ''
+										tmpMap['Email'] = customerTemp.email ?: customer.email ?: ''
 										tmpMap['Company'] = ''
-										tmpMap['Address1'] = customerTemp.address1 ?: customer.address1
-										tmpMap['Address2'] = customerTemp.address2 ?: customer.address2
-										tmpMap['City'] = customerTemp.city ?: customer.city
+										tmpMap['Address1'] = customerTemp.address1 ?: customer.address1 ?: ''
+										tmpMap['Address2'] = customerTemp.address2 ?: customer.address2 ?: ''
+										tmpMap['City'] = customerTemp.city ?: customer.city ?: ''
 										tmpMap['Province'] = ''
 										tmpMap['Province Code'] = ''
-										tmpMap['Country'] = customerTemp.country ?: customer.country
-										tmpMap['Country Code'] = customerTemp.countryCode ?: customer.countryCode
-										tmpMap['Zip'] = customerTemp.zip ?: customer.zip
-										tmpMap['Phone'] = customerTemp.phone ?: customer.phone
+										tmpMap['Country'] = customerTemp.country ?: customer.country ?: ''
+										tmpMap['Country Code'] = customerTemp.countryCode ?: customer.countryCode ?: ''
+										tmpMap['Zip'] = customerTemp.zip ?: customer.zip ?: ''
+										tmpMap['Phone'] = customerTemp.phone ?: customer.phone ?: ''
 										tmpMap['Accepts Marketing'] = 'yes'
 										tmpMap['Total Spent'] = 0
 										tmpMap['Total Orders'] = 0
@@ -41,6 +42,7 @@
 								}else{
 										// create customerInfo
 										tmpMap = [:]
+										tmpMap['partyId'] = customer.partyId
 										tmpMap['First Name'] = customer.firstName ?: ''
 										tmpMap['Last Name'] = customer.lastName ?: ''
 										tmpMap['Email'] = customer.email ?: ''
@@ -81,13 +83,13 @@
 									}
 
 									def headersSize = headers.size()
-									for (int i = 0; i &lt; headersSize; i++) {
+									for (int i = 1; i &lt; headersSize; i++) {
 										sb.append(headers.get(i));
 										sb.append(i == headersSize-1 ? "\n" : ",");
 									}
 
 								 	for ( map in reportList) {
-										for (int i = 0; i &lt; headersSize; i++) {
+										for (int i = 1; i &lt; headersSize; i++) {
 												sb.append(map.get(headers.get(i)));
 												sb.append(i == headersSize-1 ? "\n" : ",");
 										}
