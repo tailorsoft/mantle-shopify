@@ -29,6 +29,7 @@
                         systemMessageTypeId:systemMessage.systemMessageTypeId, systemMessageRemoteId:systemMessage.systemMessageRemoteId], false)
                 logger.info("SENDING MESSAGE TEXT ${systemMessage.messageText}")
                 org.moqui.util.RestClient restClient = ec.service.rest()
+
                 if(docSubType.contains("delete")){
                     urlExpand = urlExpand + systemMessage.messageText + ".json"
                     logger.info("URL EXPAND ${urlExpand}")
@@ -38,10 +39,14 @@
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.GET).uri(urlExpand)
                 }else{
+                    if(systemMessage.docSubControl.contains('cancelOrder')){
+                        urlExpand = urlExpand + systemMessage.docControl + "/cancel.json"
+                    }
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.POST).uri(urlExpand)
                             .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
                 }
+             
                 restClient.basicAuth(systemMessageRemote.username,systemMessageRemote.password)
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
                 if (restResponse.statusCode < 200 || restResponse.statusCode >= 300) {
@@ -199,7 +204,8 @@
                           out-map="context" />
             <if condition="response.product.variants.size &gt; 0">
                 <set field="shopifyVariants" from="response.product.variants"/>
-                <log message="VARIANTS ${shopifyVariants}"/>
+
+                <!-- <log message="VARIANTS ${shopifyVariants}"/> -->
                 <iterate list="shopifyVariants" entry="shopifyVariant">
                     <entity-find entity-name="mantle.product.ProductIdentification" list="prodUPCs">
                         <econdition field-name="idValue" from="shopifyVariant.barcode"/>
@@ -587,4 +593,44 @@
         </actions>
     </service>
 
+    <service verb="queue" noun="CancelOrderSystemMessage">
+        <description>Service to cancel one order</description>
+        <in-parameters>
+            <parameter name="orderId" required="true"/>
+        </in-parameters>
+        <actions>
+
+            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader">
+                <field-map field-name="orderId" />
+            </entity-find-one>
+
+            <!-- the order is validated if exist-->
+            <if condition="!orderHeader">
+                <return error="true" message="The order ${orderId} does not exist" />
+            </if>
+
+            <if condition="orderHeader.status== 'OrderCompleted'">
+                <return error="true" message="The order ${orderId} is completed can not to be cancel" />
+            </if>
+
+            <set field="orderExternalId" from="orderHeader.externalId"/>
+            <set field="messageText" from="orderExternalId"/>
+
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+            in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CANCEL_ORDER_REMOTE',
+                messageText:messageText,docSubControl: 'cancelOrder',docControl:orderExternalId]"/>
+        </actions>
+    </service>
+
+    <service verb="send" noun="CancelOrderSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
+        </actions>
+    </service>
 </services>
