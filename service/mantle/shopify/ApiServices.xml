@@ -611,9 +611,16 @@
             <if condition="orderHeader.status== 'OrderCompleted'">
                 <return error="true" message="The order ${orderId} is completed can not to be cancel" />
             </if>
+            <if condition="orderHeader.grandTotal &lt; 0 ">
+                <return error="true" message="In order ${orderId} the grand total must be greater than zero" />
+            </if>
 
             <set field="orderExternalId" from="orderHeader.externalId"/>
-            <set field="messageText" from="orderExternalId"/>
+
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([
+                amount: orderHeader.grandTotal,
+                currency: orderHeader.currencyUomId
+            ])"/>
 
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
             in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CANCEL_ORDER_REMOTE',
