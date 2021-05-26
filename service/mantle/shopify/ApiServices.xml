@@ -204,8 +204,7 @@
                           out-map="context" />
             <if condition="response.product.variants.size &gt; 0">
                 <set field="shopifyVariants" from="response.product.variants"/>
-
-                <!-- <log message="VARIANTS ${shopifyVariants}"/> -->
+                <log message="VARIANTS ${shopifyVariants}"/>
                 <iterate list="shopifyVariants" entry="shopifyVariant">
                     <entity-find entity-name="mantle.product.ProductIdentification" list="prodUPCs">
                         <econdition field-name="idValue" from="shopifyVariant.barcode"/>
