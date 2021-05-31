@@ -68,6 +68,38 @@
 				</iterate>
 		</actions>
 </service>
+
+<service verb="get" noun="AmountOrder">
+	<in-parameters>
+		<parameter name="orderId" required="true" />
+	</in-parameters>
+	<out-parameters>
+		<parameter name="amount" type="BigDecimal" />
+		<parameter name="currencyUomId" />
+	</out-parameters>
+	<actions>
+		<service-call name="mantle.order.OrderInfoServices.get#OrderDisplayInfo" in-map="[orderId:orderId]" out-map="context" />
+		<set field="currencyUomId" from="orderHeader.currencyUomId" />
+
+		<if condition="paymentList.size() == 0">
+			<return error="true" message="In order ${orderId} does not have payments to cancel" />
+		</if>
+
+		<!-- if the order is completed but cancel action was performed means that is necessary to refound some balance -->
+		<if condition="orderHeader.statusId == 'OrderCompleted'">
+			<if condition="firstPartInfo.paymentsTotal &gt;  orderHeader.grandTotal">
+				<set field="amount" from="firstPartInfo.paymentsTotal - orderHeader.grandTotal"/>
+			</if>
+		</if>
+
+		<!-- if the order was cancelled by the user, the amount is the sum of the all payments related with the order -->
+		<if condition="orderHeader.statusId == 'OrderCancelled'">
+			<set field="amount" from="paymentList*.amount.sum()" />
+		</if>
+
+	</actions>
+</service>
+
 <service verb="get" noun="CustomerInfoCsv">
 		<out-parameters>
 				<parameter name="csvFormat" type="String"/>

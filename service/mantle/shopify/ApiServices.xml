@@ -598,33 +598,34 @@
             <parameter name="orderId" required="true"/>
         </in-parameters>
         <actions>
-
+            
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader">
                 <field-map field-name="orderId" />
             </entity-find-one>
-
             <!-- the order is validated if exist-->
             <if condition="!orderHeader">
                 <return error="true" message="The order ${orderId} does not exist" />
             </if>
-
-            <if condition="orderHeader.status== 'OrderCompleted'">
-                <return error="true" message="The order ${orderId} is completed can not to be cancel" />
-            </if>
             <if condition="orderHeader.grandTotal &lt; 0 ">
                 <return error="true" message="In order ${orderId} the grand total must be greater than zero" />
             </if>
+            <if condition="!orderHeader.externalId">
+                <return error="true" message="In order ${orderId} does not have externalId" />
+            </if>
 
-            <set field="orderExternalId" from="orderHeader.externalId"/>
+            <set field="externalId" from="orderHeader.externalId" />
+            <set field="statusId" from="orderHeader.statusId" />
 
+            <service-call name="mantle.shopify.ShopifyServices.get#AmountOrder" out-map="context" in-map="context"/>
+            
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
-                amount: orderHeader.grandTotal,
-                currency: orderHeader.currencyUomId
+                amount: amount,
+                currency: currencyUomId
             ])"/>
 
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
             in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CANCEL_ORDER_REMOTE',
-                messageText:messageText,docSubControl: 'cancelOrder',docControl:orderExternalId]"/>
+                messageText:messageText,docSubControl: 'cancelOrder',docControl:externalId]"/>
         </actions>
     </service>
 
