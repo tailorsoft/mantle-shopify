@@ -39,7 +39,7 @@
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.GET).uri(urlExpand)
                 }else{
-                    if(systemMessage.docSubControl.contains('cancelOrder')){
+                    if(systemMessage.docSubControl?.contains('cancelOrder')){
                         urlExpand = urlExpand + systemMessage.docControl + "/cancel.json"
                     }
                     logger.info("URL EXPAND ${urlExpand}")
