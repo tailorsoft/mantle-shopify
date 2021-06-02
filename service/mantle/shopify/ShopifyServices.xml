@@ -69,34 +69,29 @@
 		</actions>
 </service>
 
-<service verb="get" noun="AmountOrder">
+
+<service verb="get" noun="LocationId">
+	<description>
+		This service gets the location Id for the specific shop
+	</description>
 	<in-parameters>
-		<parameter name="orderId" required="true" />
+		<parameter name="remoteId" required="true">
+			<description>This field is related with the productStoreId that is used to get locationId</description>
+		</parameter>
 	</in-parameters>
 	<out-parameters>
-		<parameter name="amount" type="BigDecimal" />
-		<parameter name="currencyUomId" />
+		<parameter name="locationId" />
 	</out-parameters>
 	<actions>
-		<service-call name="mantle.order.OrderInfoServices.get#OrderDisplayInfo" in-map="[orderId:orderId]" out-map="context" />
-		<set field="currencyUomId" from="orderHeader.currencyUomId" />
-
-		<if condition="paymentList.size() == 0">
-			<return error="true" message="In order ${orderId} does not have payments to cancel" />
-		</if>
-
-		<!-- if the order is completed but cancel action was performed means that is necessary to refound some balance -->
-		<if condition="orderHeader.statusId == 'OrderCompleted'">
-			<if condition="firstPartInfo.paymentsTotal &gt;  orderHeader.grandTotal">
-				<set field="amount" from="firstPartInfo.paymentsTotal - orderHeader.grandTotal"/>
-			</if>
-		</if>
-
-		<!-- if the order was cancelled by the user, the amount is the sum of the all payments related with the order -->
-		<if condition="orderHeader.statusId == 'OrderCancelled'">
-			<set field="amount" from="paymentList*.amount.sum()" />
-		</if>
-
+		<entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemRemoteIdentification">
+				<field-map field-name="systemMessageRemoteId" from="remoteId"/>
+		</entity-find-one>
+		<set field="productStoreId" from ="systemRemoteIdentification.productStoreId"/>
+		<entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productLocation">
+				<field-map field-name="productStoreId" from="productStoreId"/>
+				<field-map field-name="settingTypeEnumId" value="ShopifyStoreId"/>
+		</entity-find-one>
+		<set field="locationId" from="productLocation.settingValue"/>
 	</actions>
 </service>
 
