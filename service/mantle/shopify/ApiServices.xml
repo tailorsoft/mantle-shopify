@@ -821,13 +821,9 @@
             <if condition="!orderHeader">
                 <return error="true" message="The order ${orderId} does not exist" />
             </if>
-            <if condition="orderHeader.grandTotal &lt; 0 ">
-                <return error="true" message="In order ${orderId} the grand total must be greater than zero" />
-            </if>
             <if condition="!orderHeader.externalId">
                 <return error="true" message="In order ${orderId} does not have externalId" />
             </if>
-
             <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
                 <econdition field-name="orderId"  from="orderId"/>
                 <econdition field-name="itemTypeEnumId"  value="ItemProduct"/>
@@ -854,11 +850,12 @@
                 refund : refund
             ])"/>
 
-            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-            in-map="[systemMessageTypeId:'ShopifyCalculateRefundMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CALCULATE_REFUND_REMOTE',
-                messageText:messageText,docSubControl: 'calculateRefund',docControl:externalId]"/>
-
-
+            <!-- The service to cancel order is called only if exist items to cancel -->
+            <if condition="refund_line_items">
+                <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                in-map="[systemMessageTypeId:'ShopifyCalculateRefundMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CALCULATE_REFUND_REMOTE',
+                    messageText:messageText,docSubControl: 'calculateRefund',docControl:externalId]"/>
+            </if>
         </actions>
     </service>
 
