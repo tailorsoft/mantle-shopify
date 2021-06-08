@@ -860,11 +860,8 @@
                           out-map="context" />
         </actions>
     </service>
-    
 
-    
-
-        <service verb="queue" noun="CalculateRefundSystemMessage">
+    <service verb="queue" noun="CalculateRefundSystemMessage">
             <description>Service to calculate the refund and cancel one order</description>
             <in-parameters>
                 <parameter name="orderId" required="true" />
@@ -918,9 +915,9 @@
                         messageText:messageText,docSubControl: 'calculateRefund',docControl:externalId]"/>
                 </if>
             </actions>
-        </service>
+    </service>
 
-        <service verb="send" noun="CalculateRefundSystemMessage">
+    <service verb="send" noun="CalculateRefundSystemMessage">
             <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
             <in-parameters>
                 <parameter name="systemMessageId" required="true"/>
@@ -973,5 +970,5 @@
                     in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CANCEL_ORDER_REMOTE',
                     messageText:messageText,docSubControl: 'cancelOrder',docControl:externalId]"/> 
             </actions>
-        </service>
+    </service>
 </services>
