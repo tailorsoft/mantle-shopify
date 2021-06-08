@@ -608,7 +608,7 @@
             </if>
 
             <if condition="shipment.statusId != 'ShipShipped'">
-                <return error="true" message="In shipment ${shipmentId} must be in status Shipped to register a fulfillment "/>
+                <return error="true" message="The shipment ${shipmentId} must be in status Shipped to register a fulfillment "/>
             </if>
 
              <!-- get the store id -->
