@@ -45,6 +45,10 @@
                     if(systemMessage.docSubControl?.contains('calculateRefund')){
                         urlExpand = urlExpand + systemMessage.docControl + "/refunds/calculate.json"
                     }
+                    if(systemMessage.docSubControl?.contains('createFulfillment')){
+                        urlExpand = urlExpand + systemMessage.docControl + "/fulfillments.json"
+
+                    }
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.POST).uri(urlExpand)
                             .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
@@ -781,63 +785,71 @@
         </actions>
     </service>
 
-    <service verb="queue" noun="CalculateRefundSystemMessage">
-        <description>Service to calculate the refund and cancel one order</description>
+    <service verb="queue" noun="CreateFulfillmentSystemMessage">
+        <description>Service to register a fulfillment for a order</description>
         <in-parameters>
-            <parameter name="orderId" required="true" />
+            <parameter name="shipmentId" required="true" />
         </in-parameters>
         <actions>
-
-            <set field="refund_line_items" from="[]"/>
-            <set field="refund" from="[:]"/>
-            <set field="shipping" from="[:]"/>
-
-            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader">
-                <field-map field-name="orderId" />
+            <set field="line_items" from="[]"/>
+            <set field="fulfillment" from="[:]"/>
+           
+            <entity-find-one entity-name="mantle.shipment.Shipment" value-field="shipment">
+                <field-map field-name="shipmentId" />
             </entity-find-one>
             <!-- the order is validated if exist-->
-            <if condition="!orderHeader">
-                <return error="true" message="The order ${orderId} does not exist" />
+            <if condition="!shipment">
+                <return error="true" message="The shipment ${shipment} does not exist" />
             </if>
-            <if condition="!orderHeader.externalId">
-                <return error="true" message="In order ${orderId} does not have externalId" />
+
+            <if condition="shipment.statusId != 'ShipShipped'">
+                <return error="true" message="The shipment ${shipmentId} must be in status Shipped to register a fulfillment "/>
             </if>
+
+             <!-- get the store id -->
+             <service-call name="mantle.shopify.ShopifyServices.get#LocationId" out-map="context"   in-map="[remoteId:'DEMO_SHOPIFY_SET_INVENTORY_REMOTE']"/>
+             <service-call name="mantle.shipment.ShipmentServices.get#ShipmentDisplayInfo" in-map="[shipmentId:shipmentId]" out-map="context"/>
+
+
+             <set field = "orderId" from="shipmentItemSourceList.first().orderId"/>
+             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader">
+                <field-map field-name="orderId" />
+            </entity-find-one>
+            
             <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
                 <econdition field-name="orderId"  from="orderId"/>
                 <econdition field-name="itemTypeEnumId"  value="ItemProduct"/>
-                <econdition field-name="quantityCancelled"   operator="greater" value="0"/>
+                <econdition field-name="quantity"   operator="greater" value="0"/>
             </entity-find>
 
-            <iterate list="orderItems" entry="item">
+            <iterate list="allShipmentPackageContentList" entry="item">
                 <script>
+                    def productTemp = orderItems.find{it.productId == item.productId}
                     def items = [:]
-                    items.line_item_id = item.externalItemSeqId
-                    items.quantity = item.quantityCancelled
-                    items.restock_type = 'cancel'
-                    refund_line_items.add (items)
+                    items.id = productTemp.externalItemSeqId
+                    items.quantity = item.quantity
+                    line_items.add(items)
                 </script>
             </iterate>
-
-            <set field="currencyUomId" from="orderHeader.currencyUomId" />
-            <set field="shipping.full_refund" value="true"/>
-            <set field="refund.shipping" from="shipping"/>
-            <set field="refund.currency" from="currencyUomId"/>
-            <set field="refund.refund_line_items" from="refund_line_items"/>
+           
             <set field="externalId" from="orderHeader.externalId" />
+            <set field="fulfillment.location_id" from="locationId" />
+            <set field="fulfillment.tracking_number" from="packageRouteSegList[0].trackingCode" />
+            <set field="fulfillment.line_items" from="line_items" />
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
-                refund : refund
+                fulfillment : fulfillment
             ])"/>
 
-            <!-- The service to cancel order is called only if exist items to cancel -->
-            <if condition="refund_line_items">
+            <!-- The service to create fulfillment is called only if  there are items were shipped -->
+            <if condition="line_items">
                 <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                in-map="[systemMessageTypeId:'ShopifyCalculateRefundMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CALCULATE_REFUND_REMOTE',
-                    messageText:messageText,docSubControl: 'calculateRefund',docControl:externalId]"/>
+                in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CREATE_FULFILLMENT_REMOTE',
+                    messageText:messageText,docSubControl: 'createFulfillment',docControl:externalId]"/>
             </if>
         </actions>
     </service>
 
-    <service verb="send" noun="CalculateRefundSystemMessage">
+    <service verb="send" noun="CreateFulfillmentSystemMessage">
         <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
         <in-parameters>
             <parameter name="systemMessageId" required="true"/>
@@ -847,48 +859,20 @@
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
 
-            <set field="refund" from="[:]"/>
-            <set field="shipping" from="[:]"/>
-            <set field="refund_line_items" from="[]"/>
-            <set field="transactions" from="[]"/>
 
-            <iterate list="response.refund.refund_line_items" entry="item">
-                <script>
-                    def items = [:]
-                    items.line_item_id = item.line_item_id
-                    items.quantity = item.quantity
-                    items.restock_type = item.restock_type
-                    items.location_id =  item.location_id
-                    refund_line_items.add (items)
-                </script>
-            </iterate>
+            <log message="...."/>
+            <log message="..."/>
+            <log message=".."/>
+            <log message="response....${response}"/>
+            <log message=".."/>
+            <log message="..."/>
+            <log message="...."/>
 
-            <iterate list="response.refund.transactions" entry="transaction">
-                <script>
-                    def tx = [:]
-                    tx.parent_id = transaction.parent_id
-                    tx.amount = transaction.amount
-                    tx.kind = 'refund'
-                    tx.gateway =  transaction.gateway
-                    transactions.add (tx)
-                </script>
-            </iterate>
-    
-            <set field="shipping.full_refund" value="true"/>
-            <set field="refund.currency" from="response.refund.currency"/>
-            <set field="refund.shipping" from="shipping"/>
-            <set field="refund.refund_line_items" from="refund_line_items"/>
-            <set field="refund.transactions" from="transactions"/>
 
-            <set field="externalId" from="response.refund.transactions[0].order_id" />
-
-            <set field="messageText" from="groovy.json.JsonOutput.toJson([
-                refund : refund
-            ])"/>
-
-            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CANCEL_ORDER_REMOTE',
-                messageText:messageText,docSubControl: 'cancelOrder',docControl:externalId]"/> 
         </actions>
     </service>
+    
+
+    
+
 </services>
