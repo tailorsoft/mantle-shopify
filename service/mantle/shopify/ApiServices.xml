@@ -639,7 +639,7 @@
             <set field="externalId" from="orderHeader.externalId" />
             <set field="fulfillment.location_id" from="locationId" />
             <set field="fulfillment.tracking_number" from="packageRouteSegList[0]?.trackingCode" />
-            <set field="fulfillment.tracking_company" from="curCarrierDetail.externalId" />
+            <set field="fulfillment.tracking_company" from="curCarrierDetail?.externalId" />
             <set field="fulfillment.line_items" from="line_items" />
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
                 fulfillment : fulfillment
