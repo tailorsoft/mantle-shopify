@@ -858,17 +858,6 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
-
-
-            <log message="...."/>
-            <log message="..."/>
-            <log message=".."/>
-            <log message="response....${response}"/>
-            <log message=".."/>
-            <log message="..."/>
-            <log message="...."/>
-
-
         </actions>
     </service>
     
