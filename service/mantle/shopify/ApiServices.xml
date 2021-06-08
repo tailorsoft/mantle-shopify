@@ -797,7 +797,7 @@
             <entity-find-one entity-name="mantle.shipment.Shipment" value-field="shipment">
                 <field-map field-name="shipmentId" />
             </entity-find-one>
-            <!-- the order is validated if exist-->
+            <!-- the shipment is validated if exist-->
             <if condition="!shipment">
                 <return error="true" message="The shipment ${shipment} does not exist" />
             </if>
