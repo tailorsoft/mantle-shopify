@@ -48,6 +48,8 @@
                     if(systemMessage.docSubControl?.contains('createFulfillment')){
                         urlExpand = urlExpand + systemMessage.docControl + "/fulfillments.json"
 
+                    if(systemMessage.docSubControl?.contains('createRefund')){
+                        urlExpand = urlExpand + systemMessage.docControl + "/refunds.json"
                     }
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.POST).uri(urlExpand)
@@ -773,17 +775,7 @@
         </actions>
     </service>
 
-    <service verb="send" noun="CancelOrderSystemMessage">
-        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
-        <in-parameters>
-            <parameter name="systemMessageId" required="true"/>
-        </in-parameters>
-        <actions>
-            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
-                          in-map="[systemMessageId: systemMessageId]"
-                          out-map="context" />
-        </actions>
-    </service>
+   
 
     <service verb="queue" noun="CreateFulfillmentSystemMessage">
         <description>Service to register a fulfillment for a order</description>
@@ -862,7 +854,7 @@
     </service>
 
     <service verb="queue" noun="CalculateRefundSystemMessage">
-        <description>Service to calculate the refund and cancel one order</description>
+        <description>Service to calculate the refund</description>
         <in-parameters>
             <parameter name="orderId" required="true" />
         </in-parameters>
@@ -880,7 +872,7 @@
                 <return error="true" message="The order ${orderId} does not exist" />
             </if>
             <if condition="!orderHeader.externalId">
-                <return error="true" message="In order ${orderId} does not have externalId" />
+                <return error="true" message="the order ${orderId} does not have externalId" />
             </if>
             <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
                 <econdition field-name="orderId"  from="orderId"/>
@@ -898,17 +890,19 @@
                 </script>
             </iterate>
 
+            <set field="externalId" from="orderHeader.externalId" />
             <set field="currencyUomId" from="orderHeader.currencyUomId" />
             <set field="shipping.full_refund" value="true"/>
             <set field="refund.shipping" from="shipping"/>
             <set field="refund.currency" from="currencyUomId"/>
             <set field="refund.refund_line_items" from="refund_line_items"/>
-            <set field="externalId" from="orderHeader.externalId" />
+            <set field="refund.orderStatus" from="orderHeader.statusId" />
+            <set field="refund.orderId" from="orderHeader.orderId" />
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
                 refund : refund
             ])"/>
 
-            <!-- The service to cancel order is called only if exist items to cancel -->
+            <!-- The service to canculate refund order is called only if exist items to cancel -->
             <if condition="refund_line_items">
                 <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                 in-map="[systemMessageTypeId:'ShopifyCalculateRefundMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CALCULATE_REFUND_REMOTE',
@@ -927,6 +921,14 @@
                         in-map="[systemMessageId: systemMessageId]"
                         out-map="context" />
 
+            <script>
+                import groovy.json.JsonSlurper 
+                def jsonSlurper = new JsonSlurper()
+                def order = jsonSlurper.parseText(systemMessage.messageText)
+            </script>
+            
+            <set field="orderStatus" from="order.refund.orderStatus"/>
+            <set field="orderId" from="order.refund.orderId"/>
             <set field="refund" from="[:]"/>
             <set field="shipping" from="[:]"/>
             <set field="refund_line_items" from="[]"/>
@@ -959,16 +961,50 @@
             <set field="refund.shipping" from="shipping"/>
             <set field="refund.refund_line_items" from="refund_line_items"/>
             <set field="refund.transactions" from="transactions"/>
-
-            <set field="externalId" from="response.refund.transactions[0].order_id" />
+            <set field="externalId" from="orderId" />
 
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
                 refund : refund
             ])"/>
 
-            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CANCEL_ORDER_REMOTE',
-                messageText:messageText,docSubControl: 'cancelOrder',docControl:externalId]"/> 
+            <if condition="orderStatus == 'OrderCompleted'" > 
+                <then>
+                    <!--if the order has some fulfilled item, it's necessary to refund the cancel item -->
+                    <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', systemMessageRemoteId:'DEMO_SHOPIFY_REFUND_ORDER_REMOTE',
+                    messageText:messageText,docSubControl: 'createRefund',docControl:externalId]"/> 
+                </then>
+                <else>
+                    <!-- if the order was cancelled by the user this needs to be cancel -->
+                    <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CANCEL_ORDER_REMOTE',
+                    messageText:messageText,docSubControl: 'cancelOrder',docControl:externalId]"/> 
+                </else>
+            </if>
+        </actions>
+    </service>
+
+    <service verb="send" noun="CancelOrderSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
+        </actions>
+    </service>
+
+    <service verb="send" noun="CreateRefundSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
         </actions>
     </service>
 </services>
