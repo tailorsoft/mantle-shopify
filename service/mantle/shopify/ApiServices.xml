@@ -47,6 +47,7 @@
                     }
                     if(systemMessage.docSubControl?.contains('createFulfillment')){
                         urlExpand = urlExpand + systemMessage.docControl + "/fulfillments.json"
+                    }
 
                     if(systemMessage.docSubControl?.contains('createRefund')){
                         urlExpand = urlExpand + systemMessage.docControl + "/refunds.json"
