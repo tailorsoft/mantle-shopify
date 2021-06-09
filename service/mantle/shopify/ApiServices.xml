@@ -698,7 +698,10 @@
             <set field="refund.shipping" from="shipping"/>
             <set field="refund.refund_line_items" from="refund_line_items"/>
             <set field="refund.transactions" from="transactions"/>
-            <set field="refund.user_id" from="ec.user.userId"/>
+            <!-- The userId must be a number-->
+            <if condition ="ec.user.userId.isNumber()">
+                <set field="refund.user_id" from="ec.user.userId"/>
+            </if>
             <set field="externalId" from="orderId" />
 
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
