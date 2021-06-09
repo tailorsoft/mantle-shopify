@@ -962,6 +962,7 @@
             <set field="refund.shipping" from="shipping"/>
             <set field="refund.refund_line_items" from="refund_line_items"/>
             <set field="refund.transactions" from="transactions"/>
+            <set field="refund.user_id" from="ec.user.userId"/>
             <set field="externalId" from="orderId" />
 
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
