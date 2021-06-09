@@ -898,7 +898,7 @@
             <set field="refund.currency" from="currencyUomId"/>
             <set field="refund.refund_line_items" from="refund_line_items"/>
             <set field="refund.orderStatus" from="orderHeader.statusId" />
-            <set field="refund.orderId" from="orderHeader.orderId" />
+            <set field="refund.orderId" from="externalId" />
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
                 refund : refund
             ])"/>
