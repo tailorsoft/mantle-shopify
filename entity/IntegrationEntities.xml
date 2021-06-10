@@ -13,6 +13,10 @@
         <field name="shopifyId" type="id"/>
     </extend-entity>
 
+    <extend-entity entity-name="Party" package="mantle.party">^M
+        <field name="shopifyTrackingCompany" type="text-short"/>^M
+    </extend-entity>
+
     <view-entity entity-name="CustomerInfoView" package="brokerageengine.party.customer">
         <member-entity entity-alias="PTY" entity-name="mantle.party.Party" />
         <member-entity entity-alias="PTR" join-from-alias="PTY" entity-name="mantle.party.PartyRole" join-optional="true" >
