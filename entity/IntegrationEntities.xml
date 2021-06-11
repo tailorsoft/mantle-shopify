@@ -12,6 +12,9 @@
     <extend-entity entity-name="ProductCategoryMember" package="mantle.product.category">
         <field name="shopifyId" type="id"/>
     </extend-entity>
+    <extend-entity entity-name="Party" package="mantle.party">
+        <field name="shopifyCustomerId" type="id"/>
+    </extend-entity>
 
     <view-entity entity-name="CustomerInfoView" package="brokerageengine.party.customer">
         <member-entity entity-alias="PTY" entity-name="mantle.party.Party" />
