@@ -4,13 +4,13 @@
     <moqui.basic.Enumeration description="Shopify Product Variant ID" enumId="PidtVariantShopify"  enumTypeId="ProductIdentificationType"/>
     <moqui.basic.Enumeration description="Shopify Product Inventory Item ID" enumId="PidtInventoryItemShopify"  enumTypeId="ProductIdentificationType"/>
     <moqui.basic.Enumeration description="Shopify Store Id" enumId="ShopifyStoreId"  enumTypeId="ProductStoreSettingType"/>
-    <mantle.product.ProductIdentification productId="54X" productIdTypeEnumId="PidtShopify"  idValue="6659344597188"/>
+    <!--mantle.product.ProductIdentification productId="54X" productIdTypeEnumId="PidtShopify"  idValue="6659344597188"/>
     <mantle.product.ProductIdentification productId="548" productIdTypeEnumId="PidtVariantShopify"  idValue="39776894222532"/>
     <mantle.product.ProductIdentification productId="549" productIdTypeEnumId="PidtVariantShopify"  idValue="39776894255300"/>
     <mantle.product.ProductIdentification productId="548" productIdTypeEnumId="PidtUpca"  idValue="553421564"/>
     <mantle.product.ProductIdentification productId="549" productIdTypeEnumId="PidtUpca"  idValue="12244233"/>
     <mantle.product.ProductIdentification productId="548" productIdTypeEnumId="PidtInventoryItemShopify"  idValue="41871192555716"/>
-    <mantle.product.ProductIdentification productId="549" productIdTypeEnumId="PidtInventoryItemShopify"  idValue="41871192588484"/>
+    <mantle.product.ProductIdentification productId="549" productIdTypeEnumId="PidtInventoryItemShopify"  idValue="41871192588484"/-->
     <mantle.product.store.ProductStoreSetting productStoreId="RCHERBALS" settingTypeEnumId="ShopifyStoreId"  settingValue="59386101956"/>
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyProductMessage" description="Shopify Product SystemMessage Type"
             sendServiceName="mantle.shopify.ApiServices.send#ProductSystemMessage" />
