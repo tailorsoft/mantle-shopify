@@ -608,6 +608,9 @@
         <actions>
 
             <set field="customer" from="[:]"/>
+            <set field="address" from="[:]"/>
+            <set field="addressList" from="[]"/>
+
             <entity-find-one entity-name="mantle.party.Person" value-field="person">
                 <field-map field-name="partyId" />
             </entity-find-one>
@@ -637,16 +640,44 @@
                 <order-by field-name="fromDate"/>
             </entity-find>
 
+            <entity-find entity-name="mantle.party.contact.PartyContactMech" list="addresPartyContactMechList">
+                <econdition field-name="partyId" />
+                <econdition field-name="contactMechPurposeId" value="PostalPrimary" />
+                <date-filter/>
+                <order-by field-name="fromDate"/>
+            </entity-find>
+
+           
+
 
             <if condition="!partyContactMechList">
                 <return error="true" message="The customer ${partyId} does not exist" />
             </if>
 
             <set field="contactMechId" from="partyContactMechList.first().contactMechId"/>
+            <set field="addressContactMechId" from="addresPartyContactMechList.first().contactMechId"/>
+            <set field="phoneContactMechId" from="phonePartyContactMechList.first().contactMechId"/>
 
             <entity-find-one entity-name="mantle.party.contact.ContactMech" value-field="contactMechEmail">
                 <field-map field-name="contactMechId"/>
             </entity-find-one>
+
+            <entity-find-one entity-name="mantle.party.contact.PartyContactMechPostalAddress" value-field="contactMechAddres">
+                <field-map field-name="contactMechId" from="addressContactMechId"/>
+            </entity-find-one>
+
+            <entity-find-one entity-name="mantle.party.contact.TelecomNumber" value-field="telecomNumber">
+                <field-map field-name="contactMechId" from="phoneContactMechId"/>
+            </entity-find-one>
+
+
+           
+
+            <entity-find-one entity-name="moqui.basic.Geo" value-field="geoContry">
+                <field-map field-name="geoId" from="contactMechAddres.countryGeoId"/>
+            </entity-find-one>
+
+
 
 
 
@@ -654,7 +685,28 @@
             <set field="customer.email" from="contactMechEmail.infoString"/>
             <set field="customer.first_name" from="person.firstName"/>
             <set field="customer.last_name" from="person.lastName"/>
-            <set field="customer.phone" from="person.lastName"/>
+            
+            <set field="address.id" from="[:]"/>
+            <set field="address.customer_id" from="customer.id"/>
+            <set field="address.address1" from="contactMechAddres.address1"/>
+            <set field="address.address2" from="contactMechAddres.address2"/>
+            <set field="address.city" from="contactMechAddres.city"/>
+            <set field="address.province" from="contactMechAddres.stateGeoName"/>
+            <set field="address.country" from="geoContry.geoName"/>
+            <set field="address.zip" from="contactMechAddres.postalCode"/>
+            <set field="address.phone" from="telecomNumber.contactNumber"/>
+            <set field="address.province_code" from="contactMechAddres.stateGeoCodeAlpha2"/>
+            <set field="address.country_code" from="geoContry.geoCodeAlpha2"/>
+            <set field="address.country_name" from="geoContry.geoName"/>
+            <set field="address.default" value="true"/>
+
+            
+
+            <script>
+                addressList.add(address)
+            </script>
+
+            <set field="customer.addresses" from="addressList"/>
             
 
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
@@ -676,80 +728,5 @@
         </actions>
     </service>
 
-    <service verb="send" noun="UpdateCustomerSystemMessage">
-        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
-        <in-parameters>
-            <parameter name="systemMessageId" required="true"/>
-        </in-parameters>
-        <actions>
-            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
-                        in-map="[systemMessageId: systemMessageId]"
-                        out-map="context" />
-
-            <script>
-                import groovy.json.JsonSlurper 
-                def jsonSlurper = new JsonSlurper()
-                def order = jsonSlurper.parseText(systemMessage.messageText)
-            </script>
-            
-            <set field="orderStatus" from="order.refund.orderStatus"/>
-            <set field="orderId" from="order.refund.orderId"/>
-            <set field="refund" from="[:]"/>
-            <set field="shipping" from="[:]"/>
-            <set field="refund_line_items" from="[]"/>
-            <set field="transactions" from="[]"/>
-
-            <iterate list="response.refund.refund_line_items" entry="item">
-                <script>
-                    def items = [:]
-                    items.line_item_id = item.line_item_id
-                    items.quantity = item.quantity
-                    items.restock_type = item.restock_type
-                    items.location_id =  item.location_id
-                    refund_line_items.add (items)
-                </script>
-            </iterate>
-
-            <iterate list="response.refund.transactions" entry="transaction">
-                <script>
-                    def tx = [:]
-                    tx.parent_id = transaction.parent_id
-                    tx.amount = transaction.amount
-                    tx.kind = 'refund'
-                    tx.gateway =  transaction.gateway
-                    transactions.add (tx)
-                </script>
-            </iterate>
-
-            <set field="shipping.full_refund" value="true"/>
-            <set field="refund.currency" from="response.refund.currency"/>
-            <set field="refund.shipping" from="shipping"/>
-            <set field="refund.refund_line_items" from="refund_line_items"/>
-            <set field="refund.transactions" from="transactions"/>
-            <!-- The userId must be a number-->
-            <if condition ="ec.user.userId.isNumber()">
-                <set field="refund.user_id" from="ec.user.userId"/>
-            </if>
-            <set field="externalId" from="orderId" />
-
-            <set field="messageText" from="groovy.json.JsonOutput.toJson([
-                refund : refund
-            ])"/>
-
-            <if condition="orderStatus == 'OrderCompleted'" > 
-                <then>
-                    <!--if the order has some fulfilled item, it's necessary to refund the cancel item -->
-                    <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', systemMessageRemoteId:'DEMO_SHOPIFY_REFUND_ORDER_REMOTE',
-                    messageText:messageText,docSubControl: 'createRefund',docControl:externalId]"/> 
-                </then>
-                <else>
-                    <!-- if the order was cancelled by the user this needs to be cancel -->
-                    <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CANCEL_ORDER_REMOTE',
-                    messageText:messageText,docSubControl: 'cancelOrder',docControl:externalId]"/> 
-                </else>
-            </if>
-        </actions>
-    </service>
+  
 </services>
