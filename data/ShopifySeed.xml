@@ -22,4 +22,7 @@
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifySetInventoryMessage" 
                                               description="Update Shopify Inventory Level SystemMessage Type"
                                               sendServiceName="mantle.shopify.ApiServices.send#SetInventorySystemMessage" />
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyUpdateCustomerMessage" 
+                                              description="Update Shopify Inventory Level SystemMessage Type"
+                                              sendServiceName="mantle.shopify.ApiServices.send#UpdateCustomerSystemMessage" />
 </entity-facade-xml>
