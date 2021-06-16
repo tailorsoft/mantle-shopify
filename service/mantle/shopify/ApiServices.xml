@@ -865,18 +865,6 @@
         </actions>
     </service>
 
-    <service verb="send" noun="CreateFulfillmentSystemMessage">
-        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
-        <in-parameters>
-            <parameter name="systemMessageId" required="true"/>
-        </in-parameters>
-        <actions>
-            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
-                          in-map="[systemMessageId: systemMessageId]"
-                          out-map="context" />
-        </actions>
-    </service>
-
     <service verb="queue" noun="CalculateRefundSystemMessage">
         <description>Service to calculate the refund</description>
         <in-parameters>
@@ -1009,6 +997,18 @@
                     messageText:messageText,docSubControl: 'cancelOrder',docControl:externalId]"/> 
                 </else>
             </if>
+        </actions>
+    </service>
+
+    <service verb="send" noun="CreateFulfillmentSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
         </actions>
     </service>
 
