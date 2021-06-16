@@ -711,7 +711,10 @@
             <set field="address.province_code" from="customerAddress?.stateGeoCodeAlpha2"/>
             <set field="address.country_code" from="geoContry?.geoCodeAlpha2"/>
             <set field="address.country_name" from="geoContry?.geoName"/>
-            <set field="address.default" value="true"/> 
+            <set field="address.default" value="true"/>
+            <script>
+                addressList.add(address)
+            </script> 
             <set field="customer.addresses" from="addressList"/>
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
                 customer : customer
