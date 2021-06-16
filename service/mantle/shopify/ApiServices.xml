@@ -1096,10 +1096,10 @@
                 <set field="phone" from="userPhoneNumber.countryCode "/>
             </if>
             <if condition="userPhoneNumber?.areaCode">
-                <set field="phone" from="phone + ' '+ userPhoneNumber.areaCode "/>
+                <set field="phone" from="phone + userPhoneNumber.areaCode "/>
             </if>
             <if condition="userPhoneNumber?.contactNumber">
-                <set field="phone" from="phone + '-' + userPhoneNumber.contactNumber"/>
+                <set field="phone" from="phone + userPhoneNumber.contactNumber.replace('-','')"/>
             </if>
 
             <if condition="phone">
@@ -1122,7 +1122,10 @@
             <set field="address.province_code" from="customerAddress?.stateGeoCodeAlpha2"/>
             <set field="address.country_code" from="geoContry?.geoCodeAlpha2"/>
             <set field="address.country_name" from="geoContry?.geoName"/>
-            <set field="address.default" value="true"/> 
+            <set field="address.default" value="true"/>
+            <script>
+                addressList.add(address)
+            </script> 
             <set field="customer.addresses" from="addressList"/>
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
                 customer : customer
