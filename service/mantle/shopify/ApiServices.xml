@@ -1121,15 +1121,8 @@
             <set field="address.phone" from="phone"/>
             <set field="address.province_code" from="customerAddress?.stateGeoCodeAlpha2"/>
             <set field="address.country_code" from="geoContry?.geoCodeAlpha2"/>
-            <set field="address.country_name" from="geoContry?.geoName"/> 
-
-            <if condition="address">
-                <script>
-                    addressCleanMap = address.findAll { it.value != null }
-                    if(addressCleanMap) addressList.add(addressCleanMap)
-                </script>
-            </if>
-            <set field="address.default" value="true"/>
+            <set field="address.country_name" from="geoContry?.geoName"/>
+            <set field="address.default" value="true"/> 
             <set field="customer.addresses" from="addressList"/>
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
                 customer : customer
