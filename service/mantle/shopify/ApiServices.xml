@@ -685,10 +685,10 @@
                 <set field="phone" from="userPhoneNumber.countryCode "/>
             </if>
             <if condition="userPhoneNumber?.areaCode">
-                <set field="phone" from="phone + ' '+ userPhoneNumber.areaCode "/>
+                <set field="phone" from="phone + userPhoneNumber.areaCode "/>
             </if>
             <if condition="userPhoneNumber?.contactNumber">
-                <set field="phone" from="phone + '-' + userPhoneNumber.contactNumber"/>
+                <set field="phone" from="phone + userPhoneNumber.contactNumber"/>
             </if>
 
             <if condition="phone">
