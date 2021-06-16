@@ -38,6 +38,14 @@
                     urlExpand = urlExpand + systemMessage.messageText
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.GET).uri(urlExpand)
+                }else if(docSubType.contains("put")){
+                    if(systemMessage.docSubControl?.contains('putCustomer')){
+                        urlExpand = urlExpand + systemMessage.docControl + ".json"
+                    }
+                    logger.info("URL EXPAND ${urlExpand}")
+                    restClient = ec.service.rest().method(org.moqui.util.RestClient.PUT).uri(urlExpand)
+                            .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
+                   
                 }else{
                     if(systemMessage.docSubControl?.contains('cancelOrder')){
                         urlExpand = urlExpand + systemMessage.docControl + "/cancel.json"
@@ -55,8 +63,13 @@
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.POST).uri(urlExpand)
                             .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
+
                 }
+<<<<<<< HEAD
              
+=======
+
+>>>>>>> put-customer
                 restClient.basicAuth(systemMessageRemote.username,systemMessageRemote.password)
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
                 if (restResponse.statusCode < 200 || restResponse.statusCode >= 300) {
@@ -764,6 +777,19 @@
         </actions>
     </service>
 
+    <service verb="send" noun="CreateRefundSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                            in-map="[systemMessageId: systemMessageId]"
+                            out-map="context" />
+        </actions>
+    </service>
+
+        
     <service verb="send" noun="SetInventorySystemMessage">
         <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
         <in-parameters>
@@ -1001,7 +1027,112 @@
         </actions>
     </service>
 
-    <service verb="send" noun="CreateRefundSystemMessage">
+    <service verb="queue" noun="UpdateCustomerSystemMessage">
+        <description>Service to updte customer</description>
+        <in-parameters>
+            <parameter name="partyId" required="true" />
+        </in-parameters>
+        <actions>
+
+            <set field="customer" from="[:]"/>
+            <set field="address" from="[:]"/>
+            <set field="addressList" from="[]"/>
+
+            <entity-find-one entity-name="mantle.party.Person" value-field="person">
+                <field-map field-name="partyId" />
+            </entity-find-one>
+
+            <entity-find-one entity-name="mantle.party.Party" value-field="party">
+                <field-map field-name="partyId" />
+            </entity-find-one>
+
+
+            <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
+                <econdition field-name="orderId"  from="orderId"/>
+                <econdition field-name="itemTypeEnumId"  value="ItemProduct"/>
+                <econdition field-name="quantityCancelled"   operator="greater" value="0"/>
+            </entity-find>
+
+            <entity-find entity-name="mantle.party.contact.PartyContactMech" list="partyContactMechList">
+                <econdition field-name="partyId" />
+                <econdition field-name="contactMechPurposeId" value="EmailPrimary" />
+                <date-filter/>
+                <order-by field-name="fromDate"/>
+            </entity-find>
+
+            <entity-find entity-name="mantle.party.contact.PartyContactMech" list="phonePartyContactMechList">
+                <econdition field-name="partyId" />
+                <econdition field-name="contactMechPurposeId" value="PhonePrimary" />
+                <date-filter/>
+                <order-by field-name="fromDate"/>
+            </entity-find>
+
+            <entity-find entity-name="mantle.party.contact.PartyContactMech" list="addresPartyContactMechList">
+                <econdition field-name="partyId" />
+                <econdition field-name="contactMechPurposeId" value="PostalPrimary" />
+                <date-filter/>
+                <order-by field-name="fromDate"/>
+            </entity-find>
+
+            <if condition="!partyContactMechList">
+                <return error="true" message="The customer ${partyId} does not exist" />
+            </if>
+
+            <set field="contactMechId" from="partyContactMechList.first().contactMechId"/>
+            <set field="addressContactMechId" from="addresPartyContactMechList.first().contactMechId"/>
+            <set field="phoneContactMechId" from="phonePartyContactMechList.first().contactMechId"/>
+
+            <entity-find-one entity-name="mantle.party.contact.ContactMech" value-field="contactMechEmail">
+                <field-map field-name="contactMechId"/>
+            </entity-find-one>
+
+            <entity-find-one entity-name="mantle.party.contact.PartyContactMechPostalAddress" value-field="contactMechAddres">
+                <field-map field-name="contactMechId" from="addressContactMechId"/>
+            </entity-find-one>
+
+            <entity-find-one entity-name="mantle.party.contact.TelecomNumber" value-field="telecomNumber">
+                <field-map field-name="contactMechId" from="phoneContactMechId"/>
+            </entity-find-one>
+
+            <entity-find-one entity-name="moqui.basic.Geo" value-field="geoContry">
+                <field-map field-name="geoId" from="contactMechAddres.countryGeoId"/>
+            </entity-find-one>
+
+            <set field="customer.id" from="party.shopifyCustomerId"/>
+            <set field="customer.email" from="contactMechEmail.infoString"/>
+            <set field="customer.first_name" from="person.firstName"/>
+            <set field="customer.last_name" from="person.lastName"/>
+            <set field="address.id" from="contactMechAddres.shopifyAddressId"/>
+            <set field="address.customer_id" from="customer.id"/>
+            <set field="address.address1" from="contactMechAddres.address1"/>
+            <set field="address.address2" from="contactMechAddres.address2"/>
+            <set field="address.city" from="contactMechAddres.city"/>
+            <set field="address.province" from="contactMechAddres.stateGeoName"/>
+            <set field="address.country" from="geoContry.geoName"/>
+            <set field="address.zip" from="contactMechAddres.postalCode"/>
+            <set field="address.phone" from="'+' + telecomNumber.countryCode +' ' + telecomNumber.areaCode +'-' +telecomNumber.contactNumber"/>
+            <set field="address.province_code" from="contactMechAddres.stateGeoCodeAlpha2"/>
+            <set field="address.country_code" from="geoContry.geoCodeAlpha2"/>
+            <set field="address.country_name" from="geoContry.geoName"/> 
+             <set field="address.default" value="true"/>
+            <script>
+                addressList.add(address)
+            </script>
+
+            <set field="customer.addresses" from="addressList"/>
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([
+                customer : customer
+            ])"/>
+
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+            in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', systemMessageRemoteId:'DEMO_SHOPIFY_PUT_CUSTOMER_REMOTE',
+                messageText:messageText,docSubType: 'putCustomer',docSubControl: 'putCustomer', docControl:customer.id]"/>
+           
+        </actions>
+    </service>
+
+
+    <service verb="send" noun="UpdateCustomerSystemMessage">
         <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
         <in-parameters>
             <parameter name="systemMessageId" required="true"/>

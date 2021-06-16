@@ -41,4 +41,7 @@
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCreateRefundMessage" 
                                               description="Create Refund Order SystemMessage Type"
                                               sendServiceName="mantle.shopify.ApiServices.send#CreateRefundSystemMessage" />
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyUpdateCustomerMessage" 
+                                              description="Update Shopify Customer info SystemMessage Type"
+                                              sendServiceName="mantle.shopify.ApiServices.send#UpdateCustomerSystemMessage" />
 </entity-facade-xml>
