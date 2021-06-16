@@ -688,7 +688,7 @@
                 <set field="phone" from="phone + userPhoneNumber.areaCode "/>
             </if>
             <if condition="userPhoneNumber?.contactNumber">
-                <set field="phone" from="phone + userPhoneNumber.contactNumber"/>
+                <set field="phone" from="phone + userPhoneNumber.contactNumber.replace('-','')"/>
             </if>
 
             <if condition="phone">
