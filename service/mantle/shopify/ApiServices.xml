@@ -115,7 +115,6 @@
                             <field-map field-name="productId" from="assoc.toProductId"/>
                             <field-map field-name="productIdTypeEnumId" value="PidtUpca"/>
                         </entity-find-one>
-
                         <script><![CDATA[
                             /**
                                 The featureList is the list of all the features that an assoc has,
@@ -169,14 +168,17 @@
                         }
                     ]]></script>
                     <log message="OPTIONS ${prodOptions}"/>
-                </then>
-            </if>
-            <set field="productData" from="[title: product.productName,
+                    <log message="VARIANTS ${prodVariants}"/>
+                    <set field="productData" from="[title: product.productName,
                                         body_html: '',
                                         vendor: '',
                                         images: images,
                                         variants: prodVariants,
                                         options: prodOptions]"/>
+                </then>
+            <else>
+                <return error="ERROR: PRODUCT IS AN ASSET"/>
+            </else></if>
         </actions>
     </service>
 
@@ -189,12 +191,16 @@
                           in-map="[productId: productId, productStoreId: productStoreId]"
                           out-map="context" />
 
-            <set field="json" from="groovy.json.JsonOutput.toJson([product: productData])"/>
-
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
-            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyProductMessage', systemMessageRemoteId:'DEMO_SHOPIFY_PRODUCTS_REMOTE',
+            <if condition="productData"><then>
+                <set field="json" from="groovy.json.JsonOutput.toJson([product: productData])"/>
+                <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
+                <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                              in-map="[systemMessageTypeId:'ShopifyProductMessage', systemMessageRemoteId:'DEMO_SHOPIFY_PRODUCTS_REMOTE',
                         messageText:json, productId:productId]"/>
+
+            </then><else>
+                <return error="ERROR: PRODUCT DATA NOT FOUND"/>
+            </else></if>
         </actions>
     </service>
 
@@ -209,7 +215,6 @@
                           out-map="context" />
             <if condition="response.product.variants.size &gt; 0">
                 <set field="shopifyVariants" from="response.product.variants"/>
-                <log message="VARIANTS ${shopifyVariants}"/>
                 <iterate list="shopifyVariants" entry="shopifyVariant">
                     <entity-find entity-name="mantle.product.ProductIdentification" list="prodUPCs">
                         <econdition field-name="idValue" from="shopifyVariant.barcode"/>
@@ -299,31 +304,16 @@
         </actions>
     </service>
 
-    <service verb="get" noun="ShopifyCollectionData">
-        <in-parameters>
-            <parameter name="productCategoryId" required="true"/>
-        </in-parameters>
-        <out-parameters>
-            <parameter name="shopifyCollectionId"/>
-        </out-parameters>
-        <actions>
-            <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
-                <field-map field-name="productCategoryId"/>
-            </entity-find-one>
-            <set field="shopifyCollectionId" from="productCategory.pseudoId"/>
-        </actions>
-    </service>
-
     <service verb="queue" noun="DeleteCollectionSystemMessage">
         <in-parameters>
             <parameter name="productCategoryId" required="true"/>
         </in-parameters>
         <actions>
-            <service-call name="mantle.shopify.ApiServices.get#ShopifyCollectionData"
-                          in-map="[productCategoryId: productCategoryId]"
-                          out-map="context" />
+            <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
+                <field-map field-name="productCategoryId"/>
+            </entity-find-one>
 
-            <set field="idParam" from="shopifyCollectionId"/>
+            <set field="idParam" from="productCategory.pseudoId"/>
 
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection Id as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
@@ -345,12 +335,12 @@
             <service-call name="update#mantle.product.category.ProductCategory" out-map="context" in-map="[productCategoryId:systemMessage.productCategoryId, pseudoId:'']"/>
 
             <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productCategoryMembers">
-                <econdition field-name="productCategoryId"/>
+                <econdition field-name="productCategoryId" from="systemMessage.productCategoryId"/>
                 <econdition field-name="thruDate" from="null"/>
             </entity-find>
 
             <iterate list="productCategoryMembers" entry="productCategoryMember">
-                <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="productCategoryMember + [pseudoId:'']"/>
+                <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="productCategoryMember + [shopifyId:'']"/>
             </iterate>
         </actions>
     </service>
@@ -453,16 +443,16 @@
                 <econdition field-name="thruDate" from="null"/>
             </entity-find>
 
-            <set field="productCategoryMember" from="productCategoryMembers.first()"/>
-
             <iterate list="productCategoryMembers" entry="productCategoryMember">
                 <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
                     <field-map field-name="productId" from="productCategoryMember.productId"/>
                     <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
                 </entity-find-one>
-                <set field="collect" from="response.collects.find{it.product_id.toString().equals(productIdentification.idValue.toString())}"/>
-                <if condition="collect">
-                    <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, shopifyId:collect.id]"/>
+                <if condition="productIdentification">
+                    <set field="collect" from="response.collects.find{it.product_id.toString().equals(productIdentification.idValue.toString())}"/>
+                    <if condition="collect">
+                        <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, shopifyId:collect.id]"/>
+                    </if>
                 </if>
             </iterate>
         </actions>
