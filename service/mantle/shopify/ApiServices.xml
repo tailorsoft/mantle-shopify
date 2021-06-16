@@ -464,6 +464,10 @@
             <parameter name="productId" required="true"/>
         </in-parameters>
         <actions>
+            <!--entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productCategoryMember">
+                <field-map field-name="productIdTypeEnumId" value="productCategoryId"/>
+                <field-map field-name="productId" from="productId"/>
+            </entity-find-one-->
             <entity-find-one entity-name="mantle.product.category.ProductCategoryMember" value-field="productCategoryMember">
                 <field-map field-name="productCategoryId" from="productCategoryId"/>
                 <field-map field-name="productId" from="productId"/>
@@ -493,7 +497,7 @@
                 <field-map field-name="productId" from="systemMessage.productId"/>
                 <field-map field-name="thruDate" from="null"/>
             </entity-find-one>
-            <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, shopifyId:'']"/>
+            <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, thruDate:ec.user.nowTimestamp, shopifyId:'']"/>
         </actions>
     </service>
 
