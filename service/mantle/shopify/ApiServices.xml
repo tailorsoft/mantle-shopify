@@ -37,11 +37,21 @@
                     urlExpand = urlExpand + systemMessage.messageText
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.GET).uri(urlExpand)
+                }else if(docSubType.contains("put")){
+                    if(systemMessage.docSubControl?.contains('putCustomer')){
+                        urlExpand = urlExpand + systemMessage.docControl + ".json"
+                    }
+                    logger.info("URL EXPAND ${urlExpand}")
+                    restClient = ec.service.rest().method(org.moqui.util.RestClient.PUT).uri(urlExpand)
+                            .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
+                   
                 }else{
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.POST).uri(urlExpand)
                             .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
+
                 }
+
                 restClient.basicAuth(systemMessageRemote.username,systemMessageRemote.password)
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
                 if (restResponse.statusCode < 200 || restResponse.statusCode >= 300) {
@@ -575,6 +585,19 @@
         </actions>
     </service>
 
+    <service verb="send" noun="CreateRefundSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                            in-map="[systemMessageId: systemMessageId]"
+                            out-map="context" />
+        </actions>
+    </service>
+
+        
     <service verb="send" noun="SetInventorySystemMessage">
         <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
         <in-parameters>
@@ -586,19 +609,6 @@
                           out-map="context" />
         </actions>
     </service>
-
-    <service verb="send" noun="CreateRefundSystemMessage">
-        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
-        <in-parameters>
-            <parameter name="systemMessageId" required="true"/>
-        </in-parameters>
-        <actions>
-            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
-                          in-map="[systemMessageId: systemMessageId]"
-                          out-map="context" />
-        </actions>
-    </service>
-
 
     <service verb="queue" noun="UpdateCustomerSystemMessage">
         <description>Service to updte customer</description>
@@ -647,9 +657,6 @@
                 <order-by field-name="fromDate"/>
             </entity-find>
 
-           
-
-
             <if condition="!partyContactMechList">
                 <return error="true" message="The customer ${partyId} does not exist" />
             </if>
@@ -670,23 +677,15 @@
                 <field-map field-name="contactMechId" from="phoneContactMechId"/>
             </entity-find-one>
 
-
-           
-
             <entity-find-one entity-name="moqui.basic.Geo" value-field="geoContry">
                 <field-map field-name="geoId" from="contactMechAddres.countryGeoId"/>
             </entity-find-one>
-
-
-
-
 
             <set field="customer.id" from="party.shopifyCustomerId"/>
             <set field="customer.email" from="contactMechEmail.infoString"/>
             <set field="customer.first_name" from="person.firstName"/>
             <set field="customer.last_name" from="person.lastName"/>
-            
-            <set field="address.id" from="[:]"/>
+            <set field="address.id" from="contactMechAddres.shopifyAddressId"/>
             <set field="address.customer_id" from="customer.id"/>
             <set field="address.address1" from="contactMechAddres.address1"/>
             <set field="address.address2" from="contactMechAddres.address2"/>
@@ -694,38 +693,23 @@
             <set field="address.province" from="contactMechAddres.stateGeoName"/>
             <set field="address.country" from="geoContry.geoName"/>
             <set field="address.zip" from="contactMechAddres.postalCode"/>
-            <set field="address.phone" from="telecomNumber.contactNumber"/>
+            <set field="address.phone" from="'+' + telecomNumber.countryCode +' ' + telecomNumber.areaCode +'-' +telecomNumber.contactNumber"/>
             <set field="address.province_code" from="contactMechAddres.stateGeoCodeAlpha2"/>
             <set field="address.country_code" from="geoContry.geoCodeAlpha2"/>
-            <set field="address.country_name" from="geoContry.geoName"/>
-            <set field="address.default" value="true"/>
-
-            
-
+            <set field="address.country_name" from="geoContry.geoName"/> 
+             <set field="address.default" value="true"/>
             <script>
                 addressList.add(address)
             </script>
 
             <set field="customer.addresses" from="addressList"/>
-            
-
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
-            customer : customer
+                customer : customer
             ])"/>
-
-
-            <log message="...."/>
-            <log message="..."/>
-            <log message=".."/>
-            <log message="messageText....${messageText}"/>
-            <log message=".."/>
-            <log message="..."/>
-            <log message="...."/>
-
 
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
             in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', systemMessageRemoteId:'DEMO_SHOPIFY_PUT_CUSTOMER_REMOTE',
-                messageText:messageText,docSubType: 'updateCustomer']"/>
+                messageText:messageText,docSubType: 'putCustomer',docSubControl: 'putCustomer', docControl:customer.id]"/>
            
         </actions>
     </service>

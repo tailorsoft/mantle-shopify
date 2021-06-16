@@ -19,7 +19,7 @@
     </extend-entity>
 
 
-    <extend-entity entity-name="PartyContactMechPostalAddress" package="mantle.party.contact">
+    <extend-entity entity-name="PostalAddress" package="mantle.party.contact">
         <field name="shopifyAddressId" type="id"/>
     </extend-entity>
 
