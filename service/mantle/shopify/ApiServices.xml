@@ -786,7 +786,6 @@
         </actions>
     </service>
 
-        
     <service verb="send" noun="SetInventorySystemMessage">
         <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
         <in-parameters>
@@ -798,8 +797,6 @@
                           out-map="context" />
         </actions>
     </service>
-
-   
 
     <service verb="queue" noun="CreateFulfillmentSystemMessage">
         <description>Service to register a fulfillment for a order</description>
