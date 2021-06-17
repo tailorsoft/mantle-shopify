@@ -857,7 +857,7 @@
             <if condition="line_items">
                 <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                 in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CREATE_FULFILLMENT_REMOTE',
-                    messageText:messageText,docSubControl: 'createFulfillment',docControl:externalId]"/>
+                    messageText:messageText, docSubControl:'createFulfillment', docControl:externalId]"/>
             </if>
         </actions>
     </service>
