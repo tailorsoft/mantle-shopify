@@ -37,7 +37,6 @@
                     urlExpand = urlExpand + systemMessage.messageText
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.GET).uri(urlExpand)
-<<<<<<< HEAD
                 } else if(docSubType.contains("put")) {
                     if (systemMessage.docSubControl?.contains('putCustomer')) {
                         urlExpand = urlExpand + systemMessage.docControl + ".json"
@@ -45,24 +44,17 @@
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.PUT).uri(urlExpand)
                             .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
-                   
-                } else {
-=======
                 }else{
->>>>>>> cancel-order
                     if (systemMessage.docSubControl?.contains('cancelOrder')) {
                         urlExpand = urlExpand + systemMessage.docControl + "/cancel.json"
                     }
                     if (systemMessage.docSubControl?.contains('calculateRefund')) {
                         urlExpand = urlExpand + systemMessage.docControl + "/refunds/calculate.json"
                     }
-<<<<<<< HEAD
                     if (systemMessage.docSubControl?.contains('createFulfillment')) {
                         urlExpand = urlExpand + systemMessage.docControl + "/fulfillments.json"
                     }
 
-=======
->>>>>>> cancel-order
                     if (systemMessage.docSubControl?.contains('createRefund')) {
                         urlExpand = urlExpand + systemMessage.docControl + "/refunds.json"
                     }
