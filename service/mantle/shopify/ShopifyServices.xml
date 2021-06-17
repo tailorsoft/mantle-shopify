@@ -71,8 +71,8 @@
 
 	<service verb="get" noun="LocationId">
 		<description>
-		This service gets the location Id for the specific shop
-	</description>
+			This service gets the location Id for the specific shop
+		</description>
 		<in-parameters>
 			<parameter name="remoteId" required="true">
 				<description>This field is related with the productStoreId that is used to get locationId</description>
