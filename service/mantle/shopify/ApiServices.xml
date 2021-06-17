@@ -30,34 +30,34 @@
                 logger.info("SENDING MESSAGE TEXT ${systemMessage.messageText}")
                 org.moqui.util.RestClient restClient = ec.service.rest()
 
-                if(docSubType.contains("delete")){
+                if (docSubType.contains("delete")) {
                     urlExpand = urlExpand + systemMessage.messageText + ".json"
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.DELETE).uri(urlExpand)
-                }else if(docSubType.contains("get")){
+                } else if(docSubType.contains("get")) {
                     urlExpand = urlExpand + systemMessage.messageText
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.GET).uri(urlExpand)
-                }else if(docSubType.contains("put")){
-                    if(systemMessage.docSubControl?.contains('putCustomer')){
+                } else if(docSubType.contains("put")) {
+                    if (systemMessage.docSubControl?.contains('putCustomer')) {
                         urlExpand = urlExpand + systemMessage.docControl + ".json"
                     }
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.PUT).uri(urlExpand)
                             .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
                    
-                }else{
-                    if(systemMessage.docSubControl?.contains('cancelOrder')){
+                } else {
+                    if (systemMessage.docSubControl?.contains('cancelOrder')) {
                         urlExpand = urlExpand + systemMessage.docControl + "/cancel.json"
                     }
-                    if(systemMessage.docSubControl?.contains('calculateRefund')){
+                    if (systemMessage.docSubControl?.contains('calculateRefund')) {
                         urlExpand = urlExpand + systemMessage.docControl + "/refunds/calculate.json"
                     }
-                    if(systemMessage.docSubControl?.contains('createFulfillment')){
+                    if (systemMessage.docSubControl?.contains('createFulfillment')) {
                         urlExpand = urlExpand + systemMessage.docControl + "/fulfillments.json"
                     }
 
-                    if(systemMessage.docSubControl?.contains('createRefund')){
+                    if (systemMessage.docSubControl?.contains('createRefund')) {
                         urlExpand = urlExpand + systemMessage.docControl + "/refunds.json"
                     }
                     logger.info("URL EXPAND ${urlExpand}")
@@ -140,11 +140,11 @@
 
                                 NOTE: Shopify supports products that has at most 3 features.
                             **/
-                            if(featureList.size() == 1){
+                            if (featureList.size() == 1) {
                                 prodVariants.add(new HashMap([name:featureList[0].productFeatureDescription, option1:featureList[0].productFeatureDescription, price:priceSet.price, inventory_management:'shopify', barcode: prodUPC.idValue]))
-                            }else if(featureList.size() == 2){
+                            } else if(featureList.size() == 2) {
                                 prodVariants.add(new HashMap([name:featureList[0].productFeatureDescription + "/" + featureList[1].productFeatureDescription, option1:featureList[0].productFeatureDescription, option2:featureList[1].productFeatureDescription, price:priceSet.price, inventory_management:'shopify', barcode: prodUPC.idValue]))
-                            }else if(featureList.size() == 3){
+                            } else if(featureList.size() == 3) {
                                 prodVariants.add(new HashMap([name:featureList[0].productFeatureDescription + "/" + featureList[1].productFeatureDescription + "/" + featureList[2].productFeatureDescription, option1:featureList[0].productFeatureDescription, option2:featureList[1].productFeatureDescription, option3:featureList[2].productFeatureDescription, price:priceSet.price, inventory_management:'shopify', barcode: prodUPC.idValue]))
                             }
                         ]]>
