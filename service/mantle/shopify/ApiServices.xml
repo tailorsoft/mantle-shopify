@@ -643,7 +643,7 @@
             <if condition="refund_line_items">
                 <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                 in-map="[systemMessageTypeId:'ShopifyCalculateRefundMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CALCULATE_REFUND_REMOTE',
-                    messageText:messageText,docSubControl: 'calculateRefund',docControl:externalId]"/>
+                    messageText:messageText, docSubControl:'calculateRefund', docControl:externalId]"/>
             </if>
         </actions>
     </service>
@@ -699,7 +699,7 @@
             <set field="refund.refund_line_items" from="refund_line_items"/>
             <set field="refund.transactions" from="transactions"/>
             <!-- The userId must be a number-->
-            <if condition ="ec.user.userId.isNumber()">
+            <if condition="ec.user.userId.isNumber()">
                 <set field="refund.user_id" from="ec.user.userId"/>
             </if>
             <set field="externalId" from="orderId" />
@@ -713,13 +713,13 @@
                     <!--if the order has some fulfilled item, it's necessary to refund the cancel item -->
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                     in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', systemMessageRemoteId:'DEMO_SHOPIFY_REFUND_ORDER_REMOTE',
-                    messageText:messageText,docSubControl: 'createRefund',docControl:externalId]"/> 
+                    messageText:messageText,docSubControl:'createRefund', docControl:externalId]"/> 
                 </then>
                 <else>
                     <!-- if the order was cancelled by the user this needs to be cancel -->
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                     in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CANCEL_ORDER_REMOTE',
-                    messageText:messageText,docSubControl: 'cancelOrder',docControl:externalId]"/> 
+                    messageText:messageText, docSubControl:'cancelOrder', docControl:externalId]"/> 
                 </else>
             </if>
         </actions>
