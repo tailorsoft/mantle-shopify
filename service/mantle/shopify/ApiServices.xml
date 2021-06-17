@@ -720,7 +720,7 @@
                 customer : customer
             ])"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-            in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', systemMessageRemoteId:'DEMO_SHOPIFY_PUT_CUSTOMER_REMOTE',
+            in-map="[systemMessageTypeId:'ShopifyUpdateCustomerMessage', systemMessageRemoteId:'DEMO_SHOPIFY_PUT_CUSTOMER_REMOTE',
                 messageText:messageText,docSubType: 'putCustomer',docSubControl: 'putCustomer', docControl:customer.id]"/>
            
         </actions>
