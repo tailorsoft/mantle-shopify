@@ -45,12 +45,15 @@
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.PUT).uri(urlExpand)
                             .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
                 }else{
+<<<<<<< HEAD
                     if (systemMessage.docSubControl?.contains('cancelOrder')) {
                         urlExpand = urlExpand + systemMessage.docControl + "/cancel.json"
                     }
                     if (systemMessage.docSubControl?.contains('calculateRefund')) {
                         urlExpand = urlExpand + systemMessage.docControl + "/refunds/calculate.json"
                     }
+=======
+>>>>>>> post-fulfilled
                     if (systemMessage.docSubControl?.contains('createFulfillment')) {
                         urlExpand = urlExpand + systemMessage.docControl + "/fulfillments.json"
                     }
@@ -766,7 +769,7 @@
             <!--the api is called for update the available quantity-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                     in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', systemMessageRemoteId:'DEMO_SHOPIFY_SET_INVENTORY_REMOTE',
-                        messageText:messageText ,docSubType:'upDateInventoryLevel']"/>
+                        messageText:messageText, docSubType:'upDateInventoryLevel']"/>
         </actions>
     </service>
 
@@ -806,7 +809,7 @@
             <entity-find-one entity-name="mantle.shipment.Shipment" value-field="shipment">
                 <field-map field-name="shipmentId" />
             </entity-find-one>
-            <!-- the shipment is validated if exist-->
+            <!--The shipment must be exist to continue, otherwise a message error is generated-->
             <if condition="!shipment">
                 <return error="true" message="The shipment ${shipment} does not exist" />
             </if>
@@ -815,12 +818,12 @@
                 <return error="true" message="The shipment ${shipmentId} must be in status Shipped to register a fulfillment "/>
             </if>
 
-             <!-- get the store id -->
-             <service-call name="mantle.shopify.ShopifyServices.get#LocationId" out-map="context"   in-map="[remoteId:'DEMO_SHOPIFY_SET_INVENTORY_REMOTE']"/>
-             <service-call name="mantle.shipment.ShipmentInfoServices.get#ShipmentDisplayInfo" in-map="[shipmentId:shipmentId]" out-map="context"/>
+            <!-- get the store id -->
+            <service-call name="mantle.shopify.ShopifyServices.get#LocationId" out-map="context"   in-map="[remoteId:'DEMO_SHOPIFY_SET_INVENTORY_REMOTE']"/>
+            <service-call name="mantle.shipment.ShipmentInfoServices.get#ShipmentDisplayInfo" in-map="[shipmentId:shipmentId]" out-map="context"/>
 
-             <set field = "orderId" from="shipmentItemSourceList.first().orderId"/>
-             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader">
+            <set field = "orderId" from="shipmentItemSourceList.first().orderId"/>
+            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader">
                 <field-map field-name="orderId" />
             </entity-find-one>
             
@@ -829,7 +832,7 @@
                 <econdition field-name="itemTypeEnumId"  value="ItemProduct"/>
                 <econdition field-name="quantity"   operator="greater" value="0"/>
             </entity-find>
-
+        
             <iterate list="allShipmentPackageContentList" entry="item">
                 <script>
                     def productTemp = orderItems.find{it.productId == item.productId}
@@ -839,7 +842,7 @@
                     line_items.add(items)
                 </script>
             </iterate>
-           
+        
             <set field="externalId" from="orderHeader.externalId" />
             <set field="fulfillment.location_id" from="locationId" />
             <set field="fulfillment.tracking_number" from="packageRouteSegList[0]?.trackingCode" />
@@ -848,7 +851,7 @@
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
                 fulfillment : fulfillment
             ])"/>
-
+        
             <!-- The service to create fulfillment is called only if  there are items were shipped -->
             <if condition="line_items">
                 <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
