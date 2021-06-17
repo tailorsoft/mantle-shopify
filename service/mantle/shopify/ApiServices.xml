@@ -665,8 +665,4 @@
                           out-map="context" />
         </actions>
     </service>
-    
-
-    
-
 </services>
