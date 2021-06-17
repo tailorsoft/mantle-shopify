@@ -588,8 +588,6 @@
         </actions>
     </service>
 
-   
-
     <service verb="queue" noun="CalculateRefundSystemMessage">
         <description>Service to calculate the refund</description>
         <in-parameters>
