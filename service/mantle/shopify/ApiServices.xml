@@ -1083,10 +1083,10 @@
             </entity-find-one>
 
             <if condition="!party.shopifyCustomerId">
-                <message type="warning">The customer ${partyId} does not exist in Shopify</message>
+                <message type="warning">The customer ${partyId} does not have shopifyId, please contact the admin</message>
             </if>
             <if condition="!customerAddress?.shopifyAddressId">
-                <message type="warning">The customer ${partyId} does not have shopifyAddressId</message>
+                <message type="warning">The customer ${partyId} does not have shopifyAddressId, please contact the admin</message>
             </if>
 
             <if condition="userPhoneNumber?.countryCode">
