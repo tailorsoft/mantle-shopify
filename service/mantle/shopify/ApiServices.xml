@@ -565,7 +565,7 @@
             <set field="avilableToPromiseList" from="assetList*.availableToPromiseTotal"/>
             <set field="available" from="avilableToPromiseList.findAll{it != null}.sum()?:0"/>
 
-            <set field="json" from="groovy.json.JsonOutput.toJson([
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([
                 location_id:locationId,
                 inventory_item_id:inventoryItemId,
                 available:available
@@ -574,7 +574,7 @@
             <!--the api is called for update the available quantity-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                     in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', systemMessageRemoteId:'DEMO_SHOPIFY_SET_INVENTORY_REMOTE',
-                        messageText:json,docSubType: 'upDateInventoryLevel']"/>
+                        messageText:messageText ,docSubType:'upDateInventoryLevel']"/>
         </actions>
     </service>
 
