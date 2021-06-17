@@ -653,8 +653,8 @@
         </in-parameters>
         <actions>
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
-                        in-map="[systemMessageId: systemMessageId]"
-                        out-map="context" />
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
 
             <script>
                 import groovy.json.JsonSlurper 
