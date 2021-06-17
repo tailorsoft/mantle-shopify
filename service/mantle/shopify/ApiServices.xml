@@ -602,12 +602,12 @@
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader">
                 <field-map field-name="orderId" />
             </entity-find-one>
-            <!-- the order is validated if exist-->
+            <!-- The order must be exist to continue,  otherwise a message error is generated-->
             <if condition="!orderHeader">
                 <return error="true" message="The order ${orderId} does not exist" />
             </if>
             <if condition="!orderHeader.externalId">
-                <return error="true" message="the order ${orderId} does not have externalId" />
+                <return error="true" message="the order ${orderId} does not have externalId, please contact the admin" />
             </if>
             <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
                 <econdition field-name="orderId"  from="orderId"/>
@@ -621,7 +621,7 @@
                     items.line_item_id = item.externalItemSeqId
                     items.quantity = item.quantityCancelled
                     items.restock_type = 'cancel'
-                    refund_line_items.add (items)
+                    refund_line_items.add(items)
                 </script>
             </iterate>
 
@@ -676,7 +676,7 @@
                     items.quantity = item.quantity
                     items.restock_type = item.restock_type
                     items.location_id =  item.location_id
-                    refund_line_items.add (items)
+                    refund_line_items.add(items)
                 </script>
             </iterate>
 
@@ -687,7 +687,7 @@
                     tx.amount = transaction.amount
                     tx.kind = 'refund'
                     tx.gateway =  transaction.gateway
-                    transactions.add (tx)
+                    transactions.add(tx)
                 </script>
             </iterate>
 
@@ -714,7 +714,7 @@
                     messageText:messageText,docSubControl:'createRefund', docControl:externalId]"/> 
                 </then>
                 <else>
-                    <!-- if the order was cancelled by the user this needs to be cancel -->
+                    <!-- if the order was cancelled by the user, its necessary to cancel all it's items -->
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                     in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CANCEL_ORDER_REMOTE',
                     messageText:messageText, docSubControl:'cancelOrder', docControl:externalId]"/> 
