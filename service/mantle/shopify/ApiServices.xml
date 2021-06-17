@@ -38,7 +38,7 @@
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.GET).uri(urlExpand)
                 }else{
-                    if(systemMessage.docSubControl?.contains('createFulfillment')){
+                    if (systemMessage.docSubControl?.contains('createFulfillment')) {
                         urlExpand = urlExpand + systemMessage.docControl + "/fulfillments.json"
                     }
                     logger.info("URL EXPAND ${urlExpand}")
@@ -574,7 +574,7 @@
             <!--the api is called for update the available quantity-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                     in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', systemMessageRemoteId:'DEMO_SHOPIFY_SET_INVENTORY_REMOTE',
-                        messageText:messageText ,docSubType:'upDateInventoryLevel']"/>
+                        messageText:messageText, docSubType:'upDateInventoryLevel']"/>
         </actions>
     </service>
 
