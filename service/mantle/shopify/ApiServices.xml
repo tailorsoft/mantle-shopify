@@ -39,13 +39,13 @@
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.GET).uri(urlExpand)
                 }else{
-                    if(systemMessage.docSubControl?.contains('cancelOrder')){
+                    if (systemMessage.docSubControl?.contains('cancelOrder')) {
                         urlExpand = urlExpand + systemMessage.docControl + "/cancel.json"
                     }
-                    if(systemMessage.docSubControl?.contains('calculateRefund')){
+                    if (systemMessage.docSubControl?.contains('calculateRefund')) {
                         urlExpand = urlExpand + systemMessage.docControl + "/refunds/calculate.json"
                     }
-                    if(systemMessage.docSubControl?.contains('createRefund')){
+                    if (systemMessage.docSubControl?.contains('createRefund')) {
                         urlExpand = urlExpand + systemMessage.docControl + "/refunds.json"
                     }
                     logger.info("URL EXPAND ${urlExpand}")
