@@ -602,7 +602,7 @@
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader">
                 <field-map field-name="orderId" />
             </entity-find-one>
-            <!-- The order must be exist to continue,  otherwise a message error is generated-->
+            <!-- The order must be exist to continue, otherwise a message error is generated-->
             <if condition="!orderHeader">
                 <return error="true" message="The order ${orderId} does not exist" />
             </if>
