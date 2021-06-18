@@ -68,25 +68,25 @@
     </actions>
   </service>
 
-	<service verb="get" noun="CustomerInfoCsv">
-		<out-parameters>
-			<parameter name="csvFormat" type="String" />
-		</out-parameters>
-		<actions>
-			<service-call name="mantle.shopify.ShopifyServices.get#CustomerInfo" out-map="context" />
-			<script>
+  <service verb="get" noun="CustomerInfoCsv">
+    <out-parameters>
+      <parameter name="csvFormat" type="String" />
+    </out-parameters>
+    <actions>
+      <service-call name="mantle.shopify.ShopifyServices.get#CustomerInfo" out-map="context" />
+      <script>
         def headers = []
         def entries = reportList[0].entrySet()
         final StringBuffer sb = new StringBuffer()
         entries.each { entry -&gt; headers.add(entry.key)}
-
+        
         // header titles
         def headersSize = headers.size()
           for (int i = 1; i &lt; headersSize; i++) {
             sb.append(headers.get(i));
             sb.append(i == headersSize-1 ? "\n" : ",");
           }
-
+        
         // rows info
         for ( map in reportList) {
           for (int i = 1; i &lt; headersSize; i++) {
@@ -94,33 +94,8 @@
             sb.append(i == headersSize-1 ? "\n" : ",");
           }
         }
-				csvFormat = sb.toString()
-			</script>
-		</actions>
-	</service>
-	
-	<service verb="get" noun="LocationId">
-		<description>
-			This service gets the location Id for the specific shop
-		</description>
-		<in-parameters>
-			<parameter name="remoteId" required="true">
-				<description>This field is related with the productStoreId that is used to get locationId</description>
-			</parameter>
-		</in-parameters>
-		<out-parameters>
-			<parameter name="locationId" />
-		</out-parameters>
-		<actions>
-			<entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemRemoteIdentification">
-				<field-map field-name="systemMessageRemoteId" from="remoteId" />
-			</entity-find-one>
-			<set field="productStoreId" from="systemRemoteIdentification.productStoreId" />
-			<entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productLocation">
-				<field-map field-name="productStoreId" from="productStoreId" />
-				<field-map field-name="settingTypeEnumId" value="ShopifyStoreId" />
-			</entity-find-one>
-			<set field="locationId" from="productLocation.settingValue" />
-		</actions>
-	</service>
+        csvFormat = sb.toString()
+      </script>
+    </actions>
+  </service>
 </services>
