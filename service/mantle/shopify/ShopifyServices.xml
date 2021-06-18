@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
-	<service verb="get" noun="CustomerInfo">
-		<out-parameters>
-			<parameter name="reportList" type="List">
-				<parameter name="customerMap" type="Map" />
-			</parameter>
-		</out-parameters>
-		<actions>
-			<set field="reportList" from="[]" />
-			<entity-find entity-name="brokerageengine.party.customer.CustomerInfoView" list="customerList" />
-			<iterate list="customerList" entry="customer">
-				<script>
+  <service verb="get" noun="CustomerInfo">
+    <out-parameters>
+      <parameter name="reportList" type="List">
+        <parameter name="customerMap" type="Map" />
+      </parameter>
+    </out-parameters>
+    <actions>
+      <set field="reportList" from="[]" />
+      <entity-find entity-name="brokerageengine.party.customer.CustomerInfoView" list="customerList" />
+      <iterate list="customerList" entry="customer">
+        <script>
           def customerTemp = reportList.find{it.partyId == customer.partyId}
           // if the customer info exist this is updated
           if (customerTemp) {
@@ -63,10 +63,10 @@
             tmpMap['Tax Exempt'] = null
             reportList.add(tmpMap)
           }
-				</script>
-			</iterate>
-		</actions>
-	</service>
+        </script>
+      </iterate>
+    </actions>
+  </service>
 
 	<service verb="get" noun="CustomerInfoCsv">
 		<out-parameters>
