@@ -19,7 +19,7 @@
             </entity-find-one>
 
             <set field="systemMessageType" from="systemMessage.'moqui.service.message.SystemMessageType'"/>
-            <set field="systemMessage.systemMessageRemoteId" from="remote.systemMessageRemoteId'"/>
+            <set field="systemMessage.systemMessageRemoteId" from="remote.systemMessageRemoteId"/>
 
             <if condition="!systemMessage.systemMessageRemoteId">
                 <return error="true"
