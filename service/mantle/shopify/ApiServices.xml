@@ -14,7 +14,7 @@
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
 
-            <entity-find-one entity-name="org.moqui.impl.SystemMessageRemote" value-field="remote">
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote">
                 <field-map field-name="systemMessageTypeId" from="systemMessage.SystemMessageTypeID"/>
             </entity-find-one>
 
