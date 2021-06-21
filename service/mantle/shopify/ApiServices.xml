@@ -13,7 +13,13 @@
         </out-parameters>
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
+
+            <entity-find-one entity-name="org.moqui.impl.SystemMessageRemote" value-field="remote">
+                <field-map field-name="systemMessageTypeId" from="systemMessage.SystemMessageTypeID"/>
+            </entity-find-one>
+
             <set field="systemMessageType" from="systemMessage.'moqui.service.message.SystemMessageType'"/>
+            <set field="systemMessage.systemMessageRemoteId" from="remote.systemMessageRemoteId'"/>
 
             <if condition="!systemMessage.systemMessageRemoteId">
                 <return error="true"
@@ -852,8 +858,7 @@
             <!-- The service to create fulfillment is called only if  there are items were shipped -->
             <if condition="line_items">
                 <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CREATE_FULFILLMENT_REMOTE',
-                    messageText:messageText, docSubControl:'createFulfillment', docControl:externalId]"/>
+                in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage', messageText:messageText, docSubControl:'createFulfillment', docControl:externalId]"/>
             </if>
         </actions>
     </service>
