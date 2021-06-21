@@ -15,7 +15,7 @@
             <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
 
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote">
-                <field-map field-name="systemMessageTypeId" from="systemMessage.SystemMessageTypeID"/>
+                <field-map field-name="systemMessageTypeId" from="systemMessage.systemMessageTypeId"/>
             </entity-find-one>
 
             <set field="systemMessageType" from="systemMessage.'moqui.service.message.SystemMessageType'"/>
