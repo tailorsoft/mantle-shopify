@@ -1073,6 +1073,10 @@
                 <field-map field-name="contactMechId" from="customerAddressId"/>
             </entity-find-one>
 
+            <entity-find-one entity-name="mantle.party.contact.TelecomNumber" value-field="userAddressPhoneNumber">
+                <field-map field-name="contactMechId" from="customerAddress.telecomContactMechId"/>
+            </entity-find-one>
+
             <entity-find-one entity-name="moqui.basic.Geo" value-field="geoContry">
                 <field-map field-name="geoId" from="customerAddress?.countryGeoId"/>
             </entity-find-one>
@@ -1088,20 +1092,28 @@
                 <message type="warning">The customer ${partyId} does not have shopifyAddressId, please contact the admin</message>
             </if>
 
-            <if condition="userPhoneNumber?.countryCode">
-                <set field="phone" from="userPhoneNumber.countryCode "/>
-            </if>
-            <if condition="userPhoneNumber?.areaCode">
-                <set field="phone" from="phone + userPhoneNumber.areaCode "/>
-            </if>
-            <if condition="userPhoneNumber?.contactNumber">
-                <set field="phone" from="phone + userPhoneNumber.contactNumber.replace('-','')"/>
-            </if>
+            <script>
+                def getPhoneFormat(phoneNumber){
+                    def phone = null
+                    if (phoneNumber?.countryCode) {
+                            phone = phoneNumber.countryCode
+                    }
+                    if (phoneNumber?.areaCode) {
+                            phone = phone + phoneNumber.areaCode
+                    }
+                    if (phoneNumber?.contactNumber) {
+                            phone = phone + phoneNumber.contactNumber.replace('-','')
+                    }
+                    if (phone) {
+                            phone = '+' +phone
+                    }
+                    return phone
+                }
+            </script>
 
-            <if condition="phone">
-                <set field="phone" from="'+'+phone"/>
-            </if>
-
+            <set field="phone" from="getPhoneFormat(userPhoneNumber)"/>
+            <set field="addressPhone" from="getPhoneFormat(userAddressPhoneNumber)"/>
+            
             <set field="customer.id" from="party.shopifyCustomerId"/>
             <set field="customer.email" from="email?.infoString"/>
             <set field="customer.first_name" from="person?.firstName"/>
@@ -1114,7 +1126,7 @@
             <set field="address.province" from="customerAddress?.stateGeoName"/>
             <set field="address.country" from="geoContry?.geoName"/>
             <set field="address.zip" from="customerAddress?.postalCode"/>
-            <set field="address.phone" from="phone"/>
+            <set field="address.phone" from="addressPhone"/>
             <set field="address.province_code" from="customerAddress?.stateGeoCodeAlpha2"/>
             <set field="address.country_code" from="geoContry?.geoCodeAlpha2"/>
             <set field="address.country_name" from="geoContry?.geoName"/>
