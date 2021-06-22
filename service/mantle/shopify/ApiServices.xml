@@ -570,7 +570,7 @@
 
             <!--the api is called for update the available quantity-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', messageText:messageText,docSubType: 'upDateInventoryLevel']"/>
+                    in-map="[systemMessageTypeId:'ShopifySetInventoryMessage',messageText:messageText,docSubType: 'upDateInventoryLevel']"/>
         </actions>
     </service>
 
