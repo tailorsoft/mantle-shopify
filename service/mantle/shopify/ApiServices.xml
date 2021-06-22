@@ -1118,6 +1118,7 @@
             <set field="customer.email" from="email?.infoString"/>
             <set field="customer.first_name" from="person?.firstName"/>
             <set field="customer.last_name" from="person?.lastName"/>
+            <set field="customer.phone" from="phone"/>
             <set field="address.id" from="customerAddress?.shopifyAddressId"/>
             <set field="address.customer_id" from="customer.id"/>
             <set field="address.address1" from="customerAddress?.address1"/>
