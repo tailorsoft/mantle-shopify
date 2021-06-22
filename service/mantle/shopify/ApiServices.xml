@@ -772,6 +772,7 @@
             <!--the api is called for update the available quantity-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                     in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', messageText:messageText, docSubType:'upDateInventoryLevel']"/>
+<<<<<<< HEAD
         </actions>
     </service>
 
@@ -784,6 +785,8 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
                             in-map="[systemMessageId: systemMessageId]"
                             out-map="context" />
+=======
+>>>>>>> set-inventory-level-refactoring
         </actions>
     </service>
 
