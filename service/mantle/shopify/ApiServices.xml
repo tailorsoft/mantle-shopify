@@ -640,8 +640,7 @@
             <!-- The service to canculate refund order is called only if exist items to cancel -->
             <if condition="refund_line_items">
                 <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                in-map="[systemMessageTypeId:'ShopifyCalculateRefundMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CALCULATE_REFUND_REMOTE',
-                    messageText:messageText, docSubControl:'calculateRefund', docControl:externalId]"/>
+                in-map="[systemMessageTypeId:'ShopifyCalculateRefundMessage', messageText:messageText, docSubControl:'calculateRefund', docControl:externalId]"/>
             </if>
         </actions>
     </service>
@@ -710,14 +709,12 @@
                 <then>
                     <!--if the order has some fulfilled item, it's necessary to refund the cancel item -->
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', systemMessageRemoteId:'DEMO_SHOPIFY_REFUND_ORDER_REMOTE',
-                    messageText:messageText,docSubControl:'createRefund', docControl:externalId]"/> 
+                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', messageText:messageText,docSubControl:'createRefund', docControl:externalId]"/> 
                 </then>
                 <else>
                     <!-- if the order was cancelled by the user, its necessary to cancel all it's items -->
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CANCEL_ORDER_REMOTE',
-                    messageText:messageText, docSubControl:'cancelOrder', docControl:externalId]"/> 
+                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', messageText:messageText, docSubControl:'cancelOrder', docControl:externalId]"/> 
                 </else>
             </if>
         </actions>
