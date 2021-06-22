@@ -13,13 +13,20 @@
         </out-parameters>
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
-
+            <if condition="!systemMessage.systemMessageRemoteId">
+                <entity-find-one entity-name="org.moqui.impl.SystemMessageRemote" value-field="remote">
+                    <field-map field-name="systemMessageTypeId" from="message.SystemMEssageTypeID"/>
+                    <field-map field-name="productStoreId" from="shipment?.productStoreId"/>
+                </entity-find-one>
+                <set field="systemMessage.systemMessageRemoteId" from="remote.systemMessageRemoteId"/>
+             </if>
+             
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote">
                 <field-map field-name="systemMessageTypeId" from="systemMessage.systemMessageTypeId"/>
             </entity-find-one>
 
             <set field="systemMessageType" from="systemMessage.'moqui.service.message.SystemMessageType'"/>
-            <set field="systemMessage.systemMessageRemoteId" from="remote.systemMessageRemoteId"/>
+            
 
             <if condition="!systemMessage.systemMessageRemoteId">
                 <return error="true"
