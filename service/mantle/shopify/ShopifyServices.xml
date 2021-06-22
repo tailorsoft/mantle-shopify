@@ -1,126 +1,124 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
-  <service verb="get" noun="CustomerInfo">
-    <out-parameters>
-      <parameter name="reportList" type="List">
-        <parameter name="customerMap" type="Map" />
-      </parameter>
-    </out-parameters>
-    <actions>
-      <set field="reportList" from="[]" />
-      <entity-find entity-name="brokerageengine.party.customer.CustomerInfoView" list="customerList" />
-      <iterate list="customerList" entry="customer">
-        <script>
-          def customerTemp = reportList.find{it.partyId == customer.partyId}
-          // if the customer info exist this is updated
-          if (customerTemp) {
-            // update the field only if its has value
-            tmpMap = [:]
-            tmpMap['partyId'] = customerTemp.partyId ?: customer.partyId 
-            tmpMap['First Name'] = customerTemp.firstName ?: customer.firstName 
-            tmpMap['Last Name'] = customerTemp.lastName ?: customer.lastName 
-            tmpMap['Email'] = customerTemp.email ?: customer.email 
-            tmpMap['Company'] = null
-            tmpMap['Address1'] = customerTemp.address1 ?: customer.address1 
-            tmpMap['Address2'] = customerTemp.address2 ?: customer.address2 
-            tmpMap['City'] = customerTemp.city ?: customer.city 
-            tmpMap['Province'] = null
-            tmpMap['Province Code'] = null
-            tmpMap['Country'] = customerTemp.country ?: customer.country 
-            tmpMap['Country Code'] = customerTemp.countryCode ?: customer.countryCode 
-            tmpMap['Zip'] = customerTemp.zip ?: customer.zip 
-            tmpMap['Phone'] = customerTemp.phone ?: customer.phone 
-            tmpMap['Accepts Marketing'] = 'yes'
-            tmpMap['Total Spent'] = 0
-            tmpMap['Total Orders'] = 0
-            tmpMap['Tags'] = null
-            tmpMap['Note'] = null
-            tmpMap['Tax Exempt'] = null
-            reportList.remove(customerTemp)
-            reportList.add(tmpMap)
-          } else {
-            // create customerInfo
-            tmpMap = [:]
-            tmpMap['partyId'] = customer.partyId
-            tmpMap['First Name'] = customer.firstName 
-            tmpMap['Last Name'] = customer.lastName 
-            tmpMap['Email'] = customer.email 
-            tmpMap['Company'] = null
-            tmpMap['Address1'] = customer.address1 
-            tmpMap['Address2'] = customer.address2 
-            tmpMap['City'] = customer.city 
-            tmpMap['Province'] = null
-            tmpMap['Province Code'] = null
-            tmpMap['Country'] = customer.country 
-            tmpMap['Country Code'] = customer.countryCode 
-            tmpMap['Zip'] = customer.zip 
-            tmpMap['Phone'] = customer.phone 
-            tmpMap['Accepts Marketing'] = 'yes'
-            tmpMap['Total Spent'] = 0
-            tmpMap['Total Orders'] = 0
-            tmpMap['Tags'] = null
-            tmpMap['Note'] = null
-            tmpMap['Tax Exempt'] = null
-            reportList.add(tmpMap)
-          }
-        </script>
-      </iterate>
-    </actions>
-  </service>
+    <service verb="get" noun="CustomerInfo">
+        <out-parameters>
+            <parameter name="reportList" type="List">
+                <parameter name="customerMap" type="Map" />
+            </parameter>
+        </out-parameters>
+        <actions>
+            <set field="reportList" from="[]" />
+            <entity-find entity-name="brokerageengine.party.customer.CustomerInfoView" list="customerList" />
+            <iterate list="customerList" entry="customer">
+                <script>
+                    def customerTemp = reportList.find{it.partyId == customer.partyId}
+                    // if the customer info exist this is updated
+                    if (customerTemp) {
+                        // update the field only if its has value
+                        tmpMap = [:]
+                        tmpMap['partyId'] = customerTemp.partyId ?: customer.partyId 
+                        tmpMap['First Name'] = customerTemp.firstName ?: customer.firstName 
+                        tmpMap['Last Name'] = customerTemp.lastName ?: customer.lastName 
+                        tmpMap['Email'] = customerTemp.email ?: customer.email 
+                        tmpMap['Company'] = null
+                        tmpMap['Address1'] = customerTemp.address1 ?: customer.address1 
+                        tmpMap['Address2'] = customerTemp.address2 ?: customer.address2 
+                        tmpMap['City'] = customerTemp.city ?: customer.city 
+                        tmpMap['Province'] = null
+                        tmpMap['Province Code'] = null
+                        tmpMap['Country'] = customerTemp.country ?: customer.country 
+                        tmpMap['Country Code'] = customerTemp.countryCode ?: customer.countryCode 
+                        tmpMap['Zip'] = customerTemp.zip ?: customer.zip 
+                        tmpMap['Phone'] = customerTemp.phone ?: customer.phone 
+                        tmpMap['Accepts Marketing'] = 'yes'
+                        tmpMap['Total Spent'] = 0
+                        tmpMap['Total Orders'] = 0
+                        tmpMap['Tags'] = null
+                        tmpMap['Note'] = null
+                        tmpMap['Tax Exempt'] = null
+                        reportList.remove(customerTemp)
+                        reportList.add(tmpMap)
+                    } else {
+                        // create customerInfo
+                        tmpMap = [:]
+                        tmpMap['partyId'] = customer.partyId
+                        tmpMap['First Name'] = customer.firstName 
+                        tmpMap['Last Name'] = customer.lastName 
+                        tmpMap['Email'] = customer.email 
+                        tmpMap['Company'] = null
+                        tmpMap['Address1'] = customer.address1 
+                        tmpMap['Address2'] = customer.address2 
+                        tmpMap['City'] = customer.city 
+                        tmpMap['Province'] = null
+                        tmpMap['Province Code'] = null
+                        tmpMap['Country'] = customer.country 
+                        tmpMap['Country Code'] = customer.countryCode 
+                        tmpMap['Zip'] = customer.zip 
+                        tmpMap['Phone'] = customer.phone 
+                        tmpMap['Accepts Marketing'] = 'yes'
+                        tmpMap['Total Spent'] = 0
+                        tmpMap['Total Orders'] = 0
+                        tmpMap['Tags'] = null
+                        tmpMap['Note'] = null
+                        tmpMap['Tax Exempt'] = null
+                        reportList.add(tmpMap)
+                    }
+                </script>
+            </iterate>
+        </actions>
+    </service>
 
-  <service verb="get" noun="CustomerInfoCsv">
-    <out-parameters>
-      <parameter name="csvFormat" type="String" />
-    </out-parameters>
-    <actions>
-      <service-call name="mantle.shopify.ShopifyServices.get#CustomerInfo" out-map="context" />
-      <script>
-        def headers = []
-        def entries = reportList[0].entrySet()
-        final StringBuffer sb = new StringBuffer()
-        entries.each { entry -&gt; headers.add(entry.key)}
-        
-        // header titles
-        def headersSize = headers.size()
-          for (int i = 1; i &lt; headersSize; i++) {
-            sb.append(headers.get(i));
-            sb.append(i == headersSize-1 ? "\n" : ",");
-          }
-        
-        // rows info
-        for ( map in reportList) {
-          for (int i = 1; i &lt; headersSize; i++) {
-            sb.append(map.get(headers.get(i))?:'');
-            sb.append(i == headersSize-1 ? "\n" : ",");
-          }
-        }
-        csvFormat = sb.toString()
-      </script>
-    </actions>
-  </service>
+    <service verb="get" noun="CustomerInfoCsv">
+        <out-parameters>
+            <parameter name="csvFormat" type="String" />
+        </out-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ShopifyServices.get#CustomerInfo" out-map="context" />
+            <script>
+                def headers = []
+                def entries = reportList[0].entrySet()
+                final StringBuffer sb = new StringBuffer()
+                entries.each { entry -&gt; headers.add(entry.key)}
 
-  <service verb="get" noun="LocationId">
-    <description>
-      This service gets the location Id for the specific shop
-    </description>
-    <in-parameters>
-      <parameter name="remoteId" required="true">
-        <description>This field is related with the productStoreId that is used to get locationId</description>
-      </parameter>
-    </in-parameters>
-    <out-parameters>
-      <parameter name="locationId" />
-    </out-parameters>
-    <actions>
-      <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemRemoteIdentification">
-        <field-map field-name="systemMessageRemoteId" from="remoteId" />
-      </entity-find-one>
-      <set field="productStoreId" from="systemRemoteIdentification.productStoreId" />
-      <entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productLocation">
-        <field-map field-name="productStoreId" from="productStoreId" />
-        <field-map field-name="settingTypeEnumId" value="ShopifyStoreId" />
-      </entity-find-one>
-      <set field="locationId" from="productLocation.settingValue" />
-    </actions>
-  </service>
+                // header titles
+                def headersSize = headers.size()
+                for (int i = 1; i &lt; headersSize; i++) {
+                sb.append(headers.get(i));
+                sb.append(i == headersSize-1 ? "\n" : ",");
+                }
+
+                // rows info
+                for ( map in reportList) {
+                for (int i = 1; i &lt; headersSize; i++) {
+                sb.append(map.get(headers.get(i))?:'');
+                sb.append(i == headersSize-1 ? "\n" : ",");
+                }
+                }
+                csvFormat = sb.toString()
+            </script>
+        </actions>
+    </service>
+
+    <service verb="get" noun="LocationId">
+        <description>
+            This service gets the location Id for the specific shop
+        </description>
+        <in-parameters>
+            <parameter name="systemMessageTypeId" required="true" />
+        </in-parameters>
+        <out-parameters>
+            <parameter name="locationId" />
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemRemoteIdentification">
+                <field-map field-name="systemMessageTypeId" />
+            </entity-find-one>
+            <set field="productStoreId" from="systemRemoteIdentification.productStoreId" />
+            <entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productLocation">
+                <field-map field-name="productStoreId" from="productStoreId" />
+                <field-map field-name="settingTypeEnumId" value="ShopifyStoreId" />
+            </entity-find-one>
+            <set field="locationId" from="productLocation.settingValue" />
+        </actions>
+    </service>
 </services>
