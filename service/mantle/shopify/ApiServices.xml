@@ -798,70 +798,7 @@
         </actions>
     </service>
 
-    <service verb="queue" noun="CreateFulfillmentSystemMessage">
-        <description>Service to register a fulfillment for a order</description>
-        <in-parameters>
-            <parameter name="shipmentId" required="true" />
-        </in-parameters>
-        <actions>
-            <set field="line_items" from="[]"/>
-            <set field="fulfillment" from="[:]"/>
-           
-            <entity-find-one entity-name="mantle.shipment.Shipment" value-field="shipment">
-                <field-map field-name="shipmentId" />
-            </entity-find-one>
-            <!--The shipment must be exist to continue, otherwise a message error is generated-->
-            <if condition="!shipment">
-                <return error="true" message="The shipment ${shipment} does not exist" />
-            </if>
-
-            <if condition="shipment.statusId != 'ShipShipped'">
-                <return error="true" message="The shipment ${shipmentId} must be in status Shipped to register a fulfillment "/>
-            </if>
-
-            <!-- get the store id -->
-            <service-call name="mantle.shopify.ShopifyServices.get#LocationId" out-map="context"   in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage']"/>
-            <service-call name="mantle.shipment.ShipmentInfoServices.get#ShipmentDisplayInfo" in-map="[shipmentId:shipmentId]" out-map="context"/>
-
-            <set field = "orderId" from="shipmentItemSourceList.first().orderId"/>
-            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader">
-                <field-map field-name="orderId" />
-            </entity-find-one>
-            
-            <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
-                <econdition field-name="orderId"  from="orderId"/>
-                <econdition field-name="itemTypeEnumId"  value="ItemProduct"/>
-                <econdition field-name="quantity"   operator="greater" value="0"/>
-            </entity-find>
-        
-            <iterate list="allShipmentPackageContentList" entry="item">
-                <script>
-                    def productTemp = orderItems.find{it.productId == item.productId}
-                    def items = [:]
-                    items.id = productTemp.externalItemSeqId
-                    items.quantity = item.quantity
-                    line_items.add(items)
-                </script>
-            </iterate>
-        
-            <set field="externalId" from="orderHeader.externalId" />
-            <set field="fulfillment.location_id" from="locationId" />
-            <set field="fulfillment.tracking_number" from="packageRouteSegList[0]?.trackingCode" />
-            <set field="fulfillment.tracking_company" from="curCarrierDetail?.shopifyTrackingCompany" />
-            <set field="fulfillment.line_items" from="line_items" />
-            <set field="messageText" from="groovy.json.JsonOutput.toJson([
-                fulfillment : fulfillment
-            ])"/>
-        
-            <!-- The service to create fulfillment is called only if  there are items were shipped -->
-            <if condition="line_items">
-                <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage', messageText:messageText, docSubControl:'createFulfillment', docControl:externalId]"/>
-            </if>
-        </actions>
-    </service>
-
-    <service verb="queue" noun="CalculateRefundSystemMessage">
+    <service verb="queue" noun="CancelAndCalculateRefundOrderSystemMessage">
         <description>Service to calculate the refund</description>
         <in-parameters>
             <parameter name="orderId" required="true" />
@@ -918,7 +855,7 @@
         </actions>
     </service>
 
-    <service verb="send" noun="CalculateRefundSystemMessage">
+    <service verb="send" noun="CancelAndCalculateRefundOrderSystemMessage">
         <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
         <in-parameters>
             <parameter name="systemMessageId" required="true"/>
