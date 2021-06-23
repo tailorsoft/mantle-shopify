@@ -309,7 +309,7 @@
             <parameter name="productCategoryId" required="true"/>
         </in-parameters>
         <actions>
-            <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
+                                <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
                 <field-map field-name="productCategoryId"/>
             </entity-find-one>
 
@@ -530,6 +530,8 @@
             <set field="billingAddress" from="order.billing_address"/>
             <set field="paymentDetails" from="order.payment_details"/>
             <set field="orderItems" from="order.line_items"/>
+            <set field="discountApplications" from="order.discount_applications"/>
+            <set field="taxApplications" from="order.tax_lines"/>
             <if condition="!customer">
                 <return error="ERROR: NO CUSTOMER FOUND"/>
             </if>
@@ -557,13 +559,14 @@
                     <if condition="partyIds.size() &gt; 0"><then>
                         <set field="partyId" from="partyIds.first()"/>
                     </then><else>
-                        <service-call name="mantle.party.PartyServices.create#Account" in-map="[firstName:customer.first_name,
+                        <service-call name="mantle.party.PartyServices.create#Person" in-map="[firstName:customer.first_name,
                                                                                                   lastName:customer.last_name,
                                                                                                   username: customer.email,
                                                                                                   newPassword: 'shopify_123*',
                                                                                                   newPasswordVerify: 'shopify_123*',
                                                                                                   emailAddress:customer.email,
                                                                                                   loginAfterCreate:false]" out-map="context"/>
+                        <log message="CUSTOMER CREATED ${partyId}"/>
                     </else></if>
                     <entity-find entity-name="mantle.party.contact.PartyContactMechPostalAddress" list="postalMechList">
                         <econdition field-name="partyId" from="partyId"/>
@@ -594,7 +597,7 @@
                             <econdition field-name="geoCodeAlpha2" from="billingAddress.country_code"/>
                         </entity-find>
                         <entity-find entity-name="moqui.basic.Geo" list="billingStateList">
-                            <econdition field-name="geoId" from="billingCountryList.first().geoId + '_' + billingAddresss.province_code"/>
+                            <econdition field-name="geoId" from="billingCountryList.first().geoId + '_' + billingAddress.province_code"/>
                             <econdition field-name="geoTypeEnumId" value="GEOT_STATE"/>
                             <econdition field-name="geoCodeAlpha2" from="billingAddress.province_code"/>
                         </entity-find>
@@ -622,10 +625,12 @@
 
 
                     </else></if>
-                    <set field="contactNumber" from="shippingAddress.phone.replaceAll('-','')"/>
-                    <set field="contactNumber" from="contactNumber.replaceAll('\\+','')"/>
-                    <set field="phoneCountryCode" from="contactNumber.substring(0,3)"/>
-                    <set field="phoneNumber" from="contactNumber.substring(3).replaceAll(' ','')"/>
+                    <if condition="shippingAddress.phone">
+                        <set field="contactNumber" from="shippingAddress.phone.replaceAll('-','')"/>
+                        <set field="contactNumber" from="contactNumber.replaceAll('\\+','')"/>
+                        <set field="phoneCountryCode" from="contactNumber.substring(0,3)"/>
+                        <set field="phoneNumber" from="contactNumber.substring(3).replaceAll(' ','')"/>
+                    </if>
                     <if condition="telecomMechList.size() &gt; 0"><then>
                         <set field="telecomMech" from="telecomMechList.first()"/>
                         <if condition="telecomMech.contactNumber.equals(shippingAddress.phone)">
@@ -640,70 +645,105 @@
                         <set field="telecomContactMechId" from="telecomMechData.telecomContactMechId"/>
                     </else></if>
                     <!-- Create order based on shopify data -->
-                        <service-call name="mantle.order.OrderServices.create#Order" in-map="[productStoreId: productStore.productStoreId,
-                                                                                      displayId: order.order_number,
-                                                                                      externalId: order.id,
-                                                                                      orderName: 'Shopify Order-' + order.order_number,
-                                                                                      systemMessageRemoteId: systemMessageRemote.systemMessageRemoteId,
-                                                                                      customerPartyId: partyId]" out-map="context"/>
-                        <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader"/>
-                        <entity-find-one entity-name="mantle.order.OrderPart" value-field="orderPart"/>
-                        <!-- Adding product to created order -->
-                        <iterate list="orderItems" entry="orderItem">
-                            <entity-find entity-name="mantle.product.ProductIdentification" list="productIdList">
-                                <econdition field-name="idValue" from="orderItem.variant_id"/>
-                                <econdition field-name="productIdTypeEnumId" value="PidtVariantShopify"/>
-                            </entity-find>
-                            <if condition="orderHeader &amp;&amp; orderPart &amp;&amp; productIdList">
-                                <set field="productId" from="productIdList.first().productId"/>
-                                <service-call name="mantle.order.OrderServices.add#OrderProductQuantity" in-map="[orderId: orderHeader.orderId,
-                                                                                                productId: productId,
-                                                                                                orderItemSeqId: 01,
-                                                                                                unitAmount: orderItem.price,
-                                                                                                itemTypeEnumId: 'ItemProduct',
-                                                                                                productStoreId: productStore.productStoreId,
-                                                                                                quantity: orderItem.quantity,
-                                                                                                unitAmount:orderItem.price]" out-map="context"/>
-                                <entity-find entity-name="mantle.order.OrderItem" list="orderItemList">
-                                    <econdition field-name="orderId" from="orderHeader.orderId"/>
-                                    <econdition field-name="productId" from="productId"/>
-                                </entity-find>
-                                <if condition="orderItemList">
-                                    <service-call name="update#mantle.order.OrderItem" out-map="context" in-map="orderItemList.first() + [externalItemSeqId:orderItem.id]"/>
-                                </if>
-                            </if>
+                    <service-call name="mantle.order.OrderServices.create#Order" in-map="[productStoreId: productStore.productStoreId,
+                                                                                  displayId: order.order_number,
+                                                                                  externalId: order.id,
+                                                                                  orderName: 'Shopify Order-' + order.order_number,
+                                                                                  systemMessageRemoteId: systemMessageRemote.systemMessageRemoteId,
+                                                                                  customerPartyId: partyId]" out-map="context"/>
+                    <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader"/>
+                    <entity-find-one entity-name="mantle.order.OrderPart" value-field="orderPart"/>
+                    <if condition="taxApplications.size() &gt; 0">
+                        <iterate list="taxApplications" entry="taxApplication">
+                            <set field="taxValue" from="Double.parseDouble(taxApplication.price)"/>
+                            <service-call name="mantle.order.OrderServices.create#OrderItem" in-map="[orderId: orderHeader.orderId,
+                                                                                    productId: productId,
+                                                                                    orderPartSeqId: orderPart.orderPartSeqId,
+                                                                                    itemTypeEnumId: 'ItemSalesTax',
+                                                                                    quantity: 1,
+                                                                                    productStoreId: productStore.productStoreId,
+                                                                                    comments: taxApplication.title,
+                                                                                    unitAmount:taxValue]" out-map="context"/>
+                            <log message="TAX ${taxValue}"/>
                         </iterate>
-                        <!-- DISCOUNTS -->
-                        <if condition="orderHeader &amp;&amp; orderPart">
-                            <!-- PAYMENT METHOD -->
-                            <service-call name="create#mantle.account.method.PaymentMethod" out-map="context" in-map="[ownerPartyId: partyId,
-                                                                                                               paymentMethodTypeEnumId:'PmtCreditCard',
-                                                                                                               firstNameOnAccount: customer.first_name,
-                                                                                                               lastNameOnAccount:customer.last_name,
-                                                                                                               description: paymentDetails.credit_card_company + ' ' + paymentDetails.credit_card_number ]"/>
-                            <set field="fromPartyId" from="orderPart.customerPartyId"/>
-                            <entity-find entity-name="mantle.order.OrderPartParty" list="billToList">
-                                <econdition field-name="orderId"/><econdition field-name="orderPartSeqId"/>
-                                <econdition field-name="roleTypeId" value="CustomerBillTo"/>
+                    </if>
+                    <set field="discountAmount" value="0"/>
+                    <if condition="discountApplications.size() &gt; 0">
+                        <set field="discount" from="discountApplications[0]"/>
+                        <set field="discountAmount" from="Double.parseDouble(discount.value)"/>
+                        <set field="discountCalculatedAmount" from="discountAmount / orderItems.size()"/>
+                        <log message="NUMBER ${discountAmount}"/>
+                        <log message="NUMBER CALCULATED ${discountCalculatedAmount}"/>
+                    </if>
+                    <!-- Adding product to created order -->
+                    <iterate list="orderItems" entry="orderItem">
+                        <entity-find entity-name="mantle.product.ProductIdentification" list="productIdList">
+                            <econdition field-name="idValue" from="orderItem.variant_id"/>
+                            <econdition field-name="productIdTypeEnumId" value="PidtVariantShopify"/>
+                        </entity-find>
+                        <if condition="orderHeader &amp;&amp; orderPart &amp;&amp; productIdList">
+                            <set field="productId" from="productIdList.first().productId"/>
+                            <service-call name="mantle.order.OrderServices.add#OrderProductQuantity" in-map="[orderId: orderHeader.orderId,
+                                                                                            productId: productId,
+                                                                                            itemTypeEnumId: 'ItemProduct',
+                                                                                            productStoreId: productStore.productStoreId,
+                                                                                            quantity: orderItem.quantity,
+                                                                                            unitAmount:orderItem.price]" out-map="context"/>
+                            <!-- DISCOUNTS APPLICATIONS -->
+                            <if condition="discountAmount &gt; 0">
+                                <!-- IF DISCOUNT ALLOCATIONS SIZE > 0 APPLY FULL DISCOUNT ON THE CURRENT LINE ITEM ELSE APPLY ACROSS ALL LINE ITEMS
+                                 <if orderItem.discount_allocations.size() > 0>-->
+
+                                <service-call name="mantle.order.OrderServices.create#OrderItem" in-map="[orderId: orderHeader.orderId,
+                                                                                    productId: productId,
+                                                                                    orderItemSeqId: orderItemSeqId,
+                                                                                    itemTypeEnumId: 'ItemDiscount',
+                                                                                    quantity: 1,
+                                                                                    productStoreId: productStore.productStoreId,
+                                                                                    promoCodeText: discount.title,
+                                                                                    unitAmount:discountAmount * -1]" out-map="context"/>
+                                <set field="discountAmount" from="discountAmount - discountCalculatedAmount"/>
+                                <log message="DISCOUNT AMOUNT ${discountAmount}"/>
+                            </if>
+                            <entity-find entity-name="mantle.order.OrderItem" list="orderItemList">
+                                <econdition field-name="orderId" from="orderHeader.orderId"/>
+                                <econdition field-name="productId" from="productId"/>
                             </entity-find>
-                            <if condition="billToList"><set field="fromPartyId" from="billToList[0].partyId"/></if>
-                            <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context"
-                                          in-map="context + [amount:(amount ?: orderPart.partTotal), amountUomId:orderHeader.currencyUomId,
-                                  statusId:'PmntDelivered', effectiveDate:ec.user.nowTimestamp, fromPartyId:fromPartyId, toPartyId:orderPart.vendorPartyId]"/>
-                            <service-call name="mantle.order.OrderServices.set#OrderBillingShippingInfo" in-map="[orderId: orderHeader.orderId,
-                                                                                                          paymentId: paymentId,
-                                                                                                          paymentMethodId: paymentMethodId,
-                                                                                                          shippingPostalContactMechId: postalContactMechId,
-                                                                                                          shippingTelecomContactMechId: telecomContactMechId]" out-map="updatedPayment"/>
-                            <service-call name="mantle.other.TaxServices.calculate#OrderSalesTax" in-map="[orderId:orderId, destinationAddressContactMechId:postalContactMechId]"/>
-                            <service-call name="mantle.order.OrderServices.update#OrderStatus" out-map="context" in-map="[orderId: orderHeader.orderId,
-                                                                                                                  placedDate: ec.user.nowTimestamp,
-                                                                                                                  statusId: 'OrderPlaced']"/>
-                            <service-call name="mantle.order.OrderServices.update#OrderStatus" out-map="context" in-map="[orderId: orderHeader.orderId,
-                                                                                                                  approvedDate: ec.user.nowTimestamp,
-                                                                                                                  statusId: 'OrderApproved']"/>
+                            <if condition="orderItemList">
+                                <service-call name="update#mantle.order.OrderItem" out-map="context" in-map="orderItemList.first() + [externalItemSeqId:orderItem.id]"/>
+                            </if>
                         </if>
-                    </else></if>
+                    </iterate>
+
+                    <if condition="orderHeader &amp;&amp; orderPart">
+                        <!-- PAYMENT METHOD -->
+                        <service-call name="create#mantle.account.method.PaymentMethod" out-map="context" in-map="[ownerPartyId: partyId,
+                                                                                                           paymentMethodTypeEnumId:'PmtCreditCard',
+                                                                                                           firstNameOnAccount: customer.first_name,
+                                                                                                           lastNameOnAccount:customer.last_name,
+                                                                                                           description: paymentDetails.credit_card_company + ' ' + paymentDetails.credit_card_number ]"/>
+                        <set field="fromPartyId" from="orderPart.customerPartyId"/>
+                        <entity-find entity-name="mantle.order.OrderPartParty" list="billToList">
+                            <econdition field-name="orderId"/><econdition field-name="orderPartSeqId"/>
+                            <econdition field-name="roleTypeId" value="CustomerBillTo"/>
+                        </entity-find>
+                        <if condition="billToList"><set field="fromPartyId" from="billToList[0].partyId"/></if>
+                        <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context"
+                                      in-map="context + [amount:(amount ?: orderPart.partTotal), amountUomId:orderHeader.currencyUomId,
+                              statusId:'PmntDelivered', effectiveDate:ec.user.nowTimestamp, fromPartyId:fromPartyId, toPartyId:orderPart.vendorPartyId]"/>
+                        <service-call name="mantle.order.OrderServices.set#OrderBillingShippingInfo" in-map="[orderId: orderHeader.orderId,
+                                                                                                      paymentId: paymentId,
+                                                                                                      paymentMethodId: paymentMethodId,
+                                                                                                      shippingPostalContactMechId: postalContactMechId,
+                                                                                                      shippingTelecomContactMechId: telecomContactMechId]" out-map="updatedPayment"/>
+                        <service-call name="mantle.order.OrderServices.update#OrderStatus" out-map="context" in-map="[orderId: orderHeader.orderId,
+                                                                                                              placedDate: ec.user.nowTimestamp,
+                                                                                                              statusId: 'OrderPlaced']"/>
+                        <service-call name="mantle.order.OrderServices.update#OrderStatus" out-map="context" in-map="[orderId: orderHeader.orderId,
+                                                                                                              approvedDate: ec.user.nowTimestamp,
+                                                                                                              statusId: 'OrderApproved']"/>
+                    </if>
+                </else></if>
             <!--/iterate-->
         </actions>
     </service>
