@@ -1074,7 +1074,7 @@
             </entity-find-one>
 
             <entity-find-one entity-name="mantle.party.contact.TelecomNumber" value-field="userAddressPhoneNumber">
-                <field-map field-name="contactMechId" from="customerAddress.telecomContactMechId"/>
+                <field-map field-name="contactMechId" from="customerAddress?.telecomContactMechId"/>
             </entity-find-one>
 
             <entity-find-one entity-name="moqui.basic.Geo" value-field="geoContry">
