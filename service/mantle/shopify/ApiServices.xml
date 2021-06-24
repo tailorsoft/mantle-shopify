@@ -655,7 +655,10 @@
 
             <entity-find entity-name="mantle.party.contact.PartyContactMech" list="customerAddressList">
                 <econdition field-name="partyId" />
-                <econdition field-name="contactMechPurposeId" value="PostalPrimary" />
+                <econditions combine="or">
+                    <econdition field-name="contactMechPurposeId" value="PostalPrimary" />
+                    <econdition field-name="contactMechPurposeId" value="PostalShippingDest" />
+                </econditions>
                 <date-filter/>
                 <order-by field-name="fromDate"/>
             </entity-find>
@@ -705,7 +708,6 @@
 
             <set field="phone" from="getPhoneFormat(userPhoneNumber)"/>
             <set field="addressPhone" from="getPhoneFormat(userAddressPhoneNumber)"/>
-            
             <set field="customer.id" from="party.shopifyCustomerId"/>
             <set field="customer.email" from="email?.infoString"/>
             <set field="customer.first_name" from="person?.firstName"/>
