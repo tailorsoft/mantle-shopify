@@ -647,9 +647,7 @@
             <set field="fulfillment.tracking_number" from="packageRouteSegList[0]?.trackingCode" />
             <set field="fulfillment.tracking_company" from="curCarrierDetail?.shopifyTrackingCompany" />
             <set field="fulfillment.line_items" from="line_items" />
-            <set field="messageText" from="groovy.json.JsonOutput.toJson([
-                fulfillment : fulfillment
-            ])"/>
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([fulfillment:fulfillment])"/>
         
             <!-- The service to create fulfillment is called only if  there are items were shipped -->
             <if condition="line_items">
