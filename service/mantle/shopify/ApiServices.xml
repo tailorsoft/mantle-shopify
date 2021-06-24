@@ -643,9 +643,7 @@
             <set field="refund.refund_line_items" from="refund_line_items"/>
             <set field="refund.orderStatus" from="orderHeader.statusId" />
             <set field="refund.orderId" from="externalId" />
-            <set field="messageText" from="groovy.json.JsonOutput.toJson([
-                refund : refund
-            ])"/>
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([refund: refund])"/>
 
             <!-- The service to canculate refund order is called only if exist items to cancel -->
             <if condition="refund_line_items">
@@ -711,9 +709,7 @@
             </if>
             <set field="externalId" from="orderId" />
 
-            <set field="messageText" from="groovy.json.JsonOutput.toJson([
-                refund : refund
-            ])"/>
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([refund: refund])"/>
 
             <if condition="orderStatus == 'OrderCompleted'" > 
                 <then>
