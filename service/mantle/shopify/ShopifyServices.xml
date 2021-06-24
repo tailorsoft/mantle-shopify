@@ -83,16 +83,16 @@
                 // header titles
                 def headersSize = headers.size()
                 for (int i = 1; i &lt; headersSize; i++) {
-                sb.append(headers.get(i));
-                sb.append(i == headersSize-1 ? "\n" : ",");
+                    sb.append(headers.get(i));
+                    sb.append(i == headersSize-1 ? "\n" : ",");
                 }
 
                 // rows info
                 for ( map in reportList) {
-                for (int i = 1; i &lt; headersSize; i++) {
-                sb.append(map.get(headers.get(i))?:'');
-                sb.append(i == headersSize-1 ? "\n" : ",");
-                }
+                    for (int i = 1; i &lt; headersSize; i++) {
+                        sb.append(map.get(headers.get(i))?:'');
+                        sb.append(i == headersSize-1 ? "\n" : ",");
+                    }
                 }
                 csvFormat = sb.toString()
             </script>
