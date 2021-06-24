@@ -1142,9 +1142,7 @@
                 addressList.add(address)
             </script> 
             <set field="customer.addresses" from="addressList"/>
-            <set field="messageText" from="groovy.json.JsonOutput.toJson([
-                customer : customer
-            ])"/>
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([customer:customer])"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
             in-map="[systemMessageTypeId:'ShopifyUpdateCustomerMessage', messageText:messageText, docSubType:'putCustomer', docSubControl:'putCustomer', docControl:customer.id]"/>
         </actions>
