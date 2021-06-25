@@ -1079,13 +1079,13 @@
           
             <if condition="customerAddressList.size()>0">
                 <script>
-                    address = customerAddressList.find {it.contactMechPurposeId == 'PostalPrimary'}
-                    if(!address){
-                        address = customerAddressList.find {it.contactMechPurposeId == 'PostalShippingDest'}
+                    mainAddress = customerAddressList.find {it.contactMechPurposeId == 'PostalPrimary'}
+                    if(!mainAddress){
+                        mainAddress = customerAddressList.find {it.contactMechPurposeId == 'PostalShippingDest'}
                     }
                 </script>
             </if>
-            <set field="customerAddressId" from="address?.contactMechId"/>
+            <set field="customerAddressId" from="mainAddress?.contactMechId"/>
             <entity-find-one entity-name="mantle.party.contact.PartyContactMechPostalAddress" value-field="customerAddress">
                 <field-map field-name="contactMechId" from="customerAddressId"/>
             </entity-find-one>
