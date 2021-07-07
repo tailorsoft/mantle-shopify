@@ -538,19 +538,8 @@
  
             <set field="inventoryItemId" from="shopifyInvenotoryItem.idValue"/>
 
-            <!-- the producStoreId needs to be find for getting the locationId-->
-            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemRemoteIdentification">
-                <field-map field-name="systemMessageTypeId" value="ShopifySetInventoryMessage"/>
-            </entity-find-one>
-
-            <set field="productStoreId" from ="systemRemoteIdentification.productStoreId"/>
-
-            <entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productLocation">
-                <field-map field-name="productStoreId" from="productStoreId"/>
-                <field-map field-name="settingTypeEnumId" value="ShopifyStoreId"/>
-            </entity-find-one>
-
-            <set field="locationId" from="productLocation.settingValue"/>
+            <!-- get the store id -->
+            <service-call name="mantle.shopify.ShopifyServices.get#LocationId" out-map="context"   in-map="[systemMessageTypeId:'ShopifySetInventoryMessage']"/>
 
             <!-- we need to find the available quantity for the current product -->
             <entity-find entity-name="mantle.product.asset.Asset" list="assetList">
