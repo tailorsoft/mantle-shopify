@@ -98,4 +98,31 @@
             </script>
         </actions>
     </service>
+
+    <service verb="get" noun="LocationId">
+        <description>
+		    This service gets the location Id for a shop given the systemMessageTypeId
+	    </description>
+        <in-parameters>
+            <parameter name="systemMessageTypeId" required="true" />
+        </in-parameters>
+        <out-parameters>
+            <parameter name="locationId" />
+        </out-parameters>
+        <actions>
+            <!-- the producStoreId needs to be find for getting the locationId-->
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemRemoteIdentification">
+                <field-map field-name="systemMessageTypeId"/>
+            </entity-find-one>
+
+            <set field="productStoreId" from ="systemRemoteIdentification.productStoreId"/>
+
+            <entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productLocation">
+                <field-map field-name="productStoreId" from="productStoreId"/>
+                <field-map field-name="settingTypeEnumId" value="ShopifyStoreId"/>
+            </entity-find-one>
+
+            <set field="locationId" from="productLocation.settingValue"/>
+        </actions>
+    </service>
 </services>
