@@ -714,6 +714,9 @@
                 }
             </script>
 
+            <set field="firstAndLasNameCustomerAddres" from="customerAddress?.toName ? customerAddress?.toName.split(' ') : ''"/>
+            <set field="firstNameAtAddress" from="firstAndLasNameCustomerAddres[0]"/>
+            <set field="lastNameAtAddress" from="firstAndLasNameCustomerAddres.size() >=1 ? firstAndLasNameCustomerAddres[1] : ''"/>
             <set field="phone" from="getPhoneFormat(userPhoneNumber)"/>
             <set field="addressPhone" from="getPhoneFormat(userAddressPhoneNumber)"/>
             <set field="customer.id" from="party.shopifyCustomerId"/>
@@ -723,6 +726,8 @@
             <set field="customer.phone" from="phone"/>
             <set field="address.id" from="customerAddress?.shopifyAddressId"/>
             <set field="address.customer_id" from="customer.id"/>
+            <set field="address.first_name" from="firstNameAtAddress"/>
+            <set field="address.last_name" from="lastNameAtAddress"/>
             <set field="address.address1" from="customerAddress?.address1"/>
             <set field="address.address2" from="customerAddress?.address2"/>
             <set field="address.city" from="customerAddress?.city"/>
