@@ -702,7 +702,6 @@
                 <set field="address.province_code" from="customerAddress?.stateGeoCodeAlpha2"/>
                 <set field="address.country_code" from="geoContry?.geoCodeAlpha2"/>
                 <set field="address.country_name" from="geoContry?.geoName"/>
-                <set field="address.default" from="customerAddressEntry.contactMechPurposeId == 'PostalPrimary' ? 'true' : 'false'"/> 
                  <script>
                  addressList.add(address)
                  address = [:]
@@ -768,6 +767,7 @@
                     <field-map field-name="city" from="addresses.city"/>
                     <field-map field-name="postalCode" from="addresses.zip"/>
                 </entity-find-one>
+                <set field="postalAddres.shopifyDefaultAddrfess" from="customerAddress.default"/>
                 <set field="postalAddres.shopifyAddressId" from="customerAddress.id"/>
                 <entity-update value-field="postalAddres"/>
             </iterate>
