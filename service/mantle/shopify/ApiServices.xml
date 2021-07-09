@@ -1027,6 +1027,10 @@
                 <field-map field-name="partyId" />
             </entity-find-one>
 
+            <entity-find-one entity-name="mantle.party.Party" value-field="party">
+                <field-map field-name="partyId" />
+            </entity-find-one>
+
             <if condition="!person">
                 <return error="true" message="The customer ${partyId} does not exist" />
             </if>
@@ -1056,40 +1060,56 @@
                 <field-map field-name="contactMechId" from="phoneContactMechId"/>
             </entity-find-one>
 
+            <entity-find entity-name="mantle.party.contact.ContactMechPurpose" list="purposeAddressIdList">
+                <econdition field-name="contactMechTypeEnumId" value="CmtPostalAddress"/>
+            </entity-find>
+            <set field="purposeAddressIds" from="purposeAddressIdList*.contactMechPurposeId"/>
+
             <entity-find entity-name="mantle.party.contact.PartyContactMech" list="customerAddressList">
                 <econdition field-name="partyId" />
-                <econditions combine="or">
-                    <econdition field-name="contactMechPurposeId" value="PostalPrimary" />
-                    <econdition field-name="contactMechPurposeId" value="PostalShippingDest" />
-                </econditions>
+                <econdition field-name="contactMechPurposeId" operator="in" from="purposeAddressIds" />
                 <date-filter/>
-                <order-by field-name="fromDate"/>
             </entity-find>
-          
-            <if condition="customerAddressList.size()>0">
+
+            <iterate list="customerAddressList" entry="customerAddressEntry">
+                <entity-find-one entity-name="mantle.party.contact.PartyContactMechPostalAddress" value-field="customerAddress">
+                    <field-map field-name="contactMechId" from="customerAddressEntry.contactMechId"/>
+                </entity-find-one>
+
+                <set field="firstAndLasNameCustomerAddres" from="customerAddress?.toName ? customerAddress?.toName.split(' ') : ''"/>
+                <set field="firstNameAtAddress" from="firstAndLasNameCustomerAddres[0]"/>
+                <set field="lastNameAtAddress" from="firstAndLasNameCustomerAddres.size() >=1 ? firstAndLasNameCustomerAddres[1] : ''"/>
+
+
+                <entity-find-one entity-name="moqui.basic.Geo" value-field="geoContry">
+                    <field-map field-name="geoId" from="customerAddress?.countryGeoId"/>
+                </entity-find-one>
+
+                <entity-find-one entity-name="mantle.party.contact.TelecomNumber" value-field="userAddressPhoneNumber">
+                    <field-map field-name="contactMechId" from="customerAddress?.telecomContactMechId"/>
+                </entity-find-one>
+
+                <set field="addressPhone" from="getPhoneFormat(userAddressPhoneNumber)"/>
+                <set field="address.id" from="customerAddress?.shopifyAddressId"/>
+                <set field="address.customer_id" from="party.shopifyCustomerId"/>
+                <set field="address.first_name" from="firstNameAtAddress"/>
+                <set field="address.last_name" from="lastNameAtAddress"/> 
+                <set field="address.address1" from="customerAddress?.address1"/>
+                <set field="address.address2" from="customerAddress?.address2"/>
+                <set field="address.city" from="customerAddress?.city"/>
+                <set field="address.province" from="customerAddress?.stateGeoName"/>
+                <set field="address.country" from="geoContry?.geoName"/>
+                <set field="address.zip" from="customerAddress?.postalCode"/>
+                <set field="address.phone" from="addressPhone"/>
+                <set field="address.province_code" from="customerAddress?.stateGeoCodeAlpha2"/>
+                <set field="address.country_code" from="geoContry?.geoCodeAlpha2"/>
+                <set field="address.country_name" from="geoContry?.geoName"/>
                 <script>
-                    mainAddress = customerAddressList.find {it.contactMechPurposeId == 'PostalPrimary'}
-                    if(!mainAddress){
-                        mainAddress = customerAddressList.find {it.contactMechPurposeId == 'PostalShippingDest'}
-                    }
-                </script>
-            </if>
-            <set field="customerAddressId" from="mainAddress?.contactMechId"/>
-            <entity-find-one entity-name="mantle.party.contact.PartyContactMechPostalAddress" value-field="customerAddress">
-                <field-map field-name="contactMechId" from="customerAddressId"/>
-            </entity-find-one>
+                    addressList.add(address)
+                    address = [:]
+                </script> 
+            </iterate>
 
-            <entity-find-one entity-name="mantle.party.contact.TelecomNumber" value-field="userAddressPhoneNumber">
-                <field-map field-name="contactMechId" from="customerAddress?.telecomContactMechId"/>
-            </entity-find-one>
-
-            <entity-find-one entity-name="moqui.basic.Geo" value-field="geoContry">
-                <field-map field-name="geoId" from="customerAddress?.countryGeoId"/>
-            </entity-find-one>
-
-            <entity-find-one entity-name="mantle.party.Party" value-field="party">
-                <field-map field-name="partyId" />
-            </entity-find-one>
 
             <if condition="!party.shopifyCustomerId">
                 <message type="warning">The customer ${partyId} does not have shopifyId, please contact the admin</message>
@@ -1116,30 +1136,12 @@
                     return phone
                 }
             </script>
-
             <set field="phone" from="getPhoneFormat(userPhoneNumber)"/>
-            <set field="addressPhone" from="getPhoneFormat(userAddressPhoneNumber)"/>
             <set field="customer.id" from="party.shopifyCustomerId"/>
             <set field="customer.email" from="email?.infoString"/>
             <set field="customer.first_name" from="person?.firstName"/>
             <set field="customer.last_name" from="person?.lastName"/>
             <set field="customer.phone" from="phone"/>
-            <set field="address.id" from="customerAddress?.shopifyAddressId"/>
-            <set field="address.customer_id" from="customer.id"/>
-            <set field="address.address1" from="customerAddress?.address1"/>
-            <set field="address.address2" from="customerAddress?.address2"/>
-            <set field="address.city" from="customerAddress?.city"/>
-            <set field="address.province" from="customerAddress?.stateGeoName"/>
-            <set field="address.country" from="geoContry?.geoName"/>
-            <set field="address.zip" from="customerAddress?.postalCode"/>
-            <set field="address.phone" from="addressPhone"/>
-            <set field="address.province_code" from="customerAddress?.stateGeoCodeAlpha2"/>
-            <set field="address.country_code" from="geoContry?.geoCodeAlpha2"/>
-            <set field="address.country_name" from="geoContry?.geoName"/>
-            <set field="address.default" value="true"/>
-            <script>
-                addressList.add(address)
-            </script> 
             <set field="customer.addresses" from="addressList"/>
             <set field="messageText" from="groovy.json.JsonOutput.toJson([customer:customer])"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
@@ -1156,6 +1158,21 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
+
+            <set field="addresses" from="response.customer.addresses"/>
+
+            <iterate list="addresses" entry="customerAddress">
+                <entity-find-one entity-name="mantle.party.contact.PostalAddress" value-field="postalAddres" for-update="true">
+                    <field-map field-name="toName" from="customerAddress.name"/>
+                    <field-map field-name="address1" from="customerAddress.address1"/>
+                    <field-map field-name="address2" from="customerAddress.address2"/>
+                    <field-map field-name="city" from="customerAddress.city"/>
+                    <field-map field-name="postalCode" from="customerAddress.zip"/>
+                </entity-find-one>
+                <set field="postalAddres.shopifyDefaultAddress" from="customerAddress.default"/>
+                <set field="postalAddres.shopifyAddressId" from="customerAddress.id"/>
+                <entity-update value-field="postalAddres"/>
+            </iterate>
         </actions>
     </service>
 </services>
