@@ -758,6 +758,19 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
+
+            <set field="addresses" from="response.customer.addresses"/>
+            <iterate list="addresses" entry="customerAddress">
+                <entity-find-one entity-name="mantle.party.contact.PostalAddress" value-field="postalAddres" for-update="true">
+                    <field-map field-name="toName" from="addresses.name"/>
+                    <field-map field-name="address1" from="addresses.address1"/>
+                    <field-map field-name="address2" from="addresses.address2"/>
+                    <field-map field-name="city" from="addresses.city"/>
+                    <field-map field-name="postalCode" from="addresses.zip"/>
+                </entity-find-one>
+                <set field="postalAddres.shopifyAddressId" from="customerAddress.id"/>
+                <entity-update value-field="postalAddres"/>
+            </iterate>
         </actions>
     </service>
 </services>
