@@ -677,7 +677,6 @@
                 <set field="firstNameAtAddress" from="firstAndLasNameCustomerAddres[0]"/>
                 <set field="lastNameAtAddress" from="firstAndLasNameCustomerAddres.size() >=1 ? firstAndLasNameCustomerAddres[1] : ''"/>
 
-
                 <entity-find-one entity-name="moqui.basic.Geo" value-field="geoContry">
                     <field-map field-name="geoId" from="customerAddress?.countryGeoId"/>
                 </entity-find-one>
@@ -706,7 +705,6 @@
                     address = [:]
                 </script> 
             </iterate>
-
 
             <if condition="!party.shopifyCustomerId">
                 <message type="warning">The customer ${partyId} does not have shopifyId, please contact the admin</message>
@@ -757,7 +755,6 @@
                           out-map="context" />
 
             <set field="addresses" from="response.customer.addresses"/>
-
             <iterate list="addresses" entry="customerAddress">
                 <entity-find-one entity-name="mantle.party.contact.PostalAddress" value-field="postalAddres" for-update="true">
                     <field-map field-name="toName" from="customerAddress.name"/>
