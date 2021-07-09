@@ -669,7 +669,6 @@
             </entity-find>
 
             <iterate list="customerAddressList" entry="customerAddressEntry">
-
                 <entity-find-one entity-name="mantle.party.contact.PartyContactMechPostalAddress" value-field="customerAddress">
                     <field-map field-name="contactMechId" from="customerAddressEntry.contactMechId"/>
                 </entity-find-one>
@@ -702,11 +701,10 @@
                 <set field="address.province_code" from="customerAddress?.stateGeoCodeAlpha2"/>
                 <set field="address.country_code" from="geoContry?.geoCodeAlpha2"/>
                 <set field="address.country_name" from="geoContry?.geoName"/>
-                 <script>
-                 addressList.add(address)
-                 address = [:]
-                 </script> 
-            
+                <script>
+                    addressList.add(address)
+                    address = [:]
+                </script> 
             </iterate>
 
 
