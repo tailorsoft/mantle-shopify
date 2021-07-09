@@ -767,7 +767,7 @@
                     <field-map field-name="city" from="addresses.city"/>
                     <field-map field-name="postalCode" from="addresses.zip"/>
                 </entity-find-one>
-                <set field="postalAddres.shopifyDefaultAddrfess" from="customerAddress.default"/>
+                <set field="postalAddres.shopifyDefaultAddress" from="customerAddress.default"/>
                 <set field="postalAddres.shopifyAddressId" from="customerAddress.id"/>
                 <entity-update value-field="postalAddres"/>
             </iterate>
