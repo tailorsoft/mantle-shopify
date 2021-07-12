@@ -763,9 +763,11 @@
                     <field-map field-name="city" from="customerAddress.city"/>
                     <field-map field-name="postalCode" from="customerAddress.zip"/>
                 </entity-find-one>
-                <set field="postalAddres.shopifyDefaultAddress" from="customerAddress.default"/>
-                <set field="postalAddres.shopifyAddressId" from="customerAddress.id"/>
-                <entity-update value-field="postalAddres"/>
+                <if condition="postalAddres">
+                    <set field="postalAddres.shopifyDefaultAddress" from="customerAddress.default"/>
+                    <set field="postalAddres.shopifyAddressId" from="customerAddress.id"/>
+                    <entity-update value-field="postalAddres"/>
+                </if>
             </iterate>
         </actions>
     </service>
