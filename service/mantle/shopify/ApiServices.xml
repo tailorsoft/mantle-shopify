@@ -208,6 +208,17 @@
 
             <set field="json" from="groovy.json.JsonOutput.toJson([product: productData])"/>
 
+            <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productForCreate">
+                <field-map field-name="productId" />
+                <field-map field-name="productIdTypeEnumId"  value="PidtVariantShopify"/>
+            </entity-find-one>
+
+            
+            <if condition="productForCreate">
+                <message type="warning">The product ${productId}  already exist</message>
+                <return/>
+            </if>
+
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                     in-map="[systemMessageTypeId:'ShopifyProductMessage', systemMessageRemoteId:'DEMO_SHOPIFY_PRODUCTS_REMOTE',
