@@ -185,7 +185,6 @@
                 <field-map field-name="productId" />
                 <field-map field-name="productIdTypeEnumId"  value="PidtVariantShopify"/>
             </entity-find-one>
-
             
             <if condition="productForCreate">
                 <message type="warning">The product ${productId}  already exist</message>
