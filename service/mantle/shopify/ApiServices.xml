@@ -226,8 +226,7 @@
 
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyProductMessage', systemMessageRemoteId:'DEMO_SHOPIFY_PRODUCTS_REMOTE',
-                        messageText:json, productId:productId]"/>
+                    in-map="[systemMessageTypeId:'ShopifyProductMessage', messageText:json, productId:productId]"/>
         </actions>
     </service>
 
