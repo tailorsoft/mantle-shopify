@@ -62,6 +62,7 @@
         </in-parameters>
         <out-parameters>
             <parameter name="productData"/>
+            <parameter name="product"/>
         </out-parameters>
         <actions>
             <script>import groovy.json.JsonSlurper</script>
@@ -188,6 +189,11 @@
             
             <if condition="productForCreate">
                 <message type="warning">The product ${productId}  already exist</message>
+                <return/>
+            </if>
+
+            <if condition="product.productTypeEnumId != 'PtVirtual' ">
+                <message type="warning">The product ${productId}  is not a virtual product</message>
                 <return/>
             </if>
 
