@@ -210,9 +210,8 @@
 
             <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productForCreate">
                 <field-map field-name="productId" />
-                <field-map field-name="productIdTypeEnumId"  value="PidtVariantShopify"/>
+                <field-map field-name="productIdTypeEnumId"  value="PidtShopify"/>
             </entity-find-one>
-
             
             <if condition="productForCreate">
                 <message type="warning">The product ${productId}  already exist</message>
