@@ -790,7 +790,7 @@
             <set field="inventoryItemId" from="shopifyInvenotoryItem.idValue"/>
 
             <!-- get the store id -->
-            <service-call name="mantle.shopify.ShopifyServices.get#LocationId" out-map="context"   in-map="[systemMessageTypeId:'ShopifySetInventoryMessage']"/>
+            <service-call name="mantle.shopify.ShopifyServices.get#LocationAndStoreId" out-map="context"   in-map="[systemMessageTypeId:'ShopifySetInventoryMessage']"/>
 
             <!-- we need to find the available quantity for the current product -->
             <entity-find entity-name="mantle.product.asset.Asset" list="assetList">
