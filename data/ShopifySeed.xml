@@ -22,4 +22,6 @@
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifySetInventoryMessage" 
                                               description="Update Shopify Inventory Level SystemMessage Type"
                                               sendServiceName="mantle.shopify.ApiServices.send#SetInventorySystemMessage" />
+    <mantle.product.store.ProductStoreSetting productStoreId="RCHERBALS" settingTypeEnumId="PsstProductImageUrl" fromDate="0"
+                                              settingValue="https://${storeDomain}/rch/products/image/${productContentId}"/>
 </entity-facade-xml>
