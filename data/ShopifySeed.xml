@@ -41,4 +41,6 @@
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyUpdateCustomerMessage" 
                                               description="Update Shopify Customer info SystemMessage Type"
                                               sendServiceName="mantle.shopify.ApiServices.send#UpdateCustomerSystemMessage" />
+    <mantle.product.store.ProductStoreSetting productStoreId="RCHERBALS" settingTypeEnumId="PsstProductImageUrl" fromDate="0"
+                                              settingValue="https://${storeDomain}/rch/products/image/${productContentId}"/>
 </entity-facade-xml>
