@@ -104,10 +104,32 @@
             <set field="prodVariants" from="[]"/>
             <set field="prodOptions" from="[]"/>
             <set field="prodOptionsMap" from="new HashMap()"/>
-            <log message="DOMAIN ${storeDomain}"/>
-            <!-- HOW TO GET THIS ROUTE WITHOUT BURNED IT ${storeDomain} -->
+
+            <service-call name="mantle.shopify.ShopifyServices.get#LocationAndStoreId" out-map="context"   in-map="[systemMessageTypeId:'ShopifyProductMessage']"/>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore"/>
+            <entity-find entity-name="mantle.product.store.ProductStoreSetting" list="productImageLocationList">
+                <date-filter/>
+                <econdition field-name="productStoreId" from="productStoreId"/>
+                <econdition field-name="settingTypeEnumId" value="PsstProductImageUrl"/>
+            </entity-find>
+
+            <if condition="productImageLocationList.size()>0">
+                <then>
+                    <set field="productImageLocation" from="productImageLocationList.first()"/>
+                </then>
+                <else>
+                    <message type="warning">The product ${productId}  does not have image associated</message>
+                </else>
+            </if>
+
+            <set field="storeDomain" from ="productStore.storeDomain"/>
+            <set field="productContentId" from ="productContent.productContentId"/>
+
+            <set field="imageSettings" from="[storeDomain:storeDomain, productContentId:productContentId, productId:productId]"/>
+            <set field="imageUrl" from="ec.resource.expand(productImageLocation.settingValue, null, imageSettings, false)"/>
+
             <if condition="productContent">
-                <set field="image" from="[src: 'https://www.rcherbals.com/store/content/productImage/' + productContent.productContentId]"/>
+                <set field="image" from="[src: imageUrl]"/>
                 <script>images.add(image)</script>
             </if>
             <if condition="product.productTypeEnumId == 'PtVirtual'">
@@ -239,6 +261,9 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
+
+          
+
             <if condition="response.product.variants.size &gt; 0">
                 <set field="shopifyVariants" from="response.product.variants"/>
                 <log message="VARIANTS ${shopifyVariants}"/>
