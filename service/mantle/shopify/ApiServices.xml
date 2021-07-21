@@ -63,6 +63,7 @@
         <out-parameters>
             <parameter name="productData"/>
             <parameter name="product"/>
+            <parameter name="error"/>
         </out-parameters>
         <actions>
             <script>import groovy.json.JsonSlurper</script>
@@ -73,6 +74,13 @@
                 <field-map field-name="productId"/>
                 <field-map field-name="productContentTypeEnumId" value="PcntImageDetail"/>
             </entity-find-one>
+
+            <if condition="!productContent">
+                 <set field="error" value="true"/>
+                 <message type="warning">The product ${productId}  does not have image associated, it can not created without one</message>
+                 <return/>
+            </if>
+
             <set field="images" from="[]"/>
             <set field="prodVariants" from="[]"/>
             <set field="prodOptions" from="[]"/>
@@ -91,7 +99,9 @@
                     <set field="productImageLocation" from="productImageLocationList.first()"/>
                 </then>
                 <else>
-                    <message type="warning">The product ${productId}  does not have image associated</message>
+                    <set field="error" value="true"/>
+                    <message type="warning">The product ${productId}  does not have url configured to display the image, please contact to administrator to setup one</message>
+                    <return/>
                 </else>
             </if>
 
@@ -113,6 +123,13 @@
                         <econdition field-name="fromDate" operator="is-not-null"/>
                         <econdition field-name="thruDate" operator="is-null"/>
                     </entity-find>
+
+                    <if condition="assocList.size() == 0">
+                        <set field="error" value="true"/>
+                        <message type="warning">The product ${productId}  must have at least one product associated </message>
+                        <return/>
+                    </if>
+
                     <iterate list="assocList" entry="assoc">
                         <!-- Each product associated has at least one feature so we get all possible features /-->
                         <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl" list="featureList">
@@ -122,6 +139,12 @@
                             <order-by field-name="productFeatureDescription"/>
                         </entity-find>
 
+                        <if condition="featureList.size() == 0">
+                            <set field="error" value="true"/>
+                            <message type="warning">The product associated ${assoc.toProductId}  must have at least one Features, add one in Features section </message>
+                            <return/>
+                        </if>
+
                         <service-call name="mantle.product.PriceServices.get#ProductPrice" out-map="priceSet" in-map="[productId:assoc.toProductId]"/>
 
                         <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="prodUPC">
@@ -129,6 +152,12 @@
                             <field-map field-name="productIdTypeEnumId" value="PidtUpca"/>
                         </entity-find-one>
 
+                        <if condition="!prodUPC">
+                            <set field="error" value="true"/>
+                            <message type="warning">The product associated ${assoc.toProductId} does not have an identification, add one like UPC-A or SKU in the identification section</message>
+                            <return/>
+                        </if>
+                       
                         <script><![CDATA[
                             /**
                                 The featureList is the list of all the features that an assoc has,
@@ -219,7 +248,10 @@
                 <return/>
             </if>
 
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
+            <if condition="error">
+                <return/>
+            </if>
+
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                     in-map="[systemMessageTypeId:'ShopifyProductMessage', messageText:json, productId:productId]"/>
         </actions>
