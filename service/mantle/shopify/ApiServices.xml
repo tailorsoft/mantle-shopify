@@ -77,8 +77,20 @@
 
             <if condition="!productContent">
                  <set field="error" value="true"/>
-                 <message type="warning">The product ${productId}  does not have image associated, it can not created without one</message>
+                 <message type="warning">The product ${productId}  does not have image associated, add one in Content Section</message>
                  <return/>
+            </if>
+
+
+            <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl" list="virtualProductfeatureList">
+                <econdition field-name="productId" from="productId"/>
+                <econdition field-name="fromDate" operator="is-not-null"/>
+                <econdition field-name="thruDate" operator="is-null"/>
+                <order-by field-name="productFeatureDescription"/>
+            </entity-find>
+
+            <if condition="virtualProductfeatureList.size() == 0">
+                <message type="warning">The product  ${productId}  does not have a Feature, add one in Features section </message>
             </if>
 
             <set field="images" from="[]"/>
@@ -100,7 +112,7 @@
                 </then>
                 <else>
                     <set field="error" value="true"/>
-                    <message type="warning">The product ${productId}  does not have url configured to display the image, please contact to administrator to setup one</message>
+                    <message type="warning">The product ${productId}  does not have url configured to display the image, please contact the administrator to setup one</message>
                     <return/>
                 </else>
             </if>
@@ -126,7 +138,7 @@
 
                     <if condition="assocList.size() == 0">
                         <set field="error" value="true"/>
-                        <message type="warning">The product ${productId}  must have at least one product associated </message>
+                        <message type="warning">The product ${productId} does not have a product associated, add one kind of 'Product Variant' in the Associated section</message>
                         <return/>
                     </if>
 
@@ -251,7 +263,6 @@
             <if condition="error">
                 <return/>
             </if>
-
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                     in-map="[systemMessageTypeId:'ShopifyProductMessage', messageText:json, productId:productId]"/>
         </actions>
