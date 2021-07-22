@@ -1041,7 +1041,7 @@
             </if>
 
             <!-- get the store id -->
-            <service-call name="mantle.shopify.ShopifyServices.get#LocationId" out-map="context"   in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage']"/>
+            <service-call name="mantle.shopify.ShopifyServices.get#LocationAndStoreId" out-map="context"   in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage']"/>
             <service-call name="mantle.shipment.ShipmentInfoServices.get#ShipmentDisplayInfo" in-map="[shipmentId:shipmentId]" out-map="context"/>
 
             <set field = "orderId" from="shipmentItemSourceList.first().orderId"/>
