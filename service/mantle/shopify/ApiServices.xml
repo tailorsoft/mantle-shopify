@@ -1156,7 +1156,7 @@
                     <field-map field-name="contactMechId" from="customerAddressEntry.contactMechId"/>
                 </entity-find-one>
 
-                <set field="firstAndLasNameCustomerAddres" from="customerAddress?.toName ? customerAddress?.toName.split(' ') : ''"/>
+                <set field="firstAndLasNameCustomerAddres" from="customerAddress?.toName ? customerAddress?.toName.split(' ').findAll { it != ''} : ''"/>
                 <set field="firstNameAtAddress" from="firstAndLasNameCustomerAddres[0]"/>
                 <set field="lastNameAtAddress" from="firstAndLasNameCustomerAddres.size() >=1 ? firstAndLasNameCustomerAddres[1] : ''"/>
 
