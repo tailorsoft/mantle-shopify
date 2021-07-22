@@ -13,8 +13,8 @@
         <field name="shopifyId" type="id"/>
     </extend-entity>
 
-    <extend-entity entity-name="Party" package="mantle.party">^M
-        <field name="shopifyTrackingCompany" type="text-short"/>^M
+    <extend-entity entity-name="Party" package="mantle.party">
+        <field name="shopifyTrackingCompany" type="text-short"/>
     </extend-entity>
 
     <view-entity entity-name="CustomerInfoView" package="brokerageengine.party.customer">
