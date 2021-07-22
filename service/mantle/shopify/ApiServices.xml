@@ -88,6 +88,8 @@
         </in-parameters>
         <out-parameters>
             <parameter name="productData"/>
+            <parameter name="product"/>
+            <parameter name="error"/>
         </out-parameters>
         <actions>
             <script>import groovy.json.JsonSlurper</script>
@@ -98,14 +100,56 @@
                 <field-map field-name="productId"/>
                 <field-map field-name="productContentTypeEnumId" value="PcntImageDetail"/>
             </entity-find-one>
+
+            <if condition="!productContent">
+                 <set field="error" value="true"/>
+                 <message type="warning">The product ${productId}  does not have image associated, add one in Content section</message>
+                 <return/>
+            </if>
+
+            <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl" list="virtualProductfeatureList">
+                <econdition field-name="productId" from="productId"/>
+                <econdition field-name="fromDate" operator="is-not-null"/>
+                <econdition field-name="thruDate" operator="is-null"/>
+                <order-by field-name="productFeatureDescription"/>
+            </entity-find>
+
+            <if condition="virtualProductfeatureList.size() == 0">
+                <message type="warning">The product  ${productId}  does not have a Feature, add one in Features section </message>
+            </if>
+
             <set field="images" from="[]"/>
             <set field="prodVariants" from="[]"/>
             <set field="prodOptions" from="[]"/>
             <set field="prodOptionsMap" from="new HashMap()"/>
-            <log message="DOMAIN ${storeDomain}"/>
-            <!-- HOW TO GET THIS ROUTE WITHOUT BURNED IT ${storeDomain} -->
+
+            <service-call name="mantle.shopify.ShopifyServices.get#LocationAndStoreId" out-map="context"   in-map="[systemMessageTypeId:'ShopifyProductMessage']"/>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore"/>
+            <entity-find entity-name="mantle.product.store.ProductStoreSetting" list="productImageLocationList">
+                <date-filter/>
+                <econdition field-name="productStoreId" from="productStoreId"/>
+                <econdition field-name="settingTypeEnumId" value="PsstProductImageUrl"/>
+            </entity-find>
+
+            <if condition="productImageLocationList.size()>0">
+                <then>
+                    <set field="productImageLocation" from="productImageLocationList.first()"/>
+                </then>
+                <else>
+                    <set field="error" value="true"/>
+                    <message type="warning">The product ${productId}  does not have url configured to display the image, please contact the administrator to setup one</message>
+                    <return/>
+                </else>
+            </if>
+
+            <set field="storeDomain" from ="productStore.storeDomain"/>
+            <set field="productContentId" from ="productContent.productContentId"/>
+
+            <set field="imageSettings" from="[storeDomain:storeDomain, productContentId:productContentId, productId:productId]"/>
+            <set field="imageUrl" from="ec.resource.expand(productImageLocation.settingValue, null, imageSettings, false)"/>
+
             <if condition="productContent">
-                <set field="image" from="[src: 'https://www.rcherbals.com/store/content/productImage/' + productContent.productContentId]"/>
+                <set field="image" from="[src: imageUrl]"/>
                 <script>images.add(image)</script>
             </if>
             <if condition="product.productTypeEnumId == 'PtVirtual'">
@@ -116,6 +160,13 @@
                         <econdition field-name="fromDate" operator="is-not-null"/>
                         <econdition field-name="thruDate" operator="is-null"/>
                     </entity-find>
+
+                    <if condition="assocList.size() == 0">
+                        <set field="error" value="true"/>
+                        <message type="warning">The product ${productId} does not have a product associated, add one kind of 'Product Variant' in the Associated section</message>
+                        <return/>
+                    </if>
+
                     <iterate list="assocList" entry="assoc">
                         <!-- Each product associated has at least one feature so we get all possible features /-->
                         <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl" list="featureList">
@@ -125,6 +176,12 @@
                             <order-by field-name="productFeatureDescription"/>
                         </entity-find>
 
+                        <if condition="featureList.size() == 0">
+                            <set field="error" value="true"/>
+                            <message type="warning">The associated product ${assoc.toProductId}  must have at least one Features, add one in Features section </message>
+                            <return/>
+                        </if>
+
                         <service-call name="mantle.product.PriceServices.get#ProductPrice" out-map="priceSet" in-map="[productId:assoc.toProductId]"/>
 
                         <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="prodUPC">
@@ -132,6 +189,12 @@
                             <field-map field-name="productIdTypeEnumId" value="PidtUpca"/>
                         </entity-find-one>
 
+                        <if condition="!prodUPC">
+                            <set field="error" value="true"/>
+                            <message type="warning">The associated product ${assoc.toProductId} does not have an identification, add one like UPC-A or SKU in the Identification section</message>
+                            <return/>
+                        </if>
+                       
                         <script><![CDATA[
                             /**
                                 The featureList is the list of all the features that an assoc has,
@@ -207,10 +270,26 @@
 
             <set field="json" from="groovy.json.JsonOutput.toJson([product: productData])"/>
 
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
+            <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productForCreate">
+                <field-map field-name="productId" />
+                <field-map field-name="productIdTypeEnumId"  value="PidtShopify"/>
+            </entity-find-one>
+            
+            <if condition="productForCreate">
+                <message type="warning">The product ${productId}  already exist</message>
+                <return/>
+            </if>
+
+            <if condition="product.productTypeEnumId != 'PtVirtual' ">
+                <message type="warning">The product ${productId}  is not a virtual product</message>
+                <return/>
+            </if>
+
+            <if condition="error">
+                <return/>
+            </if>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyProductMessage', systemMessageRemoteId:'DEMO_SHOPIFY_PRODUCTS_REMOTE',
-                        messageText:json, productId:productId]"/>
+                    in-map="[systemMessageTypeId:'ShopifyProductMessage', messageText:json, productId:productId]"/>
         </actions>
     </service>
 
@@ -223,6 +302,7 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
+                          
             <if condition="response.product.variants.size &gt; 0">
                 <set field="shopifyVariants" from="response.product.variants"/>
                 <log message="VARIANTS ${shopifyVariants}"/>
