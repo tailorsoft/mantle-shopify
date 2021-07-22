@@ -77,7 +77,7 @@
 
             <if condition="!productContent">
                  <set field="error" value="true"/>
-                 <message type="warning">The product ${productId}  does not have image associated, add one in Content Section</message>
+                 <message type="warning">The product ${productId}  does not have image associated, add one in Content section</message>
                  <return/>
             </if>
 
@@ -153,7 +153,7 @@
 
                         <if condition="featureList.size() == 0">
                             <set field="error" value="true"/>
-                            <message type="warning">The product associated ${assoc.toProductId}  must have at least one Features, add one in Features section </message>
+                            <message type="warning">The associated product ${assoc.toProductId}  must have at least one Features, add one in Features section </message>
                             <return/>
                         </if>
 
@@ -166,7 +166,7 @@
 
                         <if condition="!prodUPC">
                             <set field="error" value="true"/>
-                            <message type="warning">The product associated ${assoc.toProductId} does not have an identification, add one like UPC-A or SKU in the identification section</message>
+                            <message type="warning">The associated product ${assoc.toProductId} does not have an identification, add one like UPC-A or SKU in the Identification section</message>
                             <return/>
                         </if>
                        
