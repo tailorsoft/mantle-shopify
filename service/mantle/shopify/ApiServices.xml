@@ -108,7 +108,6 @@
                  <return/>
             </if>
 
-
             <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl" list="virtualProductfeatureList">
                 <econdition field-name="productId" from="productId"/>
                 <econdition field-name="fromDate" operator="is-not-null"/>
