@@ -869,7 +869,7 @@
             <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
                 <econdition field-name="orderId"  from="orderId"/>
                 <econdition field-name="itemTypeEnumId"  value="ItemProduct"/>
-                <econdition field-name="quantityCancelled"   operator="greater" value="0"/>
+                <econdition field-name="quantityCancelled"   operator="greater" from="0.0"/>
             </entity-find>
 
             <iterate list="orderItems" entry="item">
@@ -1008,7 +1008,7 @@
             <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
                 <econdition field-name="orderId"  from="orderId"/>
                 <econdition field-name="itemTypeEnumId"  value="ItemProduct"/>
-                <econdition field-name="quantity"   operator="greater" value="0"/>
+                <econdition field-name="quantity"   operator="greater" from="0.0"/>
             </entity-find>
         
             <iterate list="allShipmentPackageContentList" entry="item">
