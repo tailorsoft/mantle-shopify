@@ -846,7 +846,7 @@
     </service>
 
     <service verb="queue" noun="CancelAndCalculateRefundOrderSystemMessage">
-        <description>Service to calculate the refund</description>
+        <description>Service to cancel and calculate the refund</description>
         <in-parameters>
             <parameter name="orderId" required="true" />
         </in-parameters>
