@@ -650,8 +650,8 @@
             <!-- we need to find the available quantity for the current product -->
             <entity-find entity-name="mantle.product.asset.Asset" list="assetList">
                 <econdition field-name="productId"/>
-                <econdition field-name="quantityOnHandTotal" operator="greater" value="0"/>
-                <econdition field-name="availableToPromiseTotal" operator="greater" value="0"/>
+                <econdition field-name="quantityOnHandTotal" operator="greater" from="0.0"/>
+                <econdition field-name="availableToPromiseTotal" operator="greater" from="0.0"/>
                 <econdition field-name="assetTypeEnumId" value="AstTpInventory"/>
             </entity-find>
             
