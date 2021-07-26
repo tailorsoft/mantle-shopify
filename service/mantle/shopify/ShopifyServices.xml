@@ -123,6 +123,11 @@
                 <field-map field-name="settingTypeEnumId" value="ShopifyStoreId" />
             </entity-find-one>
 
+            <if condition="!productLocation">
+                <message type="warning">The Shopify Store Id and locationId have not been configured for this product, please contact the administrator to add one in ProductStoreSetting</message>
+                <return/>
+            </if>
+
             <set field="locationId" from="productLocation.settingValue" />
         </actions>
     </service>
