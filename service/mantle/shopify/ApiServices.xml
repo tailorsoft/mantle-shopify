@@ -405,10 +405,14 @@
                 <field-map field-name="productCategoryId"/>
             </entity-find-one>
             <if condition="!productCategory">
-                <set field="error" value="true"/>
                 <message type="warning">The product category ${productCategoryId} does not exist</message>
                 <return/>
-           </if>
+            </if>
+
+            <if condition="productCategory.pseudoId ==  productCategory.productCategoryId">
+                <message type="warning">The product category ${productCategoryId} already deleted</message>
+                <return/>
+            </if>
 
             <set field="shopifyCollectionId" from="productCategory.pseudoId"/>
 
@@ -426,7 +430,6 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
-
             <service-call name="update#mantle.product.category.ProductCategory" out-map="context" in-map="[productCategoryId:systemMessage.productCategoryId, pseudoId:'']"/>
 
             <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productCategoryMembers">
