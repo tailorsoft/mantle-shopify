@@ -395,36 +395,25 @@
         </actions>
     </service>
 
-    <service verb="get" noun="ShopifyCollectionData">
-        <in-parameters>
-            <parameter name="productCategoryId" required="true"/>
-        </in-parameters>
-        <out-parameters>
-            <parameter name="shopifyCollectionId"/>
-        </out-parameters>
-        <actions>
-            <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
-                <field-map field-name="productCategoryId"/>
-            </entity-find-one>
-            <set field="shopifyCollectionId" from="productCategory.pseudoId"/>
-        </actions>
-    </service>
-
     <service verb="queue" noun="DeleteCollectionSystemMessage">
         <in-parameters>
             <parameter name="productCategoryId" required="true"/>
         </in-parameters>
         <actions>
-            <service-call name="mantle.shopify.ApiServices.get#ShopifyCollectionData"
-                          in-map="[productCategoryId: productCategoryId]"
-                          out-map="context" />
+            
+            <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
+                <field-map field-name="productCategoryId"/>
+            </entity-find-one>
+            <if condition="!productCategory">
+                <set field="error" value="true"/>
+                <message type="warning">The product category ${productCategoryId} does not exist</message>
+                <return/>
+           </if>
 
-            <set field="idParam" from="shopifyCollectionId"/>
+            <set field="shopifyCollectionId" from="productCategory.pseudoId"/>
 
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection Id as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', systemMessageRemoteId:'DEMO_SHOPIFY_DELETE_COLLECTION_REMOTE',
-                            messageText:idParam, productCategoryId:productCategoryId, docSubType: 'deleteCollection']"/>
+                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', messageText:shopifyCollectionId, productCategoryId:productCategoryId, docSubType: 'deleteCollection']"/>
         </actions>
     </service>
 
