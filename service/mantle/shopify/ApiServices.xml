@@ -337,7 +337,7 @@
                 <message type="warning">The product category ${productCategoryId} does not exist</message>
                 <return/>
            </if>
-           <if condition="productCategory.pseudoId">
+           <if condition="productCategory.pseudoId != productCategory.productCategoryId">
                 <set field="error" value="true"/>
                 <message type="warning">The product category ${productCategoryId} already exist</message>
                 <return/>
