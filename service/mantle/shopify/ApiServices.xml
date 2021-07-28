@@ -458,17 +458,31 @@
         </in-parameters>
         <out-parameters>
             <parameter name="collectData"/>
+            <parameter name="error"/>
         </out-parameters>
         <actions>
             <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
                 <field-map field-name="productCategoryId" from="productCategoryId"/>
             </entity-find-one>
+            
+            <if condition="!productCategory">
+                <set field="error" value="true"/>
+                <message type="warning">The product category ${productCategoryId} does not exist</message>
+                <return/>
+            </if>
 
             <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
                 <field-map field-name="productId" from="productId"/>
                 <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
             </entity-find-one>
-            <set field="collectData" value="."/>
+
+            <if condition="!productIdentification">
+                <set field="error" value="true"/>
+                <message type="warning">The product ${productId} does not have a value in ProductIdentification entity</message>
+                <return/>
+            </if>
+
+            <set field="collectData" from="[:]"/>
             <if condition="productIdentification">
                 <script>
                     <![CDATA[
@@ -490,10 +504,12 @@
                           out-map="context" />
 
             <set field="json" from="groovy.json.JsonOutput.toJson([collect: collectData])"/>
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collect JSON as messageText/-->
+            
+            <if condition="error">
+                <return/>
+            </if>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyCreateCollectMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CREATE_COLLECT_REMOTE',
-                        messageText:json, productCategoryId:productCategoryId, productId:productId]"/>
+                          in-map="[systemMessageTypeId:'ShopifyCreateCollectMessage', messageText:json, productCategoryId:productCategoryId, productId:productId]"/>
         </actions>
     </service>
 
