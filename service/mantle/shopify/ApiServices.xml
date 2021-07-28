@@ -340,7 +340,7 @@
            </if>
            <if condition="productCategory.pseudoId != productCategory.productCategoryId">
                 <set field="error" value="true"/>
-                <message type="warning">The product category ${productCategoryId} already exist</message>
+                <message type="warning">The product category ${productCategoryId} already exists</message>
                 <return/>
            </if>
 
@@ -351,7 +351,7 @@
             <script>import groovy.json.JsonSlurper</script>
             <set field="shopifyCollectItems" from="[]"/>
             <!-- 
-                if the product category has members those member are added to current category
+                if the product category has members those members are added to current category
                 otherwise only the category is created
             -->
             <iterate list="productCategoryMembers" entry="productCategoryMember">
