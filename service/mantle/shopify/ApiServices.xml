@@ -399,7 +399,7 @@
             </if>
 
             <if condition="productCategory.pseudoId ==  productCategory.productCategoryId">
-                <message type="warning">The product category ${productCategoryId} already deleted</message>
+                <message type="warning">The product category ${productCategoryId} was already deleted</message>
                 <return/>
             </if>
 
