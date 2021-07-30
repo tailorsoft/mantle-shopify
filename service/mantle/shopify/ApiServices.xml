@@ -325,26 +325,40 @@
         </in-parameters>
         <out-parameters>
             <parameter name="productCategoryData"/>
+            <parameter name="error"/>
         </out-parameters>
         <actions>
             <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
                 <field-map field-name="productCategoryId"/>
             </entity-find-one>
+
+            <if condition="!productCategory">
+                <set field="error" value="true"/>
+                <message type="warning">The product category ${productCategoryId} does not exist</message>
+                <return/>
+           </if>
+           <if condition="productCategory.pseudoId != productCategory.productCategoryId">
+                <set field="error" value="true"/>
+                <message type="warning">The product category ${productCategoryId} already exists</message>
+                <return/>
+           </if>
+
             <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productCategoryMembers">
                 <econdition field-name="productCategoryId"/>
                 <econdition field-name="thruDate" from="null"/>
             </entity-find>
             <script>import groovy.json.JsonSlurper</script>
             <set field="shopifyCollectItems" from="[]"/>
+            <!-- 
+                if the product category has members those members are added to current category
+                otherwise only the category is created
+            -->
             <iterate list="productCategoryMembers" entry="productCategoryMember">
                 <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
                     <field-map field-name="productId" from="productCategoryMember.productId"/>
                     <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
                 </entity-find-one>
                 <if condition="productIdentification">
-                    <entity-find-one entity-name="mantle.product.Product" value-field="product">
-                        <field-map field-name="productId" from="productCategoryMember.productId"/>
-                    </entity-find-one>
                     <script>
                         <![CDATA[
                             shopifyCollectItems.add(new HashMap([product_id:productIdentification.idValue]))
@@ -370,11 +384,11 @@
                           out-map="context" />
 
             <set field="json" from="groovy.json.JsonOutput.toJson([custom_collection: productCategoryData])"/>
-
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
+            <if condition="error">
+                <return/>
+            </if>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyCreateCollectionMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CREATE_COLLECTION_REMOTE',
-                        messageText:json, productCategoryId:productCategoryId]"/>
+                          in-map="[systemMessageTypeId:'ShopifyCreateCollectionMessage', messageText:json, productCategoryId:productCategoryId]"/>
         </actions>
     </service>
 
