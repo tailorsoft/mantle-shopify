@@ -606,7 +606,7 @@
             </entity-find-one>
 
             <if condition="!productCategoryMember?.shopifyId">
-                <message type="warning">The collection that you want delete have not been created,pelase create one on Categories Section tab in  EditProduct screen</message>
+                <message type="warning">The collection does not exist</message>
                 <return/>
             </if>
             
