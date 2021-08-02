@@ -479,7 +479,7 @@
 
             <if condition="!productIdentification">
                 <set field="error" value="true"/>
-                <message type="warning">The product ${productId} does not have a Shopify id on the ProductIdentification entity</message>
+                <message type="warning">The product ${productId} must be a virtual product</message>
                 <return/>
             </if>
 
