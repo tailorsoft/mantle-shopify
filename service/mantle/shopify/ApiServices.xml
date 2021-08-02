@@ -604,11 +604,14 @@
                 <field-map field-name="thruDate" from="null"/>
             </entity-find-one>
 
+            <if condition="!productCategoryMember?.shopifyId">
+                <message type="warning">The collection does not exist</message>
+                <return/>
+            </if>
+            
             <set field="idParam" from="productCategoryMember.shopifyId"/>
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collect Id as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectMessage', systemMessageRemoteId:'DEMO_SHOPIFY_DELETE_COLLECT_REMOTE',
-                            messageText:idParam, productCategoryId:productCategoryId, productId:productId, docSubType: 'deleteCollect']"/>
+                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectMessage', messageText:idParam, productCategoryId:productCategoryId, productId:productId, docSubType: 'deleteCollect']"/>
         </actions>
     </service>
 
