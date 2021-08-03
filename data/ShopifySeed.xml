@@ -18,4 +18,22 @@
                                              sendServiceName="mantle.shopify.ApiServices.send#DeleteCollectSystemMessage" />
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyGetOrdersMessage" description="Get Shopify Orders SystemMessage Type"
                                              sendServiceName="mantle.shopify.ApiServices.send#GetOrdersSystemMessage" />
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifySetInventoryMessage" 
+                                              description="Update Shopify Inventory Level SystemMessage Type"
+                                              sendServiceName="mantle.shopify.ApiServices.send#SetInventorySystemMessage" />
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyUpdateCustomerMessage" 
+                                              description="Update Shopify Customer info SystemMessage Type"
+                                              sendServiceName="mantle.shopify.ApiServices.send#UpdateCustomerSystemMessage" />
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCancelOrderMessage" 
+                                              description="Cancel Shopify Order SystemMessage Type"
+                                              sendServiceName="mantle.shopify.ApiServices.send#CancelOrderSystemMessage" />
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCalculateRefundMessage" 
+                                              description="Calculate Refund Order SystemMessage Type"
+                                              sendServiceName="mantle.shopify.ApiServices.send#CancelAndCalculateRefundOrderSystemMessage" />
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCreateRefundMessage" 
+                                              description="Create Refund Order SystemMessage Type"
+                                              sendServiceName="mantle.shopify.ApiServices.send#CreateRefundSystemMessage" />
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCreateFulfillmentMessage" 
+                                              description="Create a fulfillment SystemMessage Type"
+                                              sendServiceName="mantle.shopify.ApiServices.send#CreateFulfillmentSystemMessage" />
 </entity-facade-xml>

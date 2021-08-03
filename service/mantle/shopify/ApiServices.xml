@@ -13,6 +13,13 @@
         </out-parameters>
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
+            <if condition="!systemMessage.systemMessageRemoteId">
+                <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote">
+                    <field-map field-name="systemMessageTypeId" from="systemMessage.systemMessageTypeId"/>
+                </entity-find-one>
+                <set field="systemMessage.systemMessageRemoteId" from="remote.systemMessageRemoteId"/>
+             </if>
+
             <set field="systemMessageType" from="systemMessage.'moqui.service.message.SystemMessageType'"/>
 
             <if condition="!systemMessage.systemMessageRemoteId">
@@ -29,19 +36,39 @@
                         systemMessageTypeId:systemMessage.systemMessageTypeId, systemMessageRemoteId:systemMessage.systemMessageRemoteId], false)
                 logger.info("SENDING MESSAGE TEXT ${systemMessage.messageText}")
                 org.moqui.util.RestClient restClient = ec.service.rest()
-                if(docSubType.contains("delete")){
+                if (docSubType.contains("delete")) {
                     urlExpand = urlExpand + systemMessage.messageText + ".json"
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.DELETE).uri(urlExpand)
-                }else if(docSubType.contains("get")){
+                } else if (docSubType.contains("get")) {
                     urlExpand = urlExpand + systemMessage.messageText
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.GET).uri(urlExpand)
-                }else{
+                } else if (docSubType.contains("put")) {
+                    if (systemMessage.docSubControl?.contains('putCustomer')) {
+                        urlExpand = urlExpand + systemMessage.docControl + ".json"
+                    }
+                    logger.info("URL EXPAND ${urlExpand}")
+                    restClient = ec.service.rest().method(org.moqui.util.RestClient.PUT).uri(urlExpand)
+                            .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
+                } else {
+                    if (systemMessage.docSubControl?.contains('cancelOrder')) {
+                        urlExpand = urlExpand + systemMessage.docControl + "/cancel.json"
+                    }
+                    if (systemMessage.docSubControl?.contains('calculateRefund')) {
+                        urlExpand = urlExpand + systemMessage.docControl + "/refunds/calculate.json"
+                    }
+                    if (systemMessage.docSubControl?.contains('createRefund')) {
+                        urlExpand = urlExpand + systemMessage.docControl + "/refunds.json"
+                    }
+                    if (systemMessage.docSubControl?.contains('createFulfillment')) {
+                        urlExpand = urlExpand + systemMessage.docControl + "/fulfillments.json"
+                    }
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.POST).uri(urlExpand)
                             .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
                 }
+
                 restClient.basicAuth(systemMessageRemote.username,systemMessageRemote.password)
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
                 if (restResponse.statusCode < 200 || restResponse.statusCode >= 300) {
@@ -62,6 +89,8 @@
         </in-parameters>
         <out-parameters>
             <parameter name="productData"/>
+            <parameter name="product"/>
+            <parameter name="error"/>
         </out-parameters>
         <actions>
             <script>import groovy.json.JsonSlurper</script>
@@ -72,14 +101,45 @@
                 <field-map field-name="productId"/>
                 <field-map field-name="productContentTypeEnumId" value="PcntImageDetail"/>
             </entity-find-one>
+
+            <if condition="!productContent">
+                 <set field="error" value="true"/>
+                 <message type="warning">The product ${productId}  does not have image associated, add one in Content section</message>
+                 <return/>
+            </if>
+
             <set field="images" from="[]"/>
             <set field="prodVariants" from="[]"/>
             <set field="prodOptions" from="[]"/>
             <set field="prodOptionsMap" from="new HashMap()"/>
-            <log message="DOMAIN ${storeDomain}"/>
-            <!-- HOW TO GET THIS ROUTE WITHOUT BURNED IT ${storeDomain} -->
+
+            <service-call name="mantle.shopify.ShopifyServices.get#LocationAndStoreId" out-map="context"   in-map="[systemMessageTypeId:'ShopifyProductMessage']"/>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore"/>
+            <entity-find entity-name="mantle.product.store.ProductStoreSetting" list="productImageLocationList">
+                <date-filter/>
+                <econdition field-name="productStoreId" from="productStoreId"/>
+                <econdition field-name="settingTypeEnumId" value="PsstProductImageUrl"/>
+            </entity-find>
+
+            <if condition="productImageLocationList.size()>0">
+                <then>
+                    <set field="productImageLocation" from="productImageLocationList.first()"/>
+                </then>
+                <else>
+                    <set field="error" value="true"/>
+                    <message type="warning">The product ${productId}  does not have url configured to display the image, please contact the administrator to setup one</message>
+                    <return/>
+                </else>
+            </if>
+
+            <set field="storeDomain" from ="productStore.storeDomain"/>
+            <set field="productContentId" from ="productContent.productContentId"/>
+
+            <set field="imageSettings" from="[storeDomain:storeDomain, productContentId:productContentId, productId:productId]"/>
+            <set field="imageUrl" from="ec.resource.expand(productImageLocation.settingValue, null, imageSettings, false)"/>
+
             <if condition="productContent">
-                <set field="image" from="[src: 'https://www.rcherbals.com/store/content/productImage/' + productContent.productContentId]"/>
+                <set field="image" from="[src: imageUrl]"/>
                 <script>images.add(image)</script>
             </if>
             <if condition="product.productTypeEnumId == 'PtVirtual'">
@@ -90,6 +150,13 @@
                         <econdition field-name="fromDate" operator="is-not-null"/>
                         <econdition field-name="thruDate" operator="is-null"/>
                     </entity-find>
+
+                    <if condition="assocList.size() == 0">
+                        <set field="error" value="true"/>
+                        <message type="warning">The product ${productId} does not have a product associated, add one kind of 'Product Variant' in the Associated section</message>
+                        <return/>
+                    </if>
+
                     <iterate list="assocList" entry="assoc">
                         <!-- Each product associated has at least one feature so we get all possible features /-->
                         <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl" list="featureList">
@@ -98,22 +165,26 @@
                             <econdition field-name="thruDate" operator="is-null"/>
                             <order-by field-name="productFeatureDescription"/>
                         </entity-find>
-                        <entity-find entity-name="mantle.product.asset.AssetSummaryView" list="assetList">
-                            <econdition field-name="productId" from="assoc.toProductId"/>
-                        </entity-find>
-                        <set field="avilableToPromiseTotal" from="assetList*.availableToPromiseTotal.sum()"/>
-                        <entity-find-one entity-name="mantle.product.ProductDimension" value-field="weight">
-                            <field-map field-name="productId" from="assoc.toProductId"/>
-                            <field-map field-name="dimensionTypeId" value="ShippingWeight"/>
-                        </entity-find-one>
-                        <entity-find-one entity-name="moqui.basic.Uom" value-field="weightUnit">
-                            <field-map field-name="uomId" from="weight.valueUomId"/>
-                        </entity-find-one>
+
+                        <if condition="featureList.size() == 0">
+                            <set field="error" value="true"/>
+                            <message type="warning">The associated product ${assoc.toProductId}  must have at least one Features, add one in Features section </message>
+                            <return/>
+                        </if>
+
                         <service-call name="mantle.product.PriceServices.get#ProductPrice" out-map="priceSet" in-map="[productId:assoc.toProductId]"/>
+
                         <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="prodUPC">
                             <field-map field-name="productId" from="assoc.toProductId"/>
                             <field-map field-name="productIdTypeEnumId" value="PidtUpca"/>
                         </entity-find-one>
+
+                        <if condition="!prodUPC">
+                            <set field="error" value="true"/>
+                            <message type="warning">The associated product ${assoc.toProductId} does not have an identification, add one like UPC-A or SKU in the Identification section</message>
+                            <return/>
+                        </if>
+
                         <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="prodSKU">
                             <field-map field-name="productId" from="assoc.toProductId"/>
                             <field-map field-name="productIdTypeEnumId" value="PidtSku"/>
@@ -171,8 +242,7 @@
                         }
                     ]]></script>
                     <log message="OPTIONS ${prodOptions}"/>
-                    <log message="VARIANTS ${prodVariants}"/>
-                    <set field="productData" from="[title: product.productName,
+            <set field="productData" from="[title: product.productName,
                                         body_html: '',
                                         vendor: '',
                                         images: images,
@@ -194,16 +264,28 @@
                           in-map="[productId: productId, productStoreId: productStoreId]"
                           out-map="context" />
 
-            <if condition="productData"><then>
-                <set field="json" from="groovy.json.JsonOutput.toJson([product: productData])"/>
-                <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the product JSON as messageText/-->
-                <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                              in-map="[systemMessageTypeId:'ShopifyProductMessage', systemMessageRemoteId:'DEMO_SHOPIFY_PRODUCTS_REMOTE',
-                        messageText:json, productId:productId]"/>
+            <set field="json" from="groovy.json.JsonOutput.toJson([product: productData])"/>
 
-            </then><else>
-                <return error="ERROR: PRODUCT DATA NOT FOUND"/>
-            </else></if>
+            <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productForCreate">
+                <field-map field-name="productId" />
+                <field-map field-name="productIdTypeEnumId"  value="PidtShopify"/>
+            </entity-find-one>
+
+            <if condition="productForCreate">
+                <message type="warning">The product ${productId}  already exist</message>
+                <return/>
+            </if>
+
+            <if condition="product.productTypeEnumId != 'PtVirtual' ">
+                <message type="warning">The product ${productId}  is not a virtual product</message>
+                <return/>
+            </if>
+
+            <if condition="error">
+                <return/>
+            </if>
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                    in-map="[systemMessageTypeId:'ShopifyProductMessage', messageText:json, productId:productId]"/>
         </actions>
     </service>
 
@@ -216,8 +298,10 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
+
             <if condition="response.product.variants.size &gt; 0">
                 <set field="shopifyVariants" from="response.product.variants"/>
+                <log message="VARIANTS ${shopifyVariants}"/>
                 <iterate list="shopifyVariants" entry="shopifyVariant">
                     <entity-find entity-name="mantle.product.ProductIdentification" list="prodUPCs">
                         <econdition field-name="idValue" from="shopifyVariant.barcode"/>
@@ -237,26 +321,40 @@
         </in-parameters>
         <out-parameters>
             <parameter name="productCategoryData"/>
+            <parameter name="error"/>
         </out-parameters>
         <actions>
             <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
                 <field-map field-name="productCategoryId"/>
             </entity-find-one>
+
+            <if condition="!productCategory">
+                <set field="error" value="true"/>
+                <message type="warning">The product category ${productCategoryId} does not exist</message>
+                <return/>
+           </if>
+           <if condition="productCategory.pseudoId != productCategory.productCategoryId">
+                <set field="error" value="true"/>
+                <message type="warning">The product category ${productCategoryId} already exists</message>
+                <return/>
+           </if>
+
             <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productCategoryMembers">
                 <econdition field-name="productCategoryId"/>
                 <econdition field-name="thruDate" from="null"/>
             </entity-find>
             <script>import groovy.json.JsonSlurper</script>
             <set field="shopifyCollectItems" from="[]"/>
+            <!--
+                if the product category has members those members are added to current category
+                otherwise only the category is created
+            -->
             <iterate list="productCategoryMembers" entry="productCategoryMember">
                 <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
                     <field-map field-name="productId" from="productCategoryMember.productId"/>
                     <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
                 </entity-find-one>
                 <if condition="productIdentification">
-                    <entity-find-one entity-name="mantle.product.Product" value-field="product">
-                        <field-map field-name="productId" from="productCategoryMember.productId"/>
-                    </entity-find-one>
                     <script>
                         <![CDATA[
                             shopifyCollectItems.add(new HashMap([product_id:productIdentification.idValue]))
@@ -282,17 +380,17 @@
                           out-map="context" />
 
             <set field="json" from="groovy.json.JsonOutput.toJson([custom_collection: productCategoryData])"/>
-
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection JSON as messageText/-->
+            <if condition="error">
+                <return/>
+            </if>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyCreateCollectionMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CREATE_COLLECTION_REMOTE',
-                        messageText:json, productCategoryId:productCategoryId]"/>
+                          in-map="[systemMessageTypeId:'ShopifyCreateCollectionMessage', messageText:json, productCategoryId:productCategoryId]"/>
         </actions>
     </service>
 
     <service verb="send" noun="CreateCollectionSystemMessage">
         <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
-        <in-parameters>ftytgytguv967tf     vv8967tcv
+        <in-parameters>
             <parameter name="systemMessageId" required="true"/>
         </in-parameters>
         <actions>
@@ -312,16 +410,24 @@
             <parameter name="productCategoryId" required="true"/>
         </in-parameters>
         <actions>
-                                <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
+
+            <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
                 <field-map field-name="productCategoryId"/>
             </entity-find-one>
+            <if condition="!productCategory">
+                <message type="warning">The product category ${productCategoryId} does not exist</message>
+                <return/>
+            </if>
 
-            <set field="idParam" from="productCategory.pseudoId"/>
+            <if condition="productCategory.pseudoId ==  productCategory.productCategoryId">
+                <message type="warning">The product category ${productCategoryId} was already deleted</message>
+                <return/>
+            </if>
 
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collection Id as messageText/-->
+            <set field="shopifyCollectionId" from="productCategory.pseudoId"/>
+
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', systemMessageRemoteId:'DEMO_SHOPIFY_DELETE_COLLECTION_REMOTE',
-                            messageText:idParam, productCategoryId:productCategoryId, docSubType: 'deleteCollection']"/>
+                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', messageText:shopifyCollectionId, productCategoryId:productCategoryId, docSubType: 'deleteCollection']"/>
         </actions>
     </service>
 
@@ -334,16 +440,15 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
-
             <service-call name="update#mantle.product.category.ProductCategory" out-map="context" in-map="[productCategoryId:systemMessage.productCategoryId, pseudoId:'']"/>
 
             <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productCategoryMembers">
-                <econdition field-name="productCategoryId" from="systemMessage.productCategoryId"/>
+                <econdition field-name="productCategoryId"/>
                 <econdition field-name="thruDate" from="null"/>
             </entity-find>
 
             <iterate list="productCategoryMembers" entry="productCategoryMember">
-                <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="productCategoryMember + [shopifyId:'']"/>
+                <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="productCategoryMember + [pseudoId:'']"/>
             </iterate>
         </actions>
     </service>
@@ -355,17 +460,48 @@
         </in-parameters>
         <out-parameters>
             <parameter name="collectData"/>
+            <parameter name="error"/>
         </out-parameters>
         <actions>
             <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="productCategory">
                 <field-map field-name="productCategoryId" from="productCategoryId"/>
             </entity-find-one>
 
+            <if condition="!productCategory">
+                <set field="error" value="true"/>
+                <message type="warning">The product category ${productCategoryId} does not exist</message>
+                <return/>
+            </if>
+            <if condition="productCategory.pseudoId == productCategory.productCategoryId">
+                <set field="error" value="true"/>
+                <message type="warning">The product category ${productCategoryId} does not have shopifyId</message>
+                <return/>
+            </if>
+
             <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
                 <field-map field-name="productId" from="productId"/>
                 <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
             </entity-find-one>
-            <set field="collectData" value="."/>
+
+            <if condition="!productIdentification">
+                <set field="error" value="true"/>
+                <message type="warning">The product ${productId} must be a virtual product</message>
+                <return/>
+            </if>
+
+            <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productCategoryMembers">
+                <econdition field-name="productCategoryId" from="productCategoryId"/>
+                <econdition field-name="productId" from="productId"/>
+                <econdition field-name="thruDate" from="null"/>
+            </entity-find>
+
+            <if condition="productCategoryMembers.size() == 0">
+                <set field="error" value="true"/>
+                <message type="warning">The product ${productId} does not have this category ${productCategoryId} setup , please setup it on Categories Section tab in  EditProduct screen</message>
+                <return/>
+            </if>
+
+            <set field="collectData" from="[:]"/>
             <if condition="productIdentification">
                 <script>
                     <![CDATA[
@@ -387,10 +523,12 @@
                           out-map="context" />
 
             <set field="json" from="groovy.json.JsonOutput.toJson([collect: collectData])"/>
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collect JSON as messageText/-->
+
+            <if condition="error">
+                <return/>
+            </if>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyCreateCollectMessage', systemMessageRemoteId:'DEMO_SHOPIFY_CREATE_COLLECT_REMOTE',
-                        messageText:json, productCategoryId:productCategoryId, productId:productId]"/>
+                          in-map="[systemMessageTypeId:'ShopifyCreateCollectMessage', messageText:json, productCategoryId:productCategoryId, productId:productId]"/>
         </actions>
     </service>
 
@@ -446,16 +584,16 @@
                 <econdition field-name="thruDate" from="null"/>
             </entity-find>
 
+            <set field="productCategoryMember" from="productCategoryMembers.first()"/>
+
             <iterate list="productCategoryMembers" entry="productCategoryMember">
                 <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
                     <field-map field-name="productId" from="productCategoryMember.productId"/>
                     <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
                 </entity-find-one>
-                <if condition="productIdentification">
-                    <set field="collect" from="response.collects.find{it.product_id.toString().equals(productIdentification.idValue.toString())}"/>
-                    <if condition="collect">
-                        <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, shopifyId:collect.id]"/>
-                    </if>
+                <set field="collect" from="response.collects.find{it.product_id.toString().equals(productIdentification.idValue.toString())}"/>
+                <if condition="collect">
+                    <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, shopifyId:collect.id]"/>
                 </if>
             </iterate>
         </actions>
@@ -473,11 +611,14 @@
                 <field-map field-name="thruDate" from="null"/>
             </entity-find-one>
 
+            <if condition="!productCategoryMember?.shopifyId">
+                <message type="warning">The collection does not exist</message>
+                <return/>
+            </if>
+
             <set field="idParam" from="productCategoryMember.shopifyId"/>
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collect Id as messageText/-->
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectMessage', systemMessageRemoteId:'DEMO_SHOPIFY_DELETE_COLLECT_REMOTE',
-                            messageText:idParam, productCategoryId:productCategoryId, productId:productId, docSubType: 'deleteCollect']"/>
+                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectMessage', messageText:idParam, productCategoryId:productCategoryId, productId:productId, docSubType: 'deleteCollect']"/>
         </actions>
     </service>
 
@@ -496,7 +637,7 @@
                 <field-map field-name="productId" from="systemMessage.productId"/>
                 <field-map field-name="thruDate" from="null"/>
             </entity-find-one>
-            <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, thruDate:ec.user.nowTimestamp, shopifyId:'']"/>
+            <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, shopifyId:'']"/>
         </actions>
     </service>
 
@@ -786,6 +927,510 @@
                     </if>
                 </else></if>
             </iterate>
+        </actions>
+    </service>
+
+    <service verb="queue" noun="SetInventorySystemMessage">
+        <description>Service to update the quantity available in stock for a product</description>
+        <in-parameters>
+            <parameter name="productId" required="true"/>
+        </in-parameters>
+        <actions>
+
+            <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="shopifyInvenotoryItem">
+                <field-map field-name="productId" from="productId"/>
+                <field-map field-name="productIdTypeEnumId" value="PidtInventoryItemShopify"/>
+            </entity-find-one>
+
+            <if condition="!shopifyInvenotoryItem">
+                <return error="true"
+                        message="The productId ${productId} does not exist"/>
+            </if>
+
+            <set field="inventoryItemId" from="shopifyInvenotoryItem.idValue"/>
+
+            <!-- get the store id -->
+            <service-call name="mantle.shopify.ShopifyServices.get#LocationAndStoreId" out-map="context"   in-map="[systemMessageTypeId:'ShopifySetInventoryMessage']"/>
+
+            <!-- we need to find the available quantity for the current product -->
+            <entity-find entity-name="mantle.product.asset.Asset" list="assetList">
+                <econdition field-name="productId"/>
+                <econdition field-name="quantityOnHandTotal" operator="greater" from="0.0"/>
+                <econdition field-name="availableToPromiseTotal" operator="greater" from="0.0"/>
+                <econdition field-name="assetTypeEnumId" value="AstTpInventory"/>
+            </entity-find>
+
+            <set field="avilableToPromiseList" from="assetList*.availableToPromiseTotal"/>
+            <set field="available" from="avilableToPromiseList.findAll{it != null}.sum()?:0"/>
+
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([
+                location_id:locationId,
+                inventory_item_id:inventoryItemId,
+                available:available
+                ])"/>
+
+                <!--the api is called for update the available quantity-->
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                          in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', messageText:messageText, docSubType:'upDateInventoryLevel']"/>
+        </actions>
+    </service>
+
+    <service verb="send" noun="SetInventorySystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
+        </actions>
+    </service>
+
+    <service verb="queue" noun="UpdateCustomerSystemMessage">
+        <description>Service to updte customer</description>
+        <in-parameters>
+            <parameter name="partyId" required="true" />
+        </in-parameters>
+        <actions>
+
+            <set field="customer" from="[:]"/>
+            <set field="address" from="[:]"/>
+            <set field="addressList" from="[]"/>
+
+            <entity-find-one entity-name="mantle.party.Person" value-field="person">
+                <field-map field-name="partyId" />
+            </entity-find-one>
+
+            <entity-find-one entity-name="mantle.party.Party" value-field="party">
+                <field-map field-name="partyId" />
+            </entity-find-one>
+
+            <if condition="!person">
+                <return error="true" message="The customer ${partyId} does not exist" />
+            </if>
+
+            <entity-find entity-name="mantle.party.contact.PartyContactMech" list="userEmailIdList">
+                <econdition field-name="partyId" />
+                <econdition field-name="contactMechPurposeId" value="EmailPrimary" />
+                <date-filter/>
+                <order-by field-name="fromDate"/>
+            </entity-find>
+
+            <set field="contactMechId" from="userEmailIdList.size()>0 ? userEmailIdList.first().contactMechId : null"/>
+            <entity-find-one entity-name="mantle.party.contact.ContactMech" value-field="email">
+                <field-map field-name="contactMechId"/>
+            </entity-find-one>
+
+            <entity-find entity-name="mantle.party.contact.PartyContactMech" list="userPhoneIdList">
+                <econdition field-name="partyId" />
+                <econdition field-name="contactMechPurposeId" value="PhonePrimary" />
+                <date-filter/>
+                <order-by field-name="fromDate"/>
+            </entity-find>
+
+            <set field="phoneContactMechId" from="userPhoneIdList.size() > 0 ? userPhoneIdList.first().contactMechId :  null"/>
+
+            <entity-find-one entity-name="mantle.party.contact.TelecomNumber" value-field="userPhoneNumber">
+                <field-map field-name="contactMechId" from="phoneContactMechId"/>
+            </entity-find-one>
+
+            <entity-find entity-name="mantle.party.contact.ContactMechPurpose" list="purposeAddressIdList">
+                <econdition field-name="contactMechTypeEnumId" value="CmtPostalAddress"/>
+            </entity-find>
+            <set field="purposeAddressIds" from="purposeAddressIdList*.contactMechPurposeId"/>
+
+            <entity-find entity-name="mantle.party.contact.PartyContactMech" list="customerAddressList">
+                <econdition field-name="partyId" />
+                <econdition field-name="contactMechPurposeId" operator="in" from="purposeAddressIds" />
+                <date-filter/>
+            </entity-find>
+
+            <iterate list="customerAddressList" entry="customerAddressEntry">
+                <entity-find-one entity-name="mantle.party.contact.PartyContactMechPostalAddress" value-field="customerAddress">
+                    <field-map field-name="contactMechId" from="customerAddressEntry.contactMechId"/>
+                </entity-find-one>
+
+                <set field="firstAndLasNameCustomerAddres" from="customerAddress?.toName ? customerAddress?.toName.split(' ').findAll { it != ''} : ''"/>
+                <set field="firstNameAtAddress" from="firstAndLasNameCustomerAddres[0]"/>
+                <set field="lastNameAtAddress" from="firstAndLasNameCustomerAddres.size() >=1 ? firstAndLasNameCustomerAddres[1] : ''"/>
+
+                <entity-find-one entity-name="moqui.basic.Geo" value-field="geoContry">
+                    <field-map field-name="geoId" from="customerAddress?.countryGeoId"/>
+                </entity-find-one>
+
+                <entity-find-one entity-name="mantle.party.contact.TelecomNumber" value-field="userAddressPhoneNumber">
+                    <field-map field-name="contactMechId" from="customerAddress?.telecomContactMechId"/>
+                </entity-find-one>
+
+                <set field="addressPhone" from="getPhoneFormat(userAddressPhoneNumber)"/>
+                <set field="address.id" from="customerAddress?.shopifyAddressId"/>
+                <set field="address.customer_id" from="party.shopifyCustomerId"/>
+                <set field="address.first_name" from="firstNameAtAddress"/>
+                <set field="address.last_name" from="lastNameAtAddress"/>
+                <set field="address.address1" from="customerAddress?.address1"/>
+                <set field="address.address2" from="customerAddress?.address2"/>
+                <set field="address.city" from="customerAddress?.city"/>
+                <set field="address.province" from="customerAddress?.stateGeoName"/>
+                <set field="address.country" from="geoContry?.geoName"/>
+                <set field="address.zip" from="customerAddress?.postalCode"/>
+                <set field="address.phone" from="addressPhone"/>
+                <set field="address.province_code" from="customerAddress?.stateGeoCodeAlpha2"/>
+                <set field="address.country_code" from="geoContry?.geoCodeAlpha2"/>
+                <set field="address.country_name" from="geoContry?.geoName"/>
+                <script>
+                    addressList.add(address)
+                    address = [:]
+                </script>
+            </iterate>
+
+            <if condition="!party.shopifyCustomerId">
+                <message type="warning">The customer ${partyId} does not have shopifyId, please contact the admin</message>
+            </if>
+            <if condition="!customerAddress?.shopifyAddressId">
+                <message type="warning">The customer ${partyId} does not have shopifyAddressId, please contact the admin</message>
+            </if>
+
+            <script>
+                def getPhoneFormat(phoneNumber){
+                    def phone = null
+                    if (phoneNumber?.countryCode) {
+                            phone = phoneNumber.countryCode
+                    }
+                    if (phoneNumber?.areaCode) {
+                            phone = phone + phoneNumber.areaCode
+                    }
+                    if (phoneNumber?.contactNumber) {
+                            phone = phone + phoneNumber.contactNumber.replace('-','')
+                    }
+                    if (phone) {
+                            phone = '+' +phone
+                    }
+                    return phone
+                }
+            </script>
+            <set field="phone" from="getPhoneFormat(userPhoneNumber)"/>
+            <set field="customer.id" from="party.shopifyCustomerId"/>
+            <set field="customer.email" from="email?.infoString"/>
+            <set field="customer.first_name" from="person?.firstName"/>
+            <set field="customer.last_name" from="person?.lastName"/>
+            <set field="customer.phone" from="phone"/>
+            <set field="customer.addresses" from="addressList"/>
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([customer:customer])"/>
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+            in-map="[systemMessageTypeId:'ShopifyUpdateCustomerMessage', messageText:messageText, docSubType:'putCustomer', docSubControl:'putCustomer', docControl:customer.id]"/>
+        </actions>
+    </service>
+
+    <service verb="send" noun="UpdateCustomerSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
+
+            <set field="addresses" from="response.customer.addresses"/>
+            <iterate list="addresses" entry="customerAddress">
+                <entity-find-one entity-name="mantle.party.contact.PostalAddress" value-field="postalAddres" for-update="true">
+                    <field-map field-name="toName" from="customerAddress.name"/>
+                    <field-map field-name="address1" from="customerAddress.address1"/>
+                    <field-map field-name="address2" from="customerAddress.address2"/>
+                    <field-map field-name="city" from="customerAddress.city"/>
+                    <field-map field-name="postalCode" from="customerAddress.zip"/>
+                </entity-find-one>
+                <if condition="postalAddres">
+                    <set field="postalAddres.shopifyDefaultAddress" from="customerAddress.default"/>
+                    <set field="postalAddres.shopifyAddressId" from="customerAddress.id"/>
+                    <entity-update value-field="postalAddres"/>
+                </if>
+            </iterate>
+        </actions>
+    </service>
+
+    <service verb="queue" noun="CancelAndCalculateRefundOrderSystemMessage">
+        <description>Service to cancel and calculate the refund</description>
+        <in-parameters>
+            <parameter name="orderId" required="true" />
+        </in-parameters>
+        <actions>
+
+            <set field="refund_line_items" from="[]"/>
+            <set field="refund" from="[:]"/>
+            <set field="shipping" from="[:]"/>
+
+            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader">
+                <field-map field-name="orderId" />
+            </entity-find-one>
+            <!-- The order must be exist to continue, otherwise a message error is generated-->
+            <if condition="!orderHeader">
+                <return error="true" message="The order ${orderId} does not exist" />
+            </if>
+            <if condition="!orderHeader.externalId">
+                <return error="true" message="the order ${orderId} does not have externalId, please contact the admin" />
+            </if>
+            <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
+                <econdition field-name="orderId"  from="orderId"/>
+                <econdition field-name="itemTypeEnumId"  value="ItemProduct"/>
+                <econdition field-name="quantityCancelled"   operator="greater" from="0.0"/>
+            </entity-find>
+
+            <iterate list="orderItems" entry="item">
+                <script>
+
+                    def items = [:]
+                    items.line_item_id = item.externalItemSeqId
+                    items.quantity = item.quantityCancelled
+                    items.restock_type = 'cancel'
+                    refund_line_items.add(items)
+                </script>
+            </iterate>
+
+            <set field="externalId" from="orderHeader.externalId" />
+            <set field="currencyUomId" from="orderHeader.currencyUomId" />
+            <set field="shipping.full_refund" value="true"/>
+            <set field="refund.shipping" from="shipping"/>
+            <set field="refund.currency" from="currencyUomId"/>
+            <set field="refund.refund_line_items" from="refund_line_items"/>
+            <set field="refund.orderStatus" from="orderHeader.statusId" />
+            <set field="refund.orderId" from="externalId" />
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
+
+            <!-- The service to canculate refund order is called only if exist items to cancel -->
+            <if condition="refund_line_items">
+                <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                in-map="[systemMessageTypeId:'ShopifyCalculateRefundMessage', messageText:messageText, docSubControl:'calculateRefund', docControl:externalId]"/>
+            </if>
+        </actions>
+    </service>
+
+    <service verb="send" noun="CancelAndCalculateRefundOrderSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
+
+            <script>
+                import groovy.json.JsonSlurper
+                def jsonSlurper = new JsonSlurper()
+                def order = jsonSlurper.parseText(systemMessage.messageText)
+            </script>
+
+            <set field="orderStatus" from="order.refund.orderStatus"/>
+            <set field="orderId" from="order.refund.orderId"/>
+            <set field="refund" from="[:]"/>
+            <set field="shipping" from="[:]"/>
+            <set field="refund_line_items" from="[]"/>
+            <set field="transactions" from="[]"/>
+
+            <iterate list="response.refund.refund_line_items" entry="item">
+                <script>
+                    def items = [:]
+                    items.line_item_id = item.line_item_id
+                    items.quantity = item.quantity
+                    items.restock_type = item.restock_type
+                    items.location_id =  item.location_id
+                    refund_line_items.add(items)
+                </script>
+            </iterate>
+
+            <iterate list="response.refund.transactions" entry="transaction">
+                <script>
+                    def tx = [:]
+                    tx.parent_id = transaction.parent_id
+                    tx.amount = transaction.amount
+                    tx.kind = 'refund'
+                    tx.gateway =  transaction.gateway
+                    transactions.add(tx)
+                </script>
+            </iterate>
+
+            <set field="shipping.full_refund" value="true"/>
+            <set field="refund.currency" from="response.refund.currency"/>
+            <set field="refund.shipping" from="shipping"/>
+            <set field="refund.refund_line_items" from="refund_line_items"/>
+            <set field="refund.transactions" from="transactions"/>
+            <set field="externalId" from="orderId" />
+
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
+
+            <if condition="orderStatus == 'OrderCompleted'" >
+                <then>
+                    <!--if the order has some fulfilled item, it's necessary to refund the cancel item -->
+                    <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', messageText:messageText,docSubControl:'createRefund', docControl:externalId]"/>
+                </then>
+                <else>
+                    <!-- if the order was cancelled by the user, its necessary to cancel all it's items -->
+                    <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', messageText:messageText, docSubControl:'cancelOrder', docControl:externalId]"/>
+                </else>
+            </if>
+        </actions>
+    </service>
+
+
+    <service verb="queue" noun="CreateFulfillmentSystemMessage">
+        <description>Service to register a fulfillment for a order</description>
+        <in-parameters>
+            <parameter name="shipmentId" required="true" />
+        </in-parameters>
+        <actions>
+            <set field="line_items" from="[]"/>
+            <set field="fulfillment" from="[:]"/>
+
+            <entity-find-one entity-name="mantle.shipment.Shipment" value-field="shipment">
+                <field-map field-name="shipmentId" />
+            </entity-find-one>
+            <!--The shipment must be exist to continue, otherwise a message error is generated-->
+            <if condition="!shipment">
+                <return error="true" message="The shipment ${shipment} does not exist" />
+            </if>
+
+            <if condition="shipment.statusId != 'ShipShipped'">
+                <return error="true" message="The shipment ${shipmentId} must be in status Shipped to register a fulfillment "/>
+            </if>
+
+            <!-- get the store id -->
+            <service-call name="mantle.shopify.ShopifyServices.get#LocationAndStoreId" out-map="context"   in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage']"/>
+            <service-call name="mantle.shipment.ShipmentInfoServices.get#ShipmentDisplayInfo" in-map="[shipmentId:shipmentId]" out-map="context"/>
+
+            <set field = "orderId" from="shipmentItemSourceList.first().orderId"/>
+            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader">
+                <field-map field-name="orderId" />
+            </entity-find-one>
+
+            <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
+                <econdition field-name="orderId"  from="orderId"/>
+                <econdition field-name="itemTypeEnumId"  value="ItemProduct"/>
+                <econdition field-name="quantity"   operator="greater" from="0.0"/>
+            </entity-find>
+
+            <iterate list="allShipmentPackageContentList" entry="item">
+                <script>
+                    def productTemp = orderItems.find{it.productId == item.productId}
+                    def items = [:]
+                    items.id = productTemp.externalItemSeqId
+                    items.quantity = item.quantity
+                    line_items.add(items)
+                </script>
+            </iterate>
+
+            <set field="externalId" from="orderHeader.externalId" />
+            <set field="fulfillment.location_id" from="locationId" />
+            <set field="fulfillment.tracking_number" from="packageRouteSegList[0]?.trackingCode" />
+            <set field="fulfillment.tracking_company" from="curCarrierDetail?.shopifyTrackingCompany" />
+            <set field="fulfillment.line_items" from="line_items" />
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([fulfillment:fulfillment])"/>
+
+            <!-- The service to create fulfillment is called only if  there are items were shipped -->
+            <if condition="line_items">
+                <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage', messageText:messageText, docSubControl:'createFulfillment', docControl:externalId]"/>
+            </if>
+        </actions>
+    </service>
+
+    <service verb="send" noun="CreateFulfillmentSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
+
+            <script>
+                import groovy.json.JsonSlurper
+                def jsonSlurper = new JsonSlurper()
+                def order = jsonSlurper.parseText(systemMessage.messageText)
+            </script>
+
+            <set field="orderStatus" from="order.refund.orderStatus"/>
+            <set field="orderId" from="order.refund.orderId"/>
+            <set field="refund" from="[:]"/>
+            <set field="shipping" from="[:]"/>
+            <set field="refund_line_items" from="[]"/>
+            <set field="transactions" from="[]"/>
+
+            <iterate list="response.refund.refund_line_items" entry="item">
+                <script>
+                    def items = [:]
+                    items.line_item_id = item.line_item_id
+                    items.quantity = item.quantity
+                    items.restock_type = item.restock_type
+                    items.location_id =  item.location_id
+                    refund_line_items.add(items)
+                </script>
+            </iterate>
+
+            <iterate list="response.refund.transactions" entry="transaction">
+                <script>
+                    def tx = [:]
+                    tx.parent_id = transaction.parent_id
+                    tx.amount = transaction.amount
+                    tx.kind = 'refund'
+                    tx.gateway =  transaction.gateway
+                    transactions.add(tx)
+                </script>
+            </iterate>
+
+            <set field="shipping.full_refund" value="true"/>
+            <set field="refund.currency" from="response.refund.currency"/>
+            <set field="refund.shipping" from="shipping"/>
+            <set field="refund.refund_line_items" from="refund_line_items"/>
+            <set field="refund.transactions" from="transactions"/>
+            <!-- The userId must be a number-->
+            <if condition="ec.user.userId.isNumber()">
+                <set field="refund.user_id" from="ec.user.userId"/>
+            </if>
+            <set field="externalId" from="orderId" />
+
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
+
+            <if condition="orderStatus == 'OrderCompleted'" >
+                <then>
+                    <!--if the order has some fulfilled item, it's necessary to refund the cancel item -->
+                    <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', messageText:messageText,docSubControl:'createRefund', docControl:externalId]"/>
+                </then>
+                <else>
+                    <!-- if the order was cancelled by the user, its necessary to cancel all it's items -->
+                    <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', messageText:messageText, docSubControl:'cancelOrder', docControl:externalId]"/>
+                </else>
+            </if>
+        </actions>
+    </service>
+
+    <service verb="send" noun="CancelOrderSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
+        </actions>
+    </service>
+
+    <service verb="send" noun="CreateRefundSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
         </actions>
     </service>
 </services>
