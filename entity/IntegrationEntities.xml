@@ -12,4 +12,8 @@
     <extend-entity entity-name="ProductCategoryMember" package="mantle.product.category">
         <field name="shopifyId" type="id"/>
     </extend-entity>
+    <extend-entity entity-name="Party" package="mantle.party">
+        <field name="shopifyTrackingCompany" type="text-short"/>
+        <field name="shopifyCustomerId" type="id"/>
+    </extend-entity>
 </entities>
