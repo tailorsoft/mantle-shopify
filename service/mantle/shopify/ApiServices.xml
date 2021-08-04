@@ -809,6 +809,7 @@
                                                                                   disablePromotions:'Y',
                                                                                   disableShippingCalc:'Y',
                                                                                   disableTaxCalc:'Y',
+                                                                                  salesChannelEnumId: 'ScShopify',
                                                                                   systemMessageRemoteId: systemMessageRemote.systemMessageRemoteId,
                                                                                   customerPartyId: partyId]" out-map="context"/>
                     <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader"/>
