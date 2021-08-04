@@ -576,8 +576,6 @@
                 <econdition field-name="thruDate" from="null"/>
             </entity-find>
 
-            <set field="productCategoryMember" from="productCategoryMembers.first()"/>
-
             <iterate list="productCategoryMembers" entry="productCategoryMember">
                 <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
                     <field-map field-name="productId" from="productCategoryMember.productId"/>
