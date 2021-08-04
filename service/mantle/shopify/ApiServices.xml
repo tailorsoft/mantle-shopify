@@ -558,8 +558,7 @@
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collect params as messageText/-->
             <log message="MESSAGE PARAMS ${shopifyGetCollectsParam}"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyGetCollectsMessage', systemMessageRemoteId:'DEMO_SHOPIFY_GET_COLLECTS_REMOTE',
-                            messageText:shopifyGetCollectsParam, productCategoryId:productCategoryId, productId:productId, docSubType: 'getCollects']"/>
+                          in-map="[systemMessageTypeId:'ShopifyGetCollectsMessage', messageText:shopifyGetCollectsParam, productCategoryId:productCategoryId, productId:productId, docSubType: 'getCollects']"/>
         </actions>
     </service>
 
@@ -585,7 +584,9 @@
                     <field-map field-name="productId" from="productCategoryMember.productId"/>
                     <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
                 </entity-find-one>
-                <set field="collect" from="response.collects.find{it.product_id.toString().equals(productIdentification.idValue.toString())}"/>
+                <if condition="productIdentification">
+                    <set field="collect" from="response.collects.find{it.product_id.toString().equals(productIdentification.idValue.toString())}"/>
+                </if>
                 <if condition="collect">
                     <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, shopifyId:collect.id]"/>
                 </if>
