@@ -730,6 +730,10 @@
             <entity-find-one entity-name="mantle.party.Party" value-field="party">
                 <field-map field-name="partyId" />
             </entity-find-one>
+            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentifycation">
+                <field-map field-name="partyId" />
+                <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
+            </entity-find-one>
 
             <if condition="!person">
                 <return error="true" message="The customer ${partyId} does not exist" />
@@ -790,7 +794,7 @@
 
                 <set field="addressPhone" from="getPhoneFormat(userAddressPhoneNumber)"/>
                 <set field="address.id" from="customerAddress?.shopifyAddressId"/>
-                <set field="address.customer_id" from="party.shopifyCustomerId"/>
+                <set field="address.customer_id" from="partyIdentifycation.idValue"/>
                 <set field="address.first_name" from="firstNameAtAddress"/>
                 <set field="address.last_name" from="lastNameAtAddress"/> 
                 <set field="address.address1" from="customerAddress?.address1"/>
@@ -809,7 +813,7 @@
                 </script> 
             </iterate>
 
-            <if condition="!party.shopifyCustomerId">
+            <if condition="!partyIdentifycation">
                 <message type="warning">The customer ${partyId} does not have shopifyId, please contact the admin</message>
             </if>
             <if condition="!customerAddress?.shopifyAddressId">
@@ -835,7 +839,7 @@
                 }
             </script>
             <set field="phone" from="getPhoneFormat(userPhoneNumber)"/>
-            <set field="customer.id" from="party.shopifyCustomerId"/>
+            <set field="customer.id" from="partyIdentifycation.idValue"/>
             <set field="customer.email" from="email?.infoString"/>
             <set field="customer.first_name" from="person?.firstName"/>
             <set field="customer.last_name" from="person?.lastName"/>
@@ -1046,14 +1050,18 @@
                     line_items.add(items)
                 </script>
             </iterate>
+
+            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentifycation">
+                <field-map field-name="partyId"  from="curCarrierDetail?.partyId"/>
+                <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
+            </entity-find-one>
         
             <set field="externalId" from="orderHeader.externalId" />
             <set field="fulfillment.location_id" from="locationId" />
             <set field="fulfillment.tracking_number" from="packageRouteSegList[0]?.trackingCode" />
-            <set field="fulfillment.tracking_company" from="curCarrierDetail?.shopifyTrackingCompany" />
+            <set field="fulfillment.tracking_company" from="partyIdentifycation?.idValue" />
             <set field="fulfillment.line_items" from="line_items" />
             <set field="messageText" from="groovy.json.JsonOutput.toJson([fulfillment:fulfillment])"/>
-        
             <!-- The service to create fulfillment is called only if  there are items were shipped -->
             <if condition="line_items">
                 <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
@@ -1071,67 +1079,6 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
-
-            <script>
-                import groovy.json.JsonSlurper 
-                def jsonSlurper = new JsonSlurper()
-                def order = jsonSlurper.parseText(systemMessage.messageText)
-            </script>
-            
-            <set field="orderStatus" from="order.refund.orderStatus"/>
-            <set field="orderId" from="order.refund.orderId"/>
-            <set field="refund" from="[:]"/>
-            <set field="shipping" from="[:]"/>
-            <set field="refund_line_items" from="[]"/>
-            <set field="transactions" from="[]"/>
-
-            <iterate list="response.refund.refund_line_items" entry="item">
-                <script>
-                    def items = [:]
-                    items.line_item_id = item.line_item_id
-                    items.quantity = item.quantity
-                    items.restock_type = item.restock_type
-                    items.location_id =  item.location_id
-                    refund_line_items.add(items)
-                </script>
-            </iterate>
-
-            <iterate list="response.refund.transactions" entry="transaction">
-                <script>
-                    def tx = [:]
-                    tx.parent_id = transaction.parent_id
-                    tx.amount = transaction.amount
-                    tx.kind = 'refund'
-                    tx.gateway =  transaction.gateway
-                    transactions.add(tx)
-                </script>
-            </iterate>
-
-            <set field="shipping.full_refund" value="true"/>
-            <set field="refund.currency" from="response.refund.currency"/>
-            <set field="refund.shipping" from="shipping"/>
-            <set field="refund.refund_line_items" from="refund_line_items"/>
-            <set field="refund.transactions" from="transactions"/>
-            <!-- The userId must be a number-->
-            <if condition="ec.user.userId.isNumber()">
-                <set field="refund.user_id" from="ec.user.userId"/>
-            </if>
-            <set field="externalId" from="orderId" />
-
-            <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
-
-            <if condition="orderStatus == 'OrderCompleted'" > 
-                <then>
-                    <!--if the order has some fulfilled item, it's necessary to refund the cancel item -->
-                    <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', messageText:messageText,docSubControl:'createRefund', docControl:externalId]"/> 
-                </then>
-                <else>
-                    <!-- if the order was cancelled by the user, its necessary to cancel all it's items -->
-                    <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', messageText:messageText, docSubControl:'cancelOrder', docControl:externalId]"/> 
-                </else>
-            </if>
         </actions>
     </service>
 
