@@ -730,7 +730,7 @@
             <entity-find-one entity-name="mantle.party.Party" value-field="party">
                 <field-map field-name="partyId" />
             </entity-find-one>
-            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentifycation">
+            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentification">
                 <field-map field-name="partyId" />
                 <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
             </entity-find-one>
@@ -794,7 +794,7 @@
 
                 <set field="addressPhone" from="getPhoneFormat(userAddressPhoneNumber)"/>
                 <set field="address.id" from="customerAddress?.shopifyAddressId"/>
-                <set field="address.customer_id" from="partyIdentifycation.idValue"/>
+                <set field="address.customer_id" from="partyIdentification.idValue"/>
                 <set field="address.first_name" from="firstNameAtAddress"/>
                 <set field="address.last_name" from="lastNameAtAddress"/> 
                 <set field="address.address1" from="customerAddress?.address1"/>
@@ -813,7 +813,7 @@
                 </script> 
             </iterate>
 
-            <if condition="!partyIdentifycation">
+            <if condition="!partyIdentification">
                 <message type="warning">The customer ${partyId} does not have shopifyId, please contact the admin</message>
             </if>
             <if condition="!customerAddress?.shopifyAddressId">
@@ -839,7 +839,7 @@
                 }
             </script>
             <set field="phone" from="getPhoneFormat(userPhoneNumber)"/>
-            <set field="customer.id" from="partyIdentifycation.idValue"/>
+            <set field="customer.id" from="partyIdentification.idValue"/>
             <set field="customer.email" from="email?.infoString"/>
             <set field="customer.first_name" from="person?.firstName"/>
             <set field="customer.last_name" from="person?.lastName"/>
@@ -1051,7 +1051,7 @@
                 </script>
             </iterate>
 
-            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentifycation">
+            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentification">
                 <field-map field-name="partyId"  from="curCarrierDetail?.partyId"/>
                 <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
             </entity-find-one>
@@ -1059,7 +1059,7 @@
             <set field="externalId" from="orderHeader.externalId" />
             <set field="fulfillment.location_id" from="locationId" />
             <set field="fulfillment.tracking_number" from="packageRouteSegList[0]?.trackingCode" />
-            <set field="fulfillment.tracking_company" from="partyIdentifycation?.idValue" />
+            <set field="fulfillment.tracking_company" from="partyIdentification?.idValue" />
             <set field="fulfillment.line_items" from="line_items" />
             <set field="messageText" from="groovy.json.JsonOutput.toJson([fulfillment:fulfillment])"/>
             <!-- The service to create fulfillment is called only if  there are items were shipped -->
