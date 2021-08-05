@@ -1058,7 +1058,7 @@
             </entity-find-one>
             <!--The shipment must be exist to continue, otherwise a message error is generated-->
             <if condition="!shipment">
-                <return error="true" message="The shipment ${shipment} does not exist" />
+                <return error="true" message="The shipment ${shipmentId} does not exist" />
             </if>
 
             <if condition="shipment.statusId != 'ShipShipped'">
