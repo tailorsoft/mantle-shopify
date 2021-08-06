@@ -403,7 +403,7 @@
             <parameter name="shopifyId" required="true"/>
         </in-parameters>
         <actions>
-            <service-call name="update#mantle.product.category.ProductCategory" out-map="context" in-map="[productCategoryId:productCategoryId, pseudoId:shopifyId]"/>
+            <service-call name="update#mantle.product.category.ProductCategory" out-map="context" in-map="[productCategoryId:productCategoryId, pseudoId:shopifyId]" transaction="ignore"/>
             <set field="shopifyGetCollectsParam" from="'?collection_id='+shopifyId"/>
             <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collect params as messageText/-->
             <log message="MESSAGE PARAMS ${shopifyGetCollectsParam}"/>
