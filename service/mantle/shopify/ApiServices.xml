@@ -392,7 +392,7 @@
                           out-map="context" />
             <set field="shopifyId" from="response.custom_collection.id"/>
             <service-call name="mantle.shopify.ApiServices.queue#GetCollectsSystemMessage" out-map="context"
-                          in-map="[productCategoryId:docSubType.productCategoryId,shopifyId:shopifyId]"/>
+                          in-map="[productCategoryId:systemMessage.docSubType,shopifyId:shopifyId]"/>
         </actions>
     </service>
 
