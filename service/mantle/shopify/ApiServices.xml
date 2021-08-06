@@ -390,12 +390,54 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
-
             <set field="shopifyId" from="response.custom_collection.id"/>
-            <service-call name="update#mantle.product.category.ProductCategory" out-map="context" in-map="[productCategoryId:systemMessage.productCategoryId, pseudoId:shopifyId]"/>
-
             <service-call name="mantle.shopify.ApiServices.queue#GetCollectsSystemMessage" out-map="context"
                           in-map="[productCategoryId:systemMessage.productCategoryId,shopifyId:shopifyId]"/>
+        </actions>
+    </service>
+
+    <service verb="queue" noun="GetCollectsSystemMessage">
+        <in-parameters>
+            <parameter name="productCategoryId" required="true"/>
+            <parameter name="shopifyId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="update#mantle.product.category.ProductCategory" out-map="context" in-map="[productCategoryId:productCategoryId, pseudoId:shopifyId]"/>
+            <set field="shopifyGetCollectsParam" from="'?collection_id='+shopifyId"/>
+            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collect params as messageText/-->
+            <log message="MESSAGE PARAMS ${shopifyGetCollectsParam}"/>
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                          in-map="[systemMessageTypeId:'ShopifyGetCollectsMessage', messageText:shopifyGetCollectsParam, productCategoryId:productCategoryId, productId:productId, docSubType: 'getCollects']"/>
+        </actions>
+    </service>
+
+    <service verb="send" noun="GetCollectsSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context"/>
+
+            <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productCategoryMembers">
+                <econdition field-name="productCategoryId" from="systemMessage.productCategoryId"/>
+                <econdition field-name="thruDate" from="null"/>
+            </entity-find>
+
+            <iterate list="productCategoryMembers" entry="productCategoryMember">
+                <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
+                    <field-map field-name="productId" from="productCategoryMember.productId"/>
+                    <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
+                </entity-find-one>
+                <if condition="productIdentification">
+                    <set field="collect" from="response.collects.find{it.product_id.toString().equals(productIdentification.idValue.toString())}"/>
+                </if>
+                <if condition="collect">
+                    <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, shopifyId:collect.id]"/>
+                </if>
+            </iterate>
         </actions>
     </service>
 
@@ -546,49 +588,7 @@
         </actions>
     </service>
 
-    <service verb="queue" noun="GetCollectsSystemMessage">
-        <in-parameters>
-            <parameter name="productCategoryId" required="true"/>
-            <parameter name="shopifyId" required="true"/>
-        </in-parameters>
-        <actions>
-            <set field="shopifyGetCollectsParam" from="'?collection_id='+shopifyId"/>
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collect params as messageText/-->
-            <log message="MESSAGE PARAMS ${shopifyGetCollectsParam}"/>
-            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyGetCollectsMessage', messageText:shopifyGetCollectsParam, productCategoryId:productCategoryId, productId:productId, docSubType: 'getCollects']"/>
-        </actions>
-    </service>
 
-    <service verb="send" noun="GetCollectsSystemMessage">
-        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
-        <in-parameters>
-            <parameter name="systemMessageId" required="true"/>
-        </in-parameters>
-        <actions>
-            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
-                          in-map="[systemMessageId: systemMessageId]"
-                          out-map="context"/>
-
-            <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productCategoryMembers">
-                <econdition field-name="productCategoryId" from="systemMessage.productCategoryId"/>
-                <econdition field-name="thruDate" from="null"/>
-            </entity-find>
-
-            <iterate list="productCategoryMembers" entry="productCategoryMember">
-                <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
-                    <field-map field-name="productId" from="productCategoryMember.productId"/>
-                    <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
-                </entity-find-one>
-                <if condition="productIdentification">
-                    <set field="collect" from="response.collects.find{it.product_id.toString().equals(productIdentification.idValue.toString())}"/>
-                </if>
-                <if condition="collect">
-                    <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, shopifyId:collect.id]"/>
-                </if>
-            </iterate>
-        </actions>
-    </service>
 
     <service verb="queue" noun="DeleteCollectSystemMessage">
         <in-parameters>
