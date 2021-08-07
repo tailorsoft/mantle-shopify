@@ -3,11 +3,7 @@
           xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/entity-definition-2.1.xsd">
     <extend-entity entity-name="SystemMessage" package="moqui.service.message">
         <field name="productId" type="id"/>
-        <relationship type="one" related="mantle.product.Product"/>
-    </extend-entity>
-    <extend-entity entity-name="SystemMessage" package="moqui.service.message">
         <field name="productCategoryId" type="id"/>
-        <relationship type="one" related="mantle.product.category.ProductCategory"/>
     </extend-entity>
     <extend-entity entity-name="ProductCategoryMember" package="mantle.product.category">
         <field name="shopifyId" type="id"/>
