@@ -131,4 +131,44 @@
             <set field="locationId" from="productLocation.settingValue" />
         </actions>
     </service>
+    <service verb="validate" noun="ProductData">
+        <description>
+            This service validates if the data of the product is correcto for using in a shopifyRequest
+        </description>
+        <in-parameters>
+            <parameter name="productId" required="true" />
+        </in-parameters>
+        <out-parameters>
+            <parameter name="error"/>
+            <parameter name="product" />
+            <parameter name="productIdentification" />
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
+                <field-map field-name="productId" />
+                <field-map field-name="productIdTypeEnumId"  value="PidtShopify"/>
+            </entity-find-one>
+
+            <entity-find-one entity-name="mantle.product.Product" value-field="product">
+                <field-map field-name="productId" />
+                <field-map field-name="productTypeEnumId"  value="PtVirtual"/>
+            </entity-find-one>
+
+            <if condition="!product">
+                <message type="warning">The product ${productId} does not exist</message>
+                <set field="error" value="true"/>
+                <return/>
+            </if>
+            <if condition="product?.productTypeEnumId != 'PtVirtual' ">
+                <message type="warning">The product ${productId}  is not a virtual product</message>
+                <set field="error" value="true"/>
+                <return/>
+            </if>
+            <if condition="!productIdentification">
+                <message type="warning">The product ${productId}  does not  have shopifyId</message>
+                <set field="error" value="true"/>
+                <return/>
+            </if>
+        </actions>
+    </service>
 </services>
