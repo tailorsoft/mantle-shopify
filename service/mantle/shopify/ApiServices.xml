@@ -428,7 +428,6 @@
                 <econdition field-name="productCategoryId" from="systemMessage.productCategoryId"/>
                 <econdition field-name="thruDate" from="null"/>
             </entity-find>
-
             <iterate list="productCategoryMembers" entry="productCategoryMember">
                 <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
                     <field-map field-name="productId" from="productCategoryMember.productId"/>
@@ -1307,6 +1306,7 @@
             </if>
         </actions>
     </service>
+
 
     <service verb="queue" noun="CreateFulfillmentSystemMessage">
         <description>Service to register a fulfillment for a order</description>
