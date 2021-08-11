@@ -110,6 +110,11 @@
                 <return/>
             </if>
 
+            <if condition="product.productTypeEnumId != 'PtVirtual' ">
+                <message type="warning">The product ${productId}  is not a virtual product</message>
+                <return/>
+            </if>
+
             <entity-find-one entity-name="mantle.product.ProductContent" value-field="productContent">
                 <field-map field-name="productId"/>
                 <field-map field-name="productContentTypeEnumId" value="PcntImageDetail"/>
@@ -321,11 +326,6 @@
             
             <if condition="productForCreate">
                 <message type="warning">The product ${productId}  already exist</message>
-                <return/>
-            </if>
-
-            <if condition="product.productTypeEnumId != 'PtVirtual' ">
-                <message type="warning">The product ${productId}  is not a virtual product</message>
                 <return/>
             </if>
 
