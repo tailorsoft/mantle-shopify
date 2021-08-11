@@ -112,6 +112,7 @@
 
             <if condition="product.productTypeEnumId != 'PtVirtual' ">
                 <message type="warning">The product ${productId}  is not a virtual product</message>
+                <set field="error" value="true"/>
                 <return/>
             </if>
 
