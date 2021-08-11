@@ -31,6 +31,7 @@
             <script>import groovy.json.JsonSlurper</script>
             <script><![CDATA[
                 def jsonSlurper = new JsonSlurper()
+                json = jsonSlurper.parseText(systemMessage.messageText)
                 String urlExpand = ec.resource.expand(systemMessageRemote.sendUrl, "systemMessage", [remoteMessageId:systemMessage.systemMessageId,
                         systemMessageTypeId:systemMessage.systemMessageTypeId, systemMessageRemoteId:systemMessage.systemMessageRemoteId], false)
                 logger.info("SENDING MESSAGE TEXT ${systemMessage.messageText}")
@@ -46,6 +47,9 @@
                 } else if (docSubType.contains("put")) {
                     if (systemMessage.docSubControl?.contains('putCustomer')) {
                         urlExpand = urlExpand + systemMessage.docControl + ".json"
+                    }
+                    if (systemMessage.docSubControl?.contains('putProduct')) {
+                        urlExpand = urlExpand + json.product.id + ".json"
                     }
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.PUT).uri(urlExpand)
@@ -93,9 +97,24 @@
         </out-parameters>
         <actions>
             <script>import groovy.json.JsonSlurper</script>
+
             <entity-find-one entity-name="mantle.product.Product" value-field="product">
-                <field-map field-name="productId"/>
+                <field-map field-name="productId" />
+                <field-map field-name="productTypeEnumId"  value="PtVirtual"/>
             </entity-find-one>
+            
+            <if condition="!product">
+                <message type="warning">The product ${productId} does not exist</message>
+                <set field="error" value="true"/>
+                <return/>
+            </if>
+
+            <if condition="product.productTypeEnumId != 'PtVirtual' ">
+                <message type="warning">The product ${productId}  is not a virtual product</message>
+                <set field="error" value="true"/>
+                <return/>
+            </if>
+
             <entity-find-one entity-name="mantle.product.ProductContent" value-field="productContent">
                 <field-map field-name="productId"/>
                 <field-map field-name="productContentTypeEnumId" value="PcntImageDetail"/>
@@ -310,11 +329,6 @@
                 <return/>
             </if>
 
-            <if condition="product.productTypeEnumId != 'PtVirtual' ">
-                <message type="warning">The product ${productId}  is not a virtual product</message>
-                <return/>
-            </if>
-
             <if condition="error">
                 <return/>
             </if>
@@ -346,6 +360,43 @@
                 </iterate>
             </if>
             <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:systemMessage.productId, productIdTypeEnumId:'PidtShopify', idValue: response.product.id]"/>
+        </actions>
+    </service>
+
+
+    <service verb="queue" noun="UpdateStatusProductSystemMessage">
+        <in-parameters>
+            <parameter name="productId" required="true"/>
+        </in-parameters>
+        <actions>
+            <set field="productRequest" from="[:]"/>
+
+            <service-call name="mantle.shopify.ShopifyServices.validate#ProductData" out-map="context"   in-map="[productId:productId]"/>
+            <if condition="error"><return/></if>
+
+            <set field="currentDate" from="ec.user.nowTimestamp"/>
+            <set field="salesDiscontinuationDate" from="product.salesDiscontinuationDate"/>
+
+            <set field="productRequest.id" from="productIdentification.idValue"/>
+
+            <if condition="currentDate>=salesDiscontinuationDate">
+                <set field="productRequest.status" value="archived"/>
+                <set field="json" from="groovy.json.JsonOutput.toJson([product: productRequest])"/>
+                <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                              in-map="[systemMessageTypeId:'ShopifyUpdateProductMessage', messageText:json, docSubType:'put', docSubControl:'putProduct']"/>
+            </if>
+        </actions>
+    </service>
+
+    <service verb="send" noun="UpdateStatusProductSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context" />
         </actions>
     </service>
 
