@@ -133,7 +133,7 @@
     </service>
     <service verb="validate" noun="ProductData">
         <description>
-            This service validates if the data of the product is correcto for using in a shopifyRequest
+            This service validates if the data of the product is valid to use in a shopify request
         </description>
         <in-parameters>
             <parameter name="productId" required="true" />
