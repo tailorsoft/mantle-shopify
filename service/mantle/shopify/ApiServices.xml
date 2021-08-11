@@ -178,6 +178,14 @@
                             <field-map field-name="productIdTypeEnumId" value="PidtUpca"/>
                         </entity-find-one>
 
+                        <entity-find-one entity-name="mantle.product.ProductDimension" value-field="productDimension">
+                            <field-map field-name="productId" from="assoc.toProductId"/>
+                        </entity-find-one>
+
+                        <entity-find-one entity-name="moqui.basic.Uom" value-field="uom">
+                            <field-map field-name="uomId" from="productDimension.valueUomId"/>
+                        </entity-find-one>
+
                         <if condition="!prodUPC">
                             <set field="error" value="true"/>
                             <message type="warning">The associated product ${assoc.toProductId} does not have an identification, add one like UPC-A or SKU in the Identification section</message>
@@ -193,12 +201,45 @@
 
                                 NOTE: Shopify supports products that has at most 3 features.
                             **/
+
+                            variant = [:]
+                            variant.name = featureList[0]?.productFeatureDescription
+                            variant.option1 = variant.name
+                            variant.option2 = featureList[1]?.productFeatureDescription
+                            variant.option3 = featureList[2]?.productFeatureDescription
+                            variant.price = priceSet.price
+                            variant.inventory_management = 'shopify'
+                            variant.barcode = prodUPC.idValue
+                            variant.weight = productDimension.value
+                            variant.weight_unit = uom.abbreviation
+
                             if(featureList.size() == 1){
-                                prodVariants.add(new HashMap([name:featureList[0].productFeatureDescription, option1:featureList[0].productFeatureDescription, price:priceSet.price, inventory_management:'shopify', barcode: prodUPC.idValue]))
+                                prodVariants.add(new HashMap([name:variant.name,
+                                                              option1:variant.option1,
+                                                              price:variant.price,
+                                                              inventory_management:variant.inventory_management,
+                                                              barcode:variant.barcode,
+                                                              weight:variant.weight,
+                                                              weight_unit:variant.weight_unit]))
                             }else if(featureList.size() == 2){
-                                prodVariants.add(new HashMap([name:featureList[0].productFeatureDescription + "/" + featureList[1].productFeatureDescription, option1:featureList[0].productFeatureDescription, option2:featureList[1].productFeatureDescription, price:priceSet.price, inventory_management:'shopify', barcode: prodUPC.idValue]))
+                                prodVariants.add(new HashMap([name:variant.name + "/" + variant.option2,
+                                                              option1:variant.option1,
+                                                              option2:variant.option2,
+                                                              price:variant.price,
+                                                              inventory_management:variant.inventory_management,
+                                                              barcode:variant.barcode,
+                                                              weight:variant.weight,
+                                                              weight_unit:variant.weight_unit]))
                             }else if(featureList.size() == 3){
-                                prodVariants.add(new HashMap([name:featureList[0].productFeatureDescription + "/" + featureList[1].productFeatureDescription + "/" + featureList[2].productFeatureDescription, option1:featureList[0].productFeatureDescription, option2:featureList[1].productFeatureDescription, option3:featureList[2].productFeatureDescription, price:priceSet.price, inventory_management:'shopify', barcode: prodUPC.idValue]))
+                                prodVariants.add(new HashMap([name:variant.name + "/" + variant.option2 + "/" + variant.option3,
+                                                              option1:variant.option1,
+                                                              option2:variant.option2,
+                                                              option3:variant.option3,
+                                                              price:variant.price,
+                                                              inventory_management:variant.inventory_management,
+                                                              barcode: variant.barcode,
+                                                              weight:variant.weight,
+                                                              weight_unit:variant.weight_unit]))
                             }
                         ]]>
                         </script>
