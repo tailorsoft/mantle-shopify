@@ -373,6 +373,7 @@
             <set field="productRequest" from="[:]"/>
 
             <service-call name="mantle.shopify.ShopifyServices.validate#ProductData" out-map="context"   in-map="[productId:productId]"/>
+            <if condition="error"><return/></if>
 
             <set field="currentDate" from="ec.user.nowTimestamp"/>
             <set field="salesDiscontinuationDate" from="product.salesDiscontinuationDate"/>
