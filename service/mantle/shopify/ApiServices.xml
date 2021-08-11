@@ -97,7 +97,17 @@
         </out-parameters>
         <actions>
             <script>import groovy.json.JsonSlurper</script>
-            <service-call name="mantle.shopify.ShopifyServices.validate#ProductData" out-map="context"   in-map="[productId:productId]"/>
+
+            <entity-find-one entity-name="mantle.product.Product" value-field="product">
+                <field-map field-name="productId" />
+                <field-map field-name="productTypeEnumId"  value="PtVirtual"/>
+            </entity-find-one>
+            
+            <if condition="!product">
+                <message type="warning">The product ${productId} does not exist</message>
+                <set field="error" value="true"/>
+                <return/>
+            </if>
 
             <entity-find-one entity-name="mantle.product.ProductContent" value-field="productContent">
                 <field-map field-name="productId"/>
