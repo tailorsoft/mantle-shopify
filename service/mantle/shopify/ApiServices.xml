@@ -495,11 +495,8 @@
         </in-parameters>
         <actions>
             <service-call name="update#mantle.product.category.ProductCategory" out-map="context" in-map="[productCategoryId:productCategoryId, pseudoId:shopifyId]" transaction="ignore"/>
-            <set field="shopifyGetCollectsParam" from="'?collection_id='+shopifyId"/>
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collect params as messageText/-->
-            <log message="MESSAGE PARAMS ${shopifyGetCollectsParam}"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyGetCollectsMessage', messageText:shopifyGetCollectsParam, docType:productCategoryId, docSubType: 'getCollects']"/>
+                          in-map="[systemMessageTypeId:'ShopifyGetCollectsMessage', messageText:shopifyId, docType:productCategoryId, docSubType: 'getCollects']"/>
         </actions>
     </service>
 
