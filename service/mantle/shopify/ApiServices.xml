@@ -683,8 +683,8 @@
             </if>
             <!-- GETTING CORRECT CARRIER DATA-->
             <entity-find entity-name="mantle.party.PartyIdentification" list="carrierList">
-                <econdition field-name="idValue" from="carrierData.source.toUpperCase()"/>
-                <econdition field-name="partyIdTypeEnumId" from="PtidShopify"/>
+                <econdition field-name="idValue" from="carrierData.source"/>
+                <econdition field-name="partyIdTypeEnumId" value="PtidShopify"/>
             </entity-find>
             <if condition="carrierList.size() &gt; 0"><then>
                 <set field="moquiCarrierData" from="carrierList.first()"/>
@@ -715,7 +715,7 @@
                                                                                                   lastName:customer.last_name,
                                                                                                   username: customer.email,
                                                                                                   emailAddress:customer.email]" out-map="context"/>
-                        <service-call name="create#mantle.party.PartyIdentification" in-map="[partyId:partyId, idValue:customer.id]" out-map="context"/>
+                        <service-call name="create#mantle.party.PartyIdentification" in-map="[partyId:partyId, partyIdTypeEnumId:'PtidShopify', idValue:customer.id]" out-map="context"/>
                         <log message="CUSTOMER CREATED ${partyId}"/>
                     </else></if>
                     <entity-find entity-name="mantle.party.contact.PartyContactMechPostalAddress" list="postalMechList">
@@ -799,7 +799,7 @@
                     <service-call name="mantle.order.OrderServices.create#Order" in-map="[productStoreId: productStore.productStoreId,
                                                                                   displayId: order.order_number,
                                                                                   externalId: order.id,
-                                                                                  orderName: 'Shopify Order-' + order.order_number,
+                                                                                  orderName: 'Shopify Order - ' + order.order_number,
                                                                                   disablePromotions:'Y',
                                                                                   disableShippingCalc:'Y',
                                                                                   disableTaxCalc:'Y',
@@ -919,6 +919,8 @@
                         <service-call name="mantle.order.OrderServices.update#OrderStatus" out-map="context" in-map="[orderId: orderHeader.orderId,
                                                                                                               approvedDate: ec.user.nowTimestamp,
                                                                                                               statusId: 'OrderApproved']"/>
+                        <service-call name="mantle.shopify.ApiServices.queue#GetCustomerAddressesSystemMessage" out-map="context"
+                                      in-map="[postalMechId:postalContactMechId, partyId:partyId]"/>
                     </if>
                 </else></if>
             </iterate>
@@ -940,7 +942,7 @@
             </if>
             <set field="shopifyGetCustomerAddressesParam" from="partyIdentification.idValue+'/addresses.json'"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyGetCustomerAddressesMessage', messageText:shopifyGetCustomerAddressesParam, productId:productId, docSubType: 'getAddresses']"/>
+                          in-map="[systemMessageTypeId:'ShopifyGetCustomerAddressesMessage', messageText:shopifyGetCustomerAddressesParam, partyId:partyId, contactMechId:postalMechId, docSubType: 'getAddresses']"/>
         </actions>
     </service>
 
@@ -953,7 +955,17 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context"/>
-
+            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentification">
+                <field-map field-name="partyId" />
+                <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
+            </entity-find-one>
+            <entity-find-one entity-name="mantle.party.contact.PostalAddress" value-field="postalAddress">
+                <field-map field-name="contactMechId" from="systemMessage.contactMechId" />
+            </entity-find-one>
+            <set field="shopifyAddress" from="response.addresses.find{it.address1.equals(postalAddress.address1) &amp;&amp; it.address2.equals(postalAddress.address2)}"/>
+            <if condition="shopifyAddress">
+                <service-call name="update#mantle.party.contact.PostalAddress" out-map="context" in-map="postalAddress + [shopifyAddressId:shopifyAddress.id, shopifyDefaultAddress: shopifyAddress.default]"/>
+            </if>
         </actions>
     </service>
 

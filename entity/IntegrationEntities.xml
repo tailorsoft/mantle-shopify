@@ -4,6 +4,8 @@
     <extend-entity entity-name="SystemMessage" package="moqui.service.message">
         <field name="productId" type="id"/>
         <field name="productCategoryId" type="id"/>
+        <field name="partyId" type="id"/>
+        <field name="contactMechId" type="id"/>
     </extend-entity>
     <extend-entity entity-name="ProductCategoryMember" package="mantle.product.category">
         <field name="shopifyId" type="id"/>
