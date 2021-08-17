@@ -31,7 +31,6 @@
             <script>import groovy.json.JsonSlurper</script>
             <script><![CDATA[
                 def jsonSlurper = new JsonSlurper()
-                json = jsonSlurper.parseText(systemMessage.messageText)
                 String urlExpand = ec.resource.expand(systemMessageRemote.sendUrl, "systemMessage", [remoteMessageId:systemMessage.systemMessageId,
                         systemMessageTypeId:systemMessage.systemMessageTypeId, systemMessageRemoteId:systemMessage.systemMessageRemoteId], false)
                 logger.info("SENDING MESSAGE TEXT ${systemMessage.messageText}")
@@ -45,6 +44,7 @@
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.GET).uri(urlExpand)
                 } else if (docSubType.contains("put")) {
+                    json = jsonSlurper.parseText(systemMessage.messageText)
                     if (systemMessage.docSubControl?.contains('putCustomer')) {
                         urlExpand = urlExpand + systemMessage.docControl + ".json"
                     }
