@@ -11,7 +11,10 @@
     <mantle.product.ProductIdentification productId="549" productIdTypeEnumId="PidtUpca"  idValue="12244233"/>
     <mantle.product.ProductIdentification productId="548" productIdTypeEnumId="PidtInventoryItemShopify"  idValue="41871192555716"/>
     <mantle.product.ProductIdentification productId="549" productIdTypeEnumId="PidtInventoryItemShopify"  idValue="41871192588484"/>
+    <moqui.basic.Enumeration description="Shopify Party Identifier" enumId="PtidShopify"  enumTypeId="PartyIdType"/>
     <mantle.product.store.ProductStoreSetting productStoreId="RCHERBALS" settingTypeEnumId="ShopifyStoreId"  settingValue="59386101956"/>
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyUpdateProductMessage" description="Shopify Product SystemMessage Type"
+            sendServiceName="mantle.shopify.ApiServices.send#UpdateStatusProductSystemMessage" />
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyProductMessage" description="Shopify Product SystemMessage Type"
             sendServiceName="mantle.shopify.ApiServices.send#ProductSystemMessage" />
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCreateCollectionMessage" description="Create Shopify Collection SystemMessage Type"
