@@ -635,7 +635,7 @@
     <service verb="queue" noun="GetOrdersSystemMessage">
         <actions>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyGetOrdersMessage', systemMessageRemoteId:'DEMO_SHOPIFY_GET_ORDERS_REMOTE', messageText: 'paid', docSubType: 'getOrders']"/>
+                          in-map="[systemMessageTypeId:'ShopifyGetOrdersMessage', messageText: 'paid', docSubType: 'getOrders']"/>
         </actions>
     </service>
 
@@ -655,59 +655,58 @@
                 <field-map field-name="productStoreId" from="systemMessageRemote.productStoreId"/>
             </entity-find-one>
             <iterate list="response.orders" entry="order">
-            <set field="customer" from="order.customer"/>
-            <set field="shippingAddress" from="order.shipping_address"/>
-            <set field="billingAddress" from="order.billing_address"/>
-            <set field="carrierData" from="order.shipping_lines.first()"/>
-            <set field="paymentDetails" from="order.payment_details"/>
-            <set field="orderItems" from="order.line_items"/>
-            <set field="discountApplications" from="order.discount_applications"/>
-            <if condition="!customer">
-                <return error="ERROR: NO CUSTOMER FOUND ON RESPONSE"/>
-            </if>
-            <if condition="!shippingAddress">
-                <return error="ERROR: NO SHIPPING ADDRESS FOUND ON RESPONSE"/>
-            </if>
-            <if condition="!billingAddress">
-                <log message="NO BILLING ADDRESS FOUND ON RESPONSE, SHIPPING ADDRESS WILL BE ASSIGNED"/>
-                <set field="billingAddress" from="shippingAddress"/>
-            </if>
-            <if condition="!paymentDetails">
-                <return error="ERROR: NO PAYMENT DETAILS FOUND ON RESPONSE"/>
-            </if>
-            <if condition="!orderItems">
-                <return error="ERROR: NO ORDER ITEMS FOUND ON RESPONSE"/>
-            </if>
-            <if condition="!carrierData">
-                <return error="ERROR: NO CARRIER DATA FOUND ON RESPONSE"/>
-            </if>
-            <!-- GETTING CORRECT CARRIER DATA-->
-            <entity-find entity-name="mantle.party.PartyIdentification" list="carrierList">
-                <econdition field-name="idValue" from="carrierData.source"/>
-                <econdition field-name="partyIdTypeEnumId" value="PtidShopify"/>
-            </entity-find>
-            <if condition="carrierList.size() &gt; 0"><then>
-                <set field="moquiCarrierData" from="carrierList.first()"/>
-                <entity-find entity-name="mantle.shipment.carrier.CarrierShipmentMethod" list="shipmentMethodList">
-                    <econdition field-name="description" from="carrierData.title"/>
-                    <econdition field-name="carrierPartyId" from="moquiCarrierData.partyId"/>
+                <set field="customer" from="order.customer"/>
+                <set field="shippingAddress" from="order.shipping_address"/>
+                <set field="billingAddress" from="order.billing_address"/>
+                <set field="carrierData" from="order.shipping_lines.first()"/>
+                <set field="paymentDetails" from="order.payment_details"/>
+                <set field="orderItems" from="order.line_items"/>
+                <set field="discountApplications" from="order.discount_applications"/>
+                <if condition="!customer">
+                    <return error="ERROR: NO CUSTOMER FOUND ON RESPONSE"/>
+                </if>
+                <if condition="!shippingAddress">
+                    <return error="ERROR: NO SHIPPING ADDRESS FOUND ON RESPONSE"/>
+                </if>
+                <if condition="!billingAddress">
+                    <log message="NO BILLING ADDRESS FOUND ON RESPONSE, SHIPPING ADDRESS WILL BE ASSIGNED"/>
+                    <set field="billingAddress" from="shippingAddress"/>
+                </if>
+                <if condition="!paymentDetails">
+                    <return error="ERROR: NO PAYMENT DETAILS FOUND ON RESPONSE"/>
+                </if>
+                <if condition="!orderItems">
+                    <return error="ERROR: NO ORDER ITEMS FOUND ON RESPONSE"/>
+                </if>
+                <if condition="!carrierData">
+                    <return error="ERROR: NO CARRIER DATA FOUND ON RESPONSE"/>
+                </if>
+                <!-- GETTING CORRECT CARRIER DATA-->
+                <entity-find entity-name="mantle.party.PartyIdentification" list="carrierList">
+                    <econdition field-name="idValue" from="carrierData.source"/>
+                    <econdition field-name="partyIdTypeEnumId" value="PtidCarrierShopify"/>
                 </entity-find>
-                <if condition="shipmentMethodList.size() &gt; 0"><then>
-                    <set field="moquiShipmentMethod" from="shipmentMethodList.first()"/>
+                <if condition="carrierList.size() &gt; 0"><then>
+                    <set field="moquiCarrierData" from="carrierList.first()"/>
+                    <entity-find entity-name="mantle.shipment.carrier.CarrierShipmentMethod" list="shipmentMethodList">
+                        <econdition field-name="description" from="carrierData.title"/>
+                        <econdition field-name="carrierPartyId" from="moquiCarrierData.partyId"/>
+                    </entity-find>
+                    <if condition="shipmentMethodList.size() &gt; 0"><then>
+                        <set field="moquiShipmentMethod" from="shipmentMethodList.first()"/>
+                    </then><else>
+                        <log message="SHIPMENT METHOD NOT FOUND"/>
+                    </else></if>
                 </then><else>
-                    <log message="SHIPMENT METHOD NOT FOUND"/>
+                    <return error="ERROR: NO CARRIER FOUND ON DB"/>
                 </else></if>
-            </then><else>
-                <return error="ERROR: NO CARRIER FOUND ON DB"/>
-            </else></if>
-            <service-call name="popstore.CustomerServices.find#PartyByEmail" in-map="[emailAddress:customer.email]" out-map="context"/>
-            <entity-find entity-name="mantle.order.OrderHeader" list="createdOrder">
-                <econdition field-name="externalId" from="order.id"/>
-            </entity-find>
-            <if condition="createdOrder"><then>
-                <log message="SHOPIFY ORDER #${order.order_number} ALREADY CREATED, ORDER ID: ${createdOrder.first().orderId}"/>
-            </then>
-                <else>
+                <service-call name="popstore.CustomerServices.find#PartyByEmail" in-map="[emailAddress:customer.email]" out-map="context"/>
+                <entity-find entity-name="mantle.order.OrderHeader" list="createdOrder">
+                    <econdition field-name="externalId" from="order.id"/>
+                </entity-find>
+                <if condition="createdOrder"><then>
+                    <log message="SHOPIFY ORDER #${order.order_number} ALREADY CREATED, ORDER ID: ${createdOrder.first().orderId}"/>
+                </then><else>
                     <if condition="partyIds.size() &gt; 0"><then>
                         <set field="partyId" from="partyIds.first()"/>
                     </then><else>
@@ -763,7 +762,6 @@
                                                                                                       city: shippingAddress.city,
                                                                                                       emailAddress: customer.email]" out-map="shippingMechData"/>
                         <set field="postalContactMechId" from="shippingMechData.postalContactMechId"/>
-                        <service-call name="update#mantle.party.contact.PostalAddress" in-map="[contactMechId: postalContactMechId, shopifyAddressId:shippingAddress.id]"/>
                         <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
                                                                                                       address1:billingAddress.address1,
                                                                                                       address2:billingAddress.address2,
