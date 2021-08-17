@@ -2,8 +2,8 @@
 <entities xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/entity-definition-2.1.xsd">
     <extend-entity entity-name="SystemMessage" package="moqui.service.message">
-        <field name="productId" type="id"/>
-        <field name="productCategoryId" type="id"/>
+        <field name="sentproductId" type="text-medium"/>
+        <field name="sentProductCategoryId" type="text-medium"/>
         <field name="sentPartyId" type="text-medium"/>
         <field name="sentContactMechId" type="text-medium"/>
     </extend-entity>

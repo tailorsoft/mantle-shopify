@@ -8,6 +8,8 @@
     <moqui.basic.Enumeration description="Shopify Party Identifier" enumId="PtidShopify"  enumTypeId="PartyIdType"/>
     <moqui.basic.Enumeration description="Shopify Carrier Party Identifier" enumId="PtidCarrierShopify"  enumTypeId="PartyIdType"/>
     <mantle.product.store.ProductStoreSetting productStoreId="RCHERBALS" settingTypeEnumId="ShopifyStoreId"  settingValue="59386101956"/>
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyUpdateProductMessage" description="Shopify Product SystemMessage Type"
+            sendServiceName="mantle.shopify.ApiServices.send#UpdateStatusProductSystemMessage" />
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyProductMessage" description="Shopify Product SystemMessage Type"
             sendServiceName="mantle.shopify.ApiServices.send#ProductSystemMessage" />
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCreateCollectionMessage" description="Create Shopify Collection SystemMessage Type"
