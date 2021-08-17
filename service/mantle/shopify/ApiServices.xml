@@ -31,7 +31,6 @@
             <script>import groovy.json.JsonSlurper</script>
             <script><![CDATA[
                 def jsonSlurper = new JsonSlurper()
-                json = jsonSlurper.parseText(systemMessage.messageText)
                 String urlExpand = ec.resource.expand(systemMessageRemote.sendUrl, "systemMessage", [remoteMessageId:systemMessage.systemMessageId,
                         systemMessageTypeId:systemMessage.systemMessageTypeId, systemMessageRemoteId:systemMessage.systemMessageRemoteId], false)
                 logger.info("SENDING MESSAGE TEXT ${systemMessage.messageText}")
@@ -44,7 +43,8 @@
                     urlExpand = urlExpand + systemMessage.messageText
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.GET).uri(urlExpand)
-                } else if(docSubType.contains("put")) {
+                } else if (docSubType.contains("put")) {
+                    json = jsonSlurper.parseText(systemMessage.messageText)
                     if (systemMessage.docSubControl?.contains('putCustomer')) {
                         urlExpand = urlExpand + systemMessage.docControl + ".json"
                     }
@@ -103,7 +103,7 @@
                 <field-map field-name="productId" />
                 <field-map field-name="productTypeEnumId"  value="PtVirtual"/>
             </entity-find-one>
-            
+
             <if condition="!product">
                 <message type="warning">The product ${productId} does not exist</message>
                 <set field="error" value="true"/>
@@ -1320,7 +1320,7 @@
                 <field-map field-name="partyId"  from="curCarrierDetail?.partyId"/>
                 <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
             </entity-find-one>
-        
+
             <set field="externalId" from="orderHeader.externalId" />
             <set field="fulfillment.location_id" from="locationId" />
             <set field="fulfillment.tracking_number" from="packageRouteSegList[0]?.trackingCode" />
