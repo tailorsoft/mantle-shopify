@@ -216,6 +216,12 @@
                             <field-map field-name="productId" from="assoc.toProductId"/>
                             <field-map field-name="productIdTypeEnumId" value="PidtSku"/>
                         </entity-find-one>
+
+                        <if condition="!prodSKU">
+                            <set field="error" value="true"/>
+                            <message type="warning">The associated product ${assoc.toProductId} does not have a SKU identification, add one in the Identification section</message>
+                            <return/>
+                        </if>
                        
                         <script><![CDATA[
                             /**
