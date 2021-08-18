@@ -334,7 +334,7 @@
                 <return/>
             </if>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyProductMessage', messageText:json, productId:productId]"/>
+                    in-map="[systemMessageTypeId:'ShopifyProductMessage', messageText:json, sentproductId:productId]"/>
         </actions>
     </service>
 
@@ -360,7 +360,7 @@
                     <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:productId, productIdTypeEnumId:'PidtInventoryItemShopify', idValue: shopifyVariant.inventory_item_id]"/>
                 </iterate>
             </if>
-            <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:systemMessage.productId, productIdTypeEnumId:'PidtShopify', idValue: response.product.id]"/>
+            <service-call name="create#mantle.product.ProductIdentification" out-map="context" in-map="[productId:systemMessage.sentproductId, productIdTypeEnumId:'PidtShopify', idValue: response.product.id]"/>
         </actions>
     </service>
 
@@ -429,6 +429,7 @@
                 <econdition field-name="productCategoryId"/>
                 <econdition field-name="thruDate" from="null"/>
             </entity-find>
+
             <script>import groovy.json.JsonSlurper</script>
             <set field="shopifyCollectItems" from="[]"/>
             <!-- 
@@ -470,7 +471,7 @@
                 <return/>
             </if>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyCreateCollectionMessage', messageText:json, productCategoryId:productCategoryId]"/>
+                          in-map="[systemMessageTypeId:'ShopifyCreateCollectionMessage', messageText:json, sentProductCategoryId:productCategoryId]"/>
         </actions>
     </service>
 
@@ -485,7 +486,7 @@
                           out-map="context" />
             <set field="shopifyId" from="response.custom_collection.id"/>
             <service-call name="mantle.shopify.ApiServices.queue#GetCollectsSystemMessage" out-map="context"
-                          in-map="[productCategoryId:systemMessage.productCategoryId,shopifyId:shopifyId]"/>
+                          in-map="[productCategoryId:systemMessage.sentProductCategoryId,shopifyId:shopifyId]"/>
         </actions>
     </service>
 
@@ -496,11 +497,8 @@
         </in-parameters>
         <actions>
             <service-call name="update#mantle.product.category.ProductCategory" out-map="context" in-map="[productCategoryId:productCategoryId, pseudoId:shopifyId]" transaction="ignore"/>
-            <set field="shopifyGetCollectsParam" from="'?collection_id='+shopifyId"/>
-            <!-- After the JSON is created correctly we create a SystemMessage with the shopify API data and the collect params as messageText/-->
-            <log message="MESSAGE PARAMS ${shopifyGetCollectsParam}"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyGetCollectsMessage', messageText:shopifyGetCollectsParam, productCategoryId:productCategoryId, productId:productId, docSubType: 'getCollects']"/>
+                          in-map="[systemMessageTypeId:'ShopifyGetCollectsMessage', messageText:shopifyId, sentProductCategoryId:productCategoryId, docSubType: 'getCollects']"/>
         </actions>
     </service>
 
@@ -515,10 +513,10 @@
                           out-map="context"/>
 
             <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productCategoryMembers">
-                <econdition field-name="productCategoryId" from="systemMessage.productCategoryId"/>
+                <econdition field-name="productCategoryId" from="systemMessage.sentProductCategoryId"/>
                 <econdition field-name="thruDate" from="null"/>
             </entity-find>
-            <iterate list="productCategoryMembers" entry="productCategoryMember">
+             <iterate list="productCategoryMembers" entry="productCategoryMember">
                 <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
                     <field-map field-name="productId" from="productCategoryMember.productId"/>
                     <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
@@ -555,7 +553,7 @@
             <set field="shopifyCollectionId" from="productCategory.pseudoId"/>
 
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', messageText:shopifyCollectionId, productCategoryId:productCategoryId, docSubType: 'deleteCollection']"/>
+                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', messageText:shopifyCollectionId, sentProductCategoryId:productCategoryId, docSubType: 'deleteCollection']"/>
         </actions>
     </service>
 
@@ -568,15 +566,14 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
-            <service-call name="update#mantle.product.category.ProductCategory" out-map="context" in-map="[productCategoryId:systemMessage.productCategoryId, pseudoId:'']"/>
+            <service-call name="update#mantle.product.category.ProductCategory" out-map="context" in-map="[productCategoryId:systemMessage.sentProductCategoryId, pseudoId:'']"/>
 
             <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productCategoryMembers">
-                <econdition field-name="productCategoryId"/>
+                <econdition field-name="productCategoryId" from="systemMessage.sentProductCategoryId"/>
                 <econdition field-name="thruDate" from="null"/>
             </entity-find>
-
             <iterate list="productCategoryMembers" entry="productCategoryMember">
-                <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="productCategoryMember + [pseudoId:'']"/>
+                <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="productCategoryMember + [shopifyId:'']"/>
             </iterate>
         </actions>
     </service>
@@ -656,7 +653,7 @@
                 <return/>
             </if>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyCreateCollectMessage', messageText:json, productCategoryId:productCategoryId, productId:productId]"/>
+                          in-map="[systemMessageTypeId:'ShopifyCreateCollectMessage', messageText:json, sentProductCategoryId:productCategoryId, sentproductId:productId]"/>
         </actions>
     </service>
 
@@ -671,8 +668,8 @@
                           out-map="context" />
 
             <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productCategoryMembers">
-                <econdition field-name="productCategoryId" from="systemMessage.productCategoryId"/>
-                <econdition field-name="productId" from="systemMessage.productId"/>
+                <econdition field-name="productCategoryId" from="systemMessage.sentProductCategoryId"/>
+                <econdition field-name="productId" from="systemMessage.sentproductId"/>
                 <econdition field-name="thruDate" from="null"/>
             </entity-find>
             <set field="productCategoryMember" from="productCategoryMembers.first()"/>
@@ -701,7 +698,7 @@
             
             <set field="idParam" from="productCategoryMember.shopifyId"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectMessage', messageText:idParam, productCategoryId:productCategoryId, productId:productId, docSubType: 'deleteCollect']"/>
+                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectMessage', messageText:idParam, sentProductCategoryId:productCategoryId, sentproductId:productId, docSubType: 'deleteCollect']"/>
         </actions>
     </service>
 
@@ -716,8 +713,8 @@
                           out-map="context"/>
 
             <entity-find-one entity-name="mantle.product.category.ProductCategoryMember" value-field="productCategoryMember">
-                <field-map field-name="productCategoryId" from="systemMessage.productCategoryId"/>
-                <field-map field-name="productId" from="systemMessage.productId"/>
+                <field-map field-name="productCategoryId" from="systemMessage.sentProductCategoryId"/>
+                <field-map field-name="productId" from="systemMessage.sentproductId"/>
                 <field-map field-name="thruDate" from="null"/>
             </entity-find-one>
             <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, shopifyId:'']"/>
@@ -946,17 +943,17 @@
                 <return error="true"
                         message="The product ${productId} must be a variant product"/>
             </if>
-
+ 
             <set field="inventoryItemId" from="shopifyInvenotoryItem.idValue"/>
 
             <!-- get the store id -->
             <service-call name="mantle.shopify.ShopifyServices.get#LocationAndStoreId" out-map="context"   in-map="[systemMessageTypeId:'ShopifySetInventoryMessage']"/>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore"/>
 
             <!-- we need to find the available quantity for the current product -->
             <entity-find entity-name="mantle.product.asset.Asset" list="assetList">
                 <econdition field-name="productId"/>
-                <econdition field-name="quantityOnHandTotal" operator="greater" from="0.0"/>
-                <econdition field-name="availableToPromiseTotal" operator="greater" from="0.0"/>
+                <econdition field-name="facilityId"  from="productStore.inventoryFacilityId"/>
                 <econdition field-name="assetTypeEnumId" value="AstTpInventory"/>
             </entity-find>
 
@@ -968,8 +965,7 @@
                 inventory_item_id:inventoryItemId,
                 available:available
                 ])"/>
-
-                <!--the api is called for update the available quantity-->
+               
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                           in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', messageText:messageText, docSubType:'upDateInventoryLevel']"/>
         </actions>
