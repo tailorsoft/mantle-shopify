@@ -773,18 +773,17 @@
                 <return error="true"
                         message="The product ${productId} must be a variant product"/>
             </if>
-
  
             <set field="inventoryItemId" from="shopifyInvenotoryItem.idValue"/>
 
             <!-- get the store id-->
             <service-call name="mantle.shopify.ShopifyServices.get#LocationAndStoreId" out-map="context"   in-map="[systemMessageTypeId:'ShopifySetInventoryMessage']"/>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore"/>
 
             <!-- we need to find the available quantity for the current product -->
             <entity-find entity-name="mantle.product.asset.Asset" list="assetList">
                 <econdition field-name="productId"/>
-                <econdition field-name="quantityOnHandTotal" operator="greater" from="0.0"/>
-                <econdition field-name="availableToPromiseTotal" operator="greater" from="0.0"/>
+                <econdition field-name="facilityId"  from="productStore.inventoryFacilityId"/>
                 <econdition field-name="assetTypeEnumId" value="AstTpInventory"/>
             </entity-find>
             
@@ -796,8 +795,7 @@
                 inventory_item_id:inventoryItemId,
                 available:available
                 ])"/>
-
-                <!--the api is called for update the available quantity-->
+               
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                           in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', messageText:messageText, docSubType:'upDateInventoryLevel']"/>
         </actions>
