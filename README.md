@@ -1,1 +1,1 @@
-Shopify Integration
+Shopify Integration.
