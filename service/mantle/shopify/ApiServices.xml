@@ -42,7 +42,7 @@
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.DELETE).uri(urlExpand)
                 } else if (docSubType.contains("get")) {
                     if (systemMessage.docSubType?.contains('getOrder')) {
-                        urlExpand = urlExpand + json.status + ".json"
+                        urlExpand = urlExpand + json.status
                     }else{
                         urlExpand = urlExpand + systemMessage.messageText
                     }
@@ -766,7 +766,8 @@
                 <field-map field-name="productStoreId" from="systemMessageRemote.productStoreId"/>
             </entity-find-one>
 
-            <set field="orderList" from="response.orders"/>
+            <set field="orderList" from="response.orders.findAll {it.fulfillment_status == null}"/>
+
             <iterate list="response.orders" entry="order">
                 <set field="customer" from="order.customer"/>
                 <set field="shippingAddress" from="order.shipping_address"/>
