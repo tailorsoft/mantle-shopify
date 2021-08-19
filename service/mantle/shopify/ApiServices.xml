@@ -41,7 +41,11 @@
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.DELETE).uri(urlExpand)
                 } else if (docSubType.contains("get")) {
-                    urlExpand = urlExpand + systemMessage.messageText
+                    if (systemMessage.docSubType?.contains('getOrder')) {
+                        urlExpand = urlExpand + json.status + ".json"
+                    }else{
+                        urlExpand = urlExpand + systemMessage.messageText
+                    }
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.GET).uri(urlExpand)
                 } else if (docSubType.contains("put")) {
@@ -735,10 +739,14 @@
         </actions>
     </service>
 
+    
     <service verb="queue" noun="GetOrdersSystemMessage">
+        <description> Get all order in status paid</description>
         <actions>
+
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([status:'paid'])"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyGetOrdersMessage', systemMessageRemoteId:'DEMO_SHOPIFY_GET_ORDERS_REMOTE', messageText: 'paid', docSubType: 'getOrders']"/>
+                          in-map="[systemMessageTypeId:'ShopifyGetOrdersMessage', messageText: messageText, docSubType: 'getOrders']"/>
         </actions>
     </service>
 
