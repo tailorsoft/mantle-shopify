@@ -13,17 +13,6 @@
         </out-parameters>
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
-
-            <log message="...."/>
-            <log message="..."/>
-            <log message=".."/>
-            <log message="context....${systemMessage}"/>
-            <log message=".."/>
-            <log message="..."/>
-            <log message="...."/>
-			
-			
-
             <if condition="!systemMessage.systemMessageRemoteId">
                 <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote">
                     <field-map field-name="systemMessageTypeId" from="systemMessage.systemMessageTypeId"/>
