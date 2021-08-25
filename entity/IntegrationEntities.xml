@@ -4,6 +4,8 @@
     <extend-entity entity-name="SystemMessage" package="moqui.service.message">
         <field name="sentproductId" type="text-medium"/>
         <field name="sentProductCategoryId" type="text-medium"/>
+        <field name="sentPartyId" type="text-medium"/>
+        <field name="sentContactMechId" type="text-medium"/>
     </extend-entity>
     <extend-entity entity-name="ProductCategoryMember" package="mantle.product.category">
         <field name="shopifyId" type="id"/>
@@ -72,5 +74,11 @@
             </econditions>
         </entity-condition>
     </view-entity>
+
+    <entity entity-name="ShopifyOrderLogError" package="mantle.order.log">
+        <field name="id" type="id" is-pk="true"/>
+        <field name="orderId" type="id" />
+        <field name="description" type="text-long"/>
+    </entity>
 
 </entities>
