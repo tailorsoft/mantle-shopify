@@ -771,7 +771,6 @@
             <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
                 <field-map field-name="productStoreId" from="systemMessageRemote.productStoreId"/>
             </entity-find-one>
-
             <!-- filtering orders that it have not delivered yet -->
             <set field="orderPaidList" from="response.orders.findAll {it.fulfillment_status == null}"/>
 
@@ -779,6 +778,12 @@
                 <set field="customer" from="order.customer"/>
                 <set field="shippingAddress" from="order.shipping_address"/>
                 <set field="billingAddress" from="order.billing_address"/>
+
+                <if condition="order.shipping_lines.size()==0">
+                    <message type="warning">ERROR: NO PRODUCTS FOUND ON SHOPIFY ORDER ${order.id}</message>
+                    <continue/>
+                </if>
+
                 <set field="carrierData" from="order.shipping_lines.first()"/>
                 <set field="paymentDetails" from="order.payment_details"/>
                 <set field="orderItems" from="order.line_items"/>
@@ -1114,7 +1119,7 @@
             <entity-find-one entity-name="mantle.party.contact.PostalAddress" value-field="postalAddress">
                 <field-map field-name="contactMechId" from="systemMessage.sentContactMechId" />
             </entity-find-one>
-            <set field="shopifyAddress" from="response.addresses.find{it.address1.equals(postalAddress.address1) &amp;&amp; it.address2.equals(postalAddress.address2)}"/>
+            <set field="shopifyAddress" from="response.addresses.find{it.address1.equals(postalAddress?.address1) &amp;&amp; it.address2.equals(postalAddress?.address2)}"/>
             <if condition="shopifyAddress">
                 <service-call name="update#mantle.party.contact.PostalAddress" out-map="context" in-map="postalAddress + [shopifyAddressId:shopifyAddress.id, shopifyDefaultAddress: shopifyAddress.default]"/>
             </if>
