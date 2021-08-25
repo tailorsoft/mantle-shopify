@@ -7,8 +7,8 @@
     <moqui.basic.Enumeration description="Shopify Party Identifier" enumId="PtidShopify"  enumTypeId="PartyIdType"/>
     <moqui.basic.Enumeration description="Shopify" enumId="ScShopify"  enumTypeId="SalesChannel"/>
     <moqui.basic.Enumeration description="Shopify Carrier Party Identifier" enumId="PtidCarrierShopify"  enumTypeId="PartyIdType"/>
-    <mantle.party.PartyIdentification partyId="shopify" partyIdTypeEnumId="PtidCarrierShopify"  idValue="shopify"/>
-    <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="shopify" shipmentMethodEnumId="ShMthGround"  description="Standard"/>
+    <mantle.party.PartyIdentification partyId="_NA_" partyIdTypeEnumId="PtidCarrierShopify"  idValue="shopify"/>
+    <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="_NA_" shipmentMethodEnumId="ShMthGround"  description="Standard"/>
     <mantle.product.store.ProductStoreSetting productStoreId="RCHERBALS" settingTypeEnumId="ShopifyStoreId"  settingValue="59386101956"/>
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyUpdateProductMessage" description="Shopify Product SystemMessage Type"
             sendServiceName="mantle.shopify.ApiServices.send#UpdateStatusProductSystemMessage" />
