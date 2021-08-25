@@ -37,15 +37,23 @@
                 logger.info("SENDING MESSAGE TEXT ${systemMessage.messageText}")
                 org.moqui.util.RestClient restClient = ec.service.rest()
                 if (docSubType.contains("delete")) {
-                    urlExpand = urlExpand + systemMessage.messageText + ".json"
+                    if (systemMessage.docSubType?.contains('deleteCollection')) {
+                        urlExpand = urlExpand + json.shopifyCollectionId + ".json"
+                    }else if(systemMessage.docSubType?.contains('deleteCollect')){
+                        urlExpand = urlExpand + json.collectId + ".json"
+                    }else{
+                        urlExpand = urlExpand + systemMessage.messageText + ".json"
+                    }
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.DELETE).uri(urlExpand)
                 } else if (docSubType.contains("get")) {
                     if (systemMessage.docSubType?.contains('getOrder')) {
                         urlExpand = urlExpand + json.status
                     }else if(systemMessage.docSubType?.contains('getAddresses')){
-                        urlExpand = urlExpand + systemMessage.messageText + '/addresses.json'
-                    }else {
+                        urlExpand = urlExpand + json.shopifyCustomerId + '/addresses.json'
+                    }else if (systemMessage.docSubType?.contains('getCollects') ){
+                        urlExpand = urlExpand + json.shopifyId
+                    }else{
                         urlExpand = urlExpand + systemMessage.messageText
                     }
                     logger.info("URL EXPAND ${urlExpand}")
@@ -517,8 +525,9 @@
         </in-parameters>
         <actions>
             <service-call name="update#mantle.product.category.ProductCategory" out-map="context" in-map="[productCategoryId:productCategoryId, pseudoId:shopifyId]" transaction="ignore"/>
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([shopifyId:shopifyId])"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyGetCollectsMessage', messageText:shopifyId, sentProductCategoryId:productCategoryId, docSubType: 'getCollects']"/>
+                          in-map="[systemMessageTypeId:'ShopifyGetCollectsMessage', messageText:messageText, sentProductCategoryId:productCategoryId, docSubType: 'getCollects']"/>
         </actions>
     </service>
 
@@ -571,9 +580,9 @@
             </if>
 
             <set field="shopifyCollectionId" from="productCategory.pseudoId"/>
-
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([shopifyCollectionId:shopifyCollectionId])"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', messageText:shopifyCollectionId, sentProductCategoryId:productCategoryId, docSubType: 'deleteCollection']"/>
+                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectionMessage', messageText:messageText, sentProductCategoryId:productCategoryId, docSubType: 'deleteCollection']"/>
         </actions>
     </service>
 
@@ -697,8 +706,6 @@
         </actions>
     </service>
 
-
-
     <service verb="queue" noun="DeleteCollectSystemMessage">
         <in-parameters>
             <parameter name="productCategoryId" required="true"/>
@@ -715,10 +722,9 @@
                 <message type="warning">The collection does not exist</message>
                 <return/>
             </if>
-            
-            <set field="idParam" from="productCategoryMember.shopifyId"/>
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([collectId:productCategoryMember.shopifyId])"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectMessage', messageText:idParam, sentProductCategoryId:productCategoryId, sentproductId:productId, docSubType: 'deleteCollect']"/>
+                          in-map="[systemMessageTypeId:'ShopifyDeleteCollectMessage', messageText:messageText, sentProductCategoryId:productCategoryId, sentproductId:productId, docSubType: 'deleteCollect']"/>
         </actions>
     </service>
 
@@ -1086,9 +1092,9 @@
             <if condition="!partyIdentification">
                 <return error="true" message="The shopify customer ${partyId} does not exist" />
             </if>
-            <set field="shopifyCustomerId" from="partyIdentification.idValue"/>
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([shopifyCustomerId:partyIdentification.idValue])"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyGetCustomerAddressesMessage', messageText:shopifyCustomerId, partyId:partyId, sentContactMechId:postalMechId, docSubType: 'getAddresses']"/>
+                          in-map="[systemMessageTypeId:'ShopifyGetCustomerAddressesMessage', messageText:messageText, partyId:partyId, sentContactMechId:postalMechId, docSubType: 'getAddresses']"/>
         </actions>
     </service>
 
