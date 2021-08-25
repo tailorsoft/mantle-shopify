@@ -41,7 +41,6 @@
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.DELETE).uri(urlExpand)
                 } else if (docSubType.contains("get")) {
-
                     if (systemMessage.docSubType?.contains('getOrder')) {
                         urlExpand = urlExpand + json.status
                     }else if(systemMessage.docSubType?.contains('getAddresses')){
@@ -49,7 +48,6 @@
                     }else {
                         urlExpand = urlExpand + systemMessage.messageText
                     }
-
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.GET).uri(urlExpand)
                 } else if (docSubType.contains("put")) {
@@ -82,7 +80,6 @@
 
                 restClient.basicAuth(systemMessageRemote.username,systemMessageRemote.password)
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
-
                 if (restResponse.statusCode < 200 || restResponse.statusCode >= 300) {
                     String errMsg = restResponse.text()
                     ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${errMsg}")
@@ -743,12 +740,10 @@
             <service-call name="update#mantle.product.category.ProductCategoryMember" out-map="context" in-map="[productId:productCategoryMember.productId, productCategoryId:productCategoryMember.productCategoryId, fromDate:productCategoryMember.fromDate, shopifyId:'']"/>
         </actions>
     </service>
-
     
     <service verb="queue" noun="GetOrdersSystemMessage">
         <description> Get all order in status paid</description>
         <actions>
-
             <set field="messageText" from="groovy.json.JsonOutput.toJson([status:'paid'])"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                           in-map="[systemMessageTypeId:'ShopifyGetOrdersMessage', messageText: messageText, docSubType: 'getOrders']"/>
@@ -771,6 +766,7 @@
                 <field-map field-name="productStoreId" from="systemMessageRemote.productStoreId"/>
             </entity-find-one>
 
+            <!-- filtering orders that it have not delivered yet -->
             <set field="orderPaidList" from="response.orders.findAll {it.fulfillment_status == null}"/>
 
             <iterate list="orderPaidList" entry="order">
