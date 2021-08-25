@@ -76,7 +76,7 @@
     </view-entity>
 
     <entity entity-name="ShopifyOrderLogError" package="mantle.ledger.transaction">
-        <field name="id" type="id" is-pk="true"/>
+        <field name="id" type="id" />
         <field name="description" type="text-long"/>
     </entity>
 
