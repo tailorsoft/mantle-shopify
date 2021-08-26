@@ -771,16 +771,21 @@
             <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
                 <field-map field-name="productStoreId" from="systemMessageRemote.productStoreId"/>
             </entity-find-one>
-           <!-- filtering orders that have not been dispatched yet -->
+
+            <entity-find entity-name="mantle.order.OrderHeader" list="orderAlreadyCreated">
+                <econdition field-name="statusId" value="OrderApproved"/>
+            </entity-find>
+
+            <!-- filtering orders that have not been dispatched yet -->
             <set field="orderPaidList" from="response.orders.findAll {it.fulfillment_status == null}"/>
             <set field="orderIdPaidList" from="orderPaidList*.id"/>
 
             <!-- filtering internal orders that have not been dispatched yet -->
             <set field="orderMoquiAlreadyCreated" from="orderAlreadyCreated*.externalId"/>
-            <set field="orderMoquiAlreadyCreated" from="orderMoquiAlreadyCreate. collect  { it.toLong()}"/>
+            <set field="orderMoquiAlreadyCreated" from="orderMoquiAlreadyCreated.collect { it.toLong()}"/>
 
             <!-- filtering orders that need to be processed -->
-            <set field="orderToProcess" from="orderIdPaidList -  orderMoquiAlreadyCreate"/>
+            <set field="orderToProcess" from="orderIdPaidList -  orderMoquiAlreadyCreated"/>
             <set field="orderPaidtoProcess" from="orderPaidList.findAll {orderToProcess.contains(it.id)}"/>
 
             <iterate list="orderPaidtoProcess" entry="order">
