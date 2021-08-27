@@ -836,6 +836,12 @@
                     <econdition field-name="idValue" from="carrierData.source"/>
                     <econdition field-name="partyIdTypeEnumId" value="PtidCarrierShopify"/>
                 </entity-find>
+         
+                <log message=".."/>
+                <log message="CARRIERLIST....${carrierList}"/>
+                <log message="CARRIERDATA.SOURCE....${carrierData.source}"/>
+                <log message=".."/>
+
                 <if condition="carrierList.size() &gt; 0">
                     <then>
                         <set field="moquiCarrierData" from="carrierList.first()"/>
