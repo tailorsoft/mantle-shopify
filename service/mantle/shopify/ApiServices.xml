@@ -777,16 +777,16 @@
             </entity-find>
 
             <!-- filtering orders that have not been dispatched yet -->
-            <set field="orderPaidList" from="response.orders.findAll {it.fulfillment_status == null}"/>
+            <set field="orderPaidList" from="response.orders.findAll { it.fulfillment_status == null }"/>
             <set field="orderIdPaidList" from="orderPaidList*.id"/>
 
             <!-- filtering internal orders that have not been dispatched yet -->
-            <set field="orderMoquiAlreadyCreated" from="orderAlreadyCreated*.externalId.findAll {it!=null}"/>
-            <set field="orderMoquiAlreadyCreated" from="orderMoquiAlreadyCreated.collect { it.toLong()}"/>
+            <set field="orderMoquiAlreadyCreated" from="orderAlreadyCreated*.externalId.findAll { it != null }"/>
+            <set field="orderMoquiAlreadyCreated" from="orderMoquiAlreadyCreated.collect { it.toLong() }"/>
 
             <!-- filtering orders that need to be processed -->
             <set field="orderToProcess" from="orderIdPaidList -  orderMoquiAlreadyCreated"/>
-            <set field="orderPaidtoProcess" from="orderPaidList.findAll {orderToProcess.contains(it.id)}"/>
+            <set field="orderPaidtoProcess" from="orderPaidList.findAll { orderToProcess.contains(it.id) }"/>
 
             <iterate list="orderPaidtoProcess" entry="order">
                 <set field="customer" from="order.customer"/>
