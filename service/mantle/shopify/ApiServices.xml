@@ -782,10 +782,11 @@
 
             <!-- filtering internal orders that have not been dispatched yet -->
             <set field="orderMoquiAlreadyCreated" from="orderAlreadyCreated*.externalId.findAll { it != null }"/>
+            <set field="orderMoquiAlreadyCreated" from="orderMoquiAlreadyCreated.findAll { it != '' }"/>
             <set field="orderMoquiAlreadyCreated" from="orderMoquiAlreadyCreated.collect { it.toLong() }"/>
-
             <!-- filtering orders that need to be processed -->
             <set field="orderToProcess" from="orderIdPaidList -  orderMoquiAlreadyCreated"/>
+
             <set field="orderPaidtoProcess" from="orderPaidList.findAll { orderToProcess.contains(it.id) }"/>
 
             <iterate list="orderPaidtoProcess" entry="order">
