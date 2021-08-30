@@ -1116,7 +1116,7 @@
                                   in-map="[systemMessageTypeId:'ShopifyGetCustomerAddressesMessage', messageText:messageText, partyId:partyId, sentContactMechId:postalMechId, docSubType:'getAddresses']"/>
                 </then>
                 <else>
-                    <message type="warning">The shopify customer ${partyId} does not have a identification, please contact the admin to add one</message>
+                    <message type="warning">The customer ${partyId} does not have shopify id (idValue) in PartyIdentification entity</message>
                 </else>
             </if>
         </actions>
