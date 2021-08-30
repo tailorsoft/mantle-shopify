@@ -1109,12 +1109,16 @@
                 <field-map field-name="partyId" />
                 <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
             </entity-find-one>
-            <if condition="!partyIdentification">
-                <return error="true" message="The shopify customer ${partyId} does not exist" />
+            <if condition="partyIdentification">
+                <then>
+                    <set field="messageText" from="groovy.json.JsonOutput.toJson([shopifyCustomerId:partyIdentification.idValue])"/>
+                    <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                                  in-map="[systemMessageTypeId:'ShopifyGetCustomerAddressesMessage', messageText:messageText, partyId:partyId, sentContactMechId:postalMechId, docSubType: 'getAddresses']"/>
+                </then>
+                <else>
+                    <message type="warning">The shopify customer ${partyId} does not have a identification, please contact the admin to add one</message>
+                </else>
             </if>
-            <set field="messageText" from="groovy.json.JsonOutput.toJson([shopifyCustomerId:partyIdentification.idValue])"/>
-            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifyGetCustomerAddressesMessage', messageText:messageText, partyId:partyId, sentContactMechId:postalMechId, docSubType: 'getAddresses']"/>
         </actions>
     </service>
 
