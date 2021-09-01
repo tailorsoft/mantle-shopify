@@ -841,7 +841,7 @@
                     <then>
                         <set field="moquiCarrierData" from="carrierList.first()"/>
 
-                        <if condition="carrierData.title == 'Free Shipping' ||  carrierData.title == 'Standard Shipping' ">
+                        <if condition="carrierData.title == 'Free Shipping' || carrierData.title == 'Standard Shipping' ">
                             <then>
                                 <set field="shippingMethod" value="Standard Shipping"/>
                             </then>
