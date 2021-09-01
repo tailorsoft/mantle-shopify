@@ -859,8 +859,17 @@
                 <if condition="carrierList.size() &gt; 0">
                     <then>
                         <set field="moquiCarrierData" from="carrierList.first()"/>
+
+                        <if condition="carrierData.title == 'Free Shipping' || carrierData.title == 'Standard Shipping' ">
+                            <then>
+                                <set field="shippingMethod" value="Standard Shipping"/>
+                            </then>
+                            <else>
+                                <set field="shippingMethod" from="carrierData.title"/>
+                            </else>
+                        </if>
                         <entity-find entity-name="mantle.shipment.carrier.CarrierShipmentMethod" list="shipmentMethodList">
-                            <econdition field-name="description" from="carrierData.title"/>
+                            <econdition field-name="description" from="shippingMethod"/>
                             <econdition field-name="carrierPartyId" from="moquiCarrierData.partyId"/>
                         </entity-find>
                         <if condition="shipmentMethodList.size() &gt; 0">
@@ -912,7 +921,7 @@
                     <if condition="postalMechList.size() &gt; 0">
                         <then>
                             <set field="postalMech" from="postalMechList.first()"/>
-                            <if condition="postalMech.address1.equals(shippingAddress.address1) || postalMech.address2.equals(shippingAddress.address2)">
+                            <if condition="postalMech.address1.equals(shippingAddress?.address1 ?: '' ) || postalMech.address2.equals(shippingAddress?.address2 ?: '' )">
                                 <set field="postalContactMechId" from="postalMech.contactMechId"/>
                                 <log message="SHIPPING ADDRESS ALREADY EXISTS"/>
                             </if>
@@ -1078,12 +1087,12 @@
                         </if>
                     </iterate>
                     <!--registering the shipping cost -->
-                    <service-call name="mantle.order.OrderServices.create#OrderItem" in-map="[orderId: orderHeader.orderId,
-                                                                                              orderPartSeqId: orderPart.orderPartSeqId,
-                                                                                              itemTypeEnumId: 'ItemShipping',
-                                                                                              itemDescription : 'Shipping',
-                                                                                              quantity: 1,
-                                                                                              unitAmount:carrierData.price]" out-map="context"/>
+                     <service-call name="mantle.order.OrderServices.create#OrderItem" in-map="[orderId: orderHeader.orderId,
+                                                                                               orderPartSeqId: orderPart.orderPartSeqId,
+                                                                                               itemTypeEnumId: 'ItemShipping',
+                                                                                               itemDescription : 'Shipping',
+                                                                                               quantity: 1,
+                                                                                               unitAmount:carrierData.price]" out-map="context"/>
                     <if condition="orderHeader &amp;&amp; orderPart">
                         <!-- PAYMENT METHOD -->
                         <service-call name="create#mantle.account.method.PaymentMethod" out-map="context" in-map="[ownerPartyId: partyId,
@@ -1136,7 +1145,7 @@
                 <then>
                     <set field="messageText" from="groovy.json.JsonOutput.toJson([shopifyCustomerId:partyIdentification.idValue])"/>
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                                  in-map="[systemMessageTypeId:'ShopifyGetCustomerAddressesMessage', messageText:messageText, partyId:partyId, sentContactMechId:postalMechId, docSubType:'getAddresses']"/>
+                                  in-map="[systemMessageTypeId:'ShopifyGetCustomerAddressesMessage', messageText:messageText, sentPartyId:partyId, sentContactMechId:postalMechId, docSubType:'getAddresses']"/>
                 </then>
                 <else>
                     <message type="warning">The customer ${partyId} does not have shopify id (idValue) in PartyIdentification entity</message>
@@ -1155,13 +1164,13 @@
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context"/>
             <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentification">
-                <field-map field-name="partyId" />
+                <field-map field-name="partyId" from="systemMessage.sentPartyId"/>
                 <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
             </entity-find-one>
             <entity-find-one entity-name="mantle.party.contact.PostalAddress" value-field="postalAddress">
                 <field-map field-name="contactMechId" from="systemMessage.sentContactMechId" />
             </entity-find-one>
-            <set field="shopifyAddress" from="response.addresses.find{it.address1.equals(postalAddress?.address1) &amp;&amp; it.address2.equals(postalAddress?.address2)}"/>
+            <set field="shopifyAddress" from="response.addresses.find{it.address1.equals(postalAddress?.address1 ?: '') &amp;&amp; it.address2.equals(postalAddress?.address2 ?: '')}"/>
             <if condition="shopifyAddress">
                 <service-call name="update#mantle.party.contact.PostalAddress" out-map="context" in-map="postalAddress + [shopifyAddressId:shopifyAddress.id, shopifyDefaultAddress: shopifyAddress.default]"/>
             </if>
