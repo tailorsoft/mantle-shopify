@@ -1120,7 +1120,7 @@
                 <then>
                     <set field="messageText" from="groovy.json.JsonOutput.toJson([shopifyCustomerId:partyIdentification.idValue])"/>
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                                  in-map="[systemMessageTypeId:'ShopifyGetCustomerAddressesMessage', messageText:messageText, partyId:partyId, sentContactMechId:postalMechId, docSubType:'getAddresses']"/>
+                                  in-map="[systemMessageTypeId:'ShopifyGetCustomerAddressesMessage', messageText:messageText, sentPartyId:partyId, sentContactMechId:postalMechId, docSubType:'getAddresses']"/>
                 </then>
                 <else>
                     <message type="warning">The customer ${partyId} does not have shopify id (idValue) in PartyIdentification entity</message>
@@ -1139,13 +1139,13 @@
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context"/>
             <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentification">
-                <field-map field-name="partyId" />
+                <field-map field-name="partyId" from="systemMessage.sentPartyId"/>
                 <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
             </entity-find-one>
             <entity-find-one entity-name="mantle.party.contact.PostalAddress" value-field="postalAddress">
                 <field-map field-name="contactMechId" from="systemMessage.sentContactMechId" />
             </entity-find-one>
-            <set field="shopifyAddress" from="response.addresses.find{it.address1.equals(postalAddress?.address1) &amp;&amp; it.address2.equals(postalAddress?.address2)}"/>
+            <set field="shopifyAddress" from="response.addresses.find{it.address1.equals(postalAddress?.address1 ?: '') &amp;&amp; it.address2.equals(postalAddress?.address2 ?: '')}"/>
             <if condition="shopifyAddress">
                 <service-call name="update#mantle.party.contact.PostalAddress" out-map="context" in-map="postalAddress + [shopifyAddressId:shopifyAddress.id, shopifyDefaultAddress: shopifyAddress.default]"/>
             </if>
