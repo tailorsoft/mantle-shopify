@@ -840,8 +840,17 @@
                 <if condition="carrierList.size() &gt; 0">
                     <then>
                         <set field="moquiCarrierData" from="carrierList.first()"/>
+
+                        <if condition="carrierData.title == 'Free Shipping' ||  carrierData.title == 'Standard Shipping' ">
+                            <then>
+                                <set field="shippingMethod" value="Standard Shipping"/>
+                            </then>
+                            <else>
+                                <set field="shippingMethod" from="carrierData.title"/>
+                            </else>
+                        </if>
                         <entity-find entity-name="mantle.shipment.carrier.CarrierShipmentMethod" list="shipmentMethodList">
-                            <econdition field-name="description" from="carrierData.title"/>
+                            <econdition field-name="description" from="shippingMethod"/>
                             <econdition field-name="carrierPartyId" from="moquiCarrierData.partyId"/>
                         </entity-find>
                         <if condition="shipmentMethodList.size() &gt; 0">
