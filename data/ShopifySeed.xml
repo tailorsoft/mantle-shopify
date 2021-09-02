@@ -7,6 +7,13 @@
     <moqui.basic.Enumeration description="Shopify" enumId="ScShopify"  enumTypeId="SalesChannel"/>
     <moqui.basic.Enumeration description="Shopify Party Identifier" enumId="PtidShopify"  enumTypeId="PartyIdType"/>
     <moqui.basic.Enumeration description="Shopify Carrier Party Identifier" enumId="PtidCarrierShopify"  enumTypeId="PartyIdType"/>
+    <moqui.basic.Enumeration description="Shopify" enumId="ScShopify"  enumTypeId="SalesChannel"/>
+    <moqui.basic.Enumeration description="Shopify Carrier Party Identifier" enumId="PtidCarrierShopify"  enumTypeId="PartyIdType"/>
+    <moqui.basic.EnumerationType description="Shopify Shipping Method " enumTypeId="ShopifyShippingMethod"/>
+    <moqui.basic.Enumeration description="Free Shipping" enumId="FreeShipping"  enumTypeId="ShopifyShippingMethod"/>
+    <moqui.basic.Enumeration description="Standard Shipping" enumId="StandardShipping"  enumTypeId="ShopifyShippingMethod"/>
+    <mantle.party.PartyIdentification partyId="_NA_" partyIdTypeEnumId="PtidCarrierShopify"  idValue="shopify"/>
+    <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="_NA_" shipmentMethodEnumId="ShMthGround"  description="Standard"/>
     <mantle.product.store.ProductStoreSetting productStoreId="RCHERBALS" settingTypeEnumId="ShopifyStoreId"  settingValue="59386101956"/>
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyUpdateProductMessage" description="Shopify Product SystemMessage Type"
             sendServiceName="mantle.shopify.ApiServices.send#UpdateStatusProductSystemMessage" />
@@ -36,9 +43,15 @@
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCreateRefundMessage" 
                                               description="Create Refund Order SystemMessage Type"
                                               sendServiceName="mantle.shopify.ApiServices.send#CreateRefundSystemMessage" />
+<<<<<<< HEAD
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyUpdateCustomerMessage"
                                               description="Update Shopify Customer info SystemMessage Type"
                                               sendServiceName="mantle.shopify.ApiServices.send#UpdateCustomerSystemMessage" />
+=======
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCreateFulfillmentMessage" 
+                                              description="Create a fulfillment SystemMessage Type"
+                                              sendServiceName="mantle.shopify.ApiServices.send#CreateFulfillmentSystemMessage" />
+>>>>>>> 212ecaffa865ece33d2b8e13c421b32706a97ffe
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyGetCustomerAddressesMessage"
                                              description="Get a list of the customer addresses SystemMessage Type"
                                              sendServiceName="mantle.shopify.ApiServices.send#GetCustomerAddressesSystemMessage" />
