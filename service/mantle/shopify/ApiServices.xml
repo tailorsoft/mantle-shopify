@@ -747,7 +747,7 @@
         </actions>
     </service>
     
-    <service verb="queue" noun="GetOrdersSystemMessage">
+    <service verb="queue" noun="GetOrdersSystemMessage" authenticate="anonymous-all">
         <description> Get all order in paid status</description>
         <actions>
             <set field="messageText" from="groovy.json.JsonOutput.toJson([status:'paid'])"/>
