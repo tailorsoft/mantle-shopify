@@ -802,7 +802,6 @@
             <parameter name="systemMessageId" required="true"/>
         </in-parameters>
         <actions>
-
             <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage" for-update="true"/>
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemMessageRemote">
                 <field-map field-name="systemMessageTypeId" from="systemMessage.systemMessageTypeId"/>
@@ -856,11 +855,17 @@
                     <econdition field-name="partyIdTypeEnumId" value="PtidCarrierShopify"/>
                 </entity-find>
 
+                <entity-find entity-name="moqui.basic.Enumeration" list="shopifyShippingMethods">
+                    <econdition field-name="enumTypeId" value="ShopifyShippingMethod"/>
+                </entity-find>
+
+                <set field="shopifyShippingMethodIds" from="shopifyShippingMethods*.description"/>
+
                 <if condition="carrierList.size() &gt; 0">
                     <then>
                         <set field="moquiCarrierData" from="carrierList.first()"/>
 
-                        <if condition="carrierData.title == 'Free Shipping' || carrierData.title == 'Standard Shipping' ">
+                        <if condition="carrierData.title in (shopifyShippingMethodIds)">
                             <then>
                                 <set field="shippingMethod" value="Standard Shipping"/>
                             </then>

@@ -74,11 +74,4 @@
             </econditions>
         </entity-condition>
     </view-entity>
-
-    <entity entity-name="ShopifyOrderLogError" package="mantle.order.log">
-        <field name="id" type="id" is-pk="true"/>
-        <field name="orderId" type="id" />
-        <field name="description" type="text-long"/>
-    </entity>
-
 </entities>

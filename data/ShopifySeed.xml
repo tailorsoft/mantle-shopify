@@ -7,6 +7,10 @@
     <moqui.basic.Enumeration description="Shopify Party Identifier" enumId="PtidShopify"  enumTypeId="PartyIdType"/>
     <moqui.basic.Enumeration description="Shopify" enumId="ScShopify"  enumTypeId="SalesChannel"/>
     <moqui.basic.Enumeration description="Shopify Carrier Party Identifier" enumId="PtidCarrierShopify"  enumTypeId="PartyIdType"/>
+    <moqui.basic.EnumerationType description="Shopify Shipping Method " enumTypeId="ShopifyShippingMethod"/>
+    <moqui.basic.Enumeration description="Free Shipping" enumId="FreeShipping"  enumTypeId="ShopifyShippingMethod"/>
+    <moqui.basic.Enumeration description="Standard Shipping" enumId="StandardShipping"  enumTypeId="ShopifyShippingMethod"/>
+
     <mantle.party.PartyIdentification partyId="_NA_" partyIdTypeEnumId="PtidCarrierShopify"  idValue="shopify"/>
     <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="_NA_" shipmentMethodEnumId="ShMthGround"  description="Standard"/>
     <mantle.product.store.ProductStoreSetting productStoreId="RCHERBALS" settingTypeEnumId="ShopifyStoreId"  settingValue="59386101956"/>
