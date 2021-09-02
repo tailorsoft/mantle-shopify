@@ -748,7 +748,7 @@
     </service>
     
     <service verb="queue" noun="GetOrdersSystemMessage">
-        <description> Get all order in status paid</description>
+        <description> Get all order in paid status</description>
         <actions>
             <set field="messageText" from="groovy.json.JsonOutput.toJson([status:'paid'])"/>
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
@@ -778,6 +778,7 @@
 
             <!-- filtering orders that have not been dispatched yet -->
             <set field="orderPaidList" from="response.orders.findAll { it.fulfillment_status == null }"/>
+
             <set field="orderIdPaidList" from="orderPaidList*.id"/>
 
             <!-- filtering internal orders that have not been dispatched yet -->
@@ -787,15 +788,40 @@
             <set field="orderToProcess" from="orderIdPaidList -  orderMoquiAlreadyCreated"/>
 
             <set field="orderPaidtoProcess" from="orderPaidList.findAll { orderToProcess.contains(it.id) }"/>
-
             <iterate list="orderPaidtoProcess" entry="order">
+                <set field="messageText" from="groovy.json.JsonOutput.toJson(order)"/>
+                <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyGetOrdersMessage', statusId:'SmsgReceived',isOutgoing:'N',parentMessageId: systemMessageId, messageText:messageText,docType:'json',docSubType:'order']" out-map="context"/>
+            </iterate>
+        </actions>
+    </service>
+
+    <!-- consume order-->
+    <service verb="consume" noun="OrdersSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+
+            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage" for-update="true"/>
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemMessageRemote">
+                <field-map field-name="systemMessageTypeId" from="systemMessage.systemMessageTypeId"/>
+            </entity-find-one>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
+                <field-map field-name="productStoreId" from="systemMessageRemote.productStoreId"/>
+            </entity-find-one>
+
+            <set field="messageText" from="systemMessage.messageText.trim()"/>
+
+            <if condition="systemMessage.docType == 'json' &amp;&amp; systemMessage.docSubType == 'order'">
+
+                <set field="order" from="new groovy.json.JsonSlurper().parseText(messageText ?: '{}')"/>
                 <set field="customer" from="order.customer"/>
                 <set field="shippingAddress" from="order.shipping_address"/>
                 <set field="billingAddress" from="order.billing_address"/>
 
                 <if condition="order.shipping_lines.size()==0">
-                    <message type="warning">ERROR: NO PRODUCTS FOUND ON SHOPIFY ORDER ${order.id}</message>
-                    <continue/>
+                    <return error="true" message="ERROR: NO PRODUCTS FOUND ON SHOPIFY ORDER ${order.id}"/>
                 </if>
 
                 <set field="carrierData" from="order.shipping_lines.first()"/>
@@ -804,31 +830,24 @@
                 <set field="discountApplications" from="order.discount_applications"/>
 
                 <if condition="!customer">
-                    <message type="warning">ERROR: NO CUSTOMER FOUND ON SHOPIFY ORDER ${order.id}</message>
-                    <continue/>
+                    <return error="true" message="ERROR: NO CUSTOMER FOUND ON SHOPIFY ORDER ${order.id}"/>
 
                 </if>
                 <if condition="!shippingAddress">
-                    <message type="warning">ERROR: NO SHIPPING ADDRESS FOUND ON SHOPIFY ORDER ${order.id}</message>
-                    <continue/>
+                    <return error="true" message="ERROR: NO SHIPPING ADDRESS FOUND ON SHOPIFY ORDER ${order.id}"/>
                 </if>
                 <if condition="!billingAddress">
                     <log message="NO BILLING ADDRESS FOUND ON RESPONSE, SHIPPING ADDRESS WILL BE ASSIGNED"/>
                     <set field="billingAddress" from="shippingAddress"/>
                 </if>
                 <if condition="!paymentDetails">
-                    <message type="warning">ERROR: NO PAYMENT DETAILS FOUND ON SHOPIFY ORDER ${order.id}</message>
-                    <continue/>
-
+                    <return error="true" message="ERROR: NO PAYMENT DETAILS FOUND ON SHOPIFY ORDER ${order.id}"/>
                 </if>
                 <if condition="!orderItems">
-                    <message type="warning">ERROR: NO ORDER ITEMS FOUND ON SHOPIFY ORDER ${order.id}</message>
-                    <continue/>
+                    <return error="true" message="ERROR: NO ORDER ITEMS FOUND ON SHOPIFY ORDER ${order.id}"/>
                 </if>
                 <if condition="!carrierData">
-                    <message type="warning">ERROR: NO CARRIER DATA FOUND ON SHOPIFY ORDER ${order.id}</message>
-                    <continue/>
-
+                    <return error="true" message="ERROR: NO CARRIER DATA FOUND ON SHOPIFY ORDER ${order.id}"/>
                 </if>
                 
                 <!-- GETTING CORRECT CARRIER DATA-->
@@ -858,26 +877,21 @@
                                 <set field="moquiShipmentMethod" from="shipmentMethodList.first()"/>
                             </then>
                             <else>
-                                <message type="warning">ERROR: SHIPMENT METHOD NOT FOUND FOR SHOPIFY ORDER ${order.id}</message>
-                                <continue/>
+                                <return error="true" message="ERROR: SHIPMENT METHOD NOT FOUND FOR SHOPIFY ORDER ${order.id}"/>
                             </else>
                         </if>
                     </then>
                     <else>
-                        <message type="warning">ERROR: NO CARRIER FOUND ON DB FOR SHOPIFY ORDER ${order.id}</message>
-                        <continue/>
+                        <return error="true" message="ERROR: NO CARRIER FOUND ON DB FOR SHOPIFY ORDER ${order.id}"/>
                     </else>
                 </if>
-
                 <service-call name="popstore.CustomerServices.find#PartyByEmail" in-map="[emailAddress:customer.email]" out-map="context"/>
-
                 <entity-find-one entity-name="mantle.order.OrderHeader" value-field="createdOrder">
                     <field-map field-name="externalId" from="order.id"/>
                 </entity-find-one>
 
                 <if condition="createdOrder">
-                    <message type="warning">SHOPIFY ORDER #${order.order_number} ALREADY CREATED, ORDER ID: ${createdOrder.orderId}</message>
-                    <continue/>
+                    <return error="true" message="SHOPIFY ORDER #${order.order_number} ALREADY CREATED, ORDER ID: ${createdOrder.orderId}"/>
                 </if>
                 
                 <if condition="partyIds.size() &gt; 0">
@@ -907,7 +921,7 @@
                     <if condition="postalMechList.size() &gt; 0">
                         <then>
                             <set field="postalMech" from="postalMechList.first()"/>
-                            <if condition="postalMech.address1.equals(shippingAddress.address1) || postalMech.address2.equals(shippingAddress.address2)">
+                            <if condition="postalMech.address1.equals(shippingAddress?.address1 ?: '' ) || postalMech.address2.equals(shippingAddress?.address2 ?: '' )">
                                 <set field="postalContactMechId" from="postalMech.contactMechId"/>
                                 <log message="SHIPPING ADDRESS ALREADY EXISTS"/>
                             </if>
@@ -1111,7 +1125,9 @@
                         <service-call name="mantle.shopify.ApiServices.queue#GetCustomerAddressesSystemMessage" out-map="context"
                                       in-map="[postalMechId:postalContactMechId, partyId:partyId]"/>
                     </if>
-            </iterate>
+
+            </if>
+           
         </actions>
     </service>
 
