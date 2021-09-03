@@ -6,6 +6,7 @@
         <field name="sentProductCategoryId" type="text-medium"/>
         <field name="sentPartyId" type="text-medium"/>
         <field name="sentContactMechId" type="text-medium"/>
+        <field name="shopifyOrderId" type="text-medium"/>
     </extend-entity>
     <extend-entity entity-name="ProductCategoryMember" package="mantle.product.category">
         <field name="shopifyId" type="id"/>
