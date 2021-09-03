@@ -790,7 +790,7 @@
             <set field="orderPaidtoProcess" from="orderPaidList.findAll { orderToProcess.contains(it.id) }"/>
             <iterate list="orderPaidtoProcess" entry="order">
                 <set field="messageText" from="groovy.json.JsonOutput.toJson(order)"/>
-                <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyGetOrdersMessage', statusId:'SmsgReceived',isOutgoing:'N',parentMessageId: systemMessageId, messageText:messageText,docType:'json',docSubType:'order']" out-map="context"/>
+                <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyGetOrdersMessage', statusId:'SmsgReceived',isOutgoing:'N',parentMessageId: systemMessageId, messageText:messageText,docType:'json',docSubType:'order',shopifyOrderId:order.id]" out-map="context"/>
             </iterate>
         </actions>
     </service>
@@ -864,7 +864,6 @@
                 <if condition="carrierList.size() &gt; 0">
                     <then>
                         <set field="moquiCarrierData" from="carrierList.first()"/>
-
                         <if condition="carrierData.title in (shopifyShippingMethodIds)">
                             <then>
                                 <set field="shippingMethod" value="Standard Shipping"/>
