@@ -790,7 +790,9 @@
             <set field="orderPaidtoProcess" from="orderPaidList.findAll { orderToProcess.contains(it.id) }"/>
             <iterate list="orderPaidtoProcess" entry="order">
                 <set field="messageText" from="groovy.json.JsonOutput.toJson(order)"/>
-                <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:order.id, systemMessageTypeId:'ShopifyGetOrdersMessage']" out-map="context"/>
+                <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:order.id, 
+                                                                                                                  systemMessageTypeId:'ShopifyGetOrdersMessage',
+                                                                                                                  statusId:'SmsgReceived']" out-map="context"/>
                 <if condition="systemMessageAlreadyExist">
                     <continue/>
                 </if>
@@ -1455,7 +1457,10 @@
     
                 <!-- The service to canculate refund order is called only if exist items to cancel -->
                 <if condition="refund_line_items">
-                    <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:order.id, systemMessageTypeId:'ShopifyCalculateRefundMessage']" out-map="context"/>
+                    <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:order.externalId, 
+                                                                                                                      systemMessageTypeId:'ShopifyCalculateRefundMessage',
+                                                                                                                      statusId:'SmsgProduced']" out-map="context"/>
+
                     <if condition="systemMessageAlreadyExist">
                         <continue/>
                     </if>
