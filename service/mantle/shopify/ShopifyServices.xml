@@ -131,6 +131,7 @@
             <set field="locationId" from="productLocation.settingValue" />
         </actions>
     </service>
+    
     <service verb="validate" noun="ProductData">
         <description>
             Checks if the product data is valid for the shopify request
@@ -190,5 +191,4 @@
             </if>
         </actions>
     </service>
-
 </services>
