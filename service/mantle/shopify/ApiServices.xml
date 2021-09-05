@@ -790,6 +790,14 @@
             <set field="orderPaidtoProcess" from="orderPaidList.findAll { orderToProcess.contains(it.id) }"/>
             <iterate list="orderPaidtoProcess" entry="order">
                 <set field="messageText" from="groovy.json.JsonOutput.toJson(order)"/>
+                
+                <entity-find entity-name="moqui.service.message.SystemMessage" list="systemMessageAlreadyCreated">
+                    <econdition field-name="shopifyOrderId" from="order.id"/>
+                </entity-find>
+                <if condition="systemMessageAlreadyCreated.size() > 0 ">
+                    <continue/>
+                </if>
+
                 <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyGetOrdersMessage', statusId:'SmsgReceived', isOutgoing:'N', parentMessageId:systemMessageId, messageText:messageText, docType:'json', docSubType:'order', shopifyOrderId:order.id]" out-map="context"/>
             </iterate>
         </actions>
@@ -915,8 +923,10 @@
                     <entity-find entity-name="mantle.party.contact.PartyContactMechPostalAddress" list="postalMechList">
                         <econdition field-name="partyId" from="partyId"/>
                         <econdition field-name="contactMechPurposeId" value="PostalPrimary"/>
+                        <econdition field-name="address1" from="shippingAddress?.address1"/>
+                        <econdition field-name="address2" from="shippingAddress?.address2" ignore-case="true" ignore-if-empty="true"/>
+                        <date-filter/>
                     </entity-find>
-                    
                     <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber" list="telecomMechList">
                         <econdition field-name="partyId" from="partyId"/>
                         <econdition field-name="contactMechPurposeId" value="PhonePrimary"/>
