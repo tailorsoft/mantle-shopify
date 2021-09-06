@@ -1560,69 +1560,88 @@
         </actions>
     </service>
 
-
-    <service verb="queue" noun="CreateFulfillmentSystemMessage">
+    <service verb="queue" noun="CreateFulfillmentSystemMessage" authenticate="anonymous-all">
         <description>Service to register a fulfillment for a order</description>
-        <in-parameters>
-            <parameter name="shipmentId" required="true" />
-        </in-parameters>
         <actions>
-            <set field="line_items" from="[]"/>
-            <set field="fulfillment" from="[:]"/>
-           
-            <entity-find-one entity-name="mantle.shipment.Shipment" value-field="shipment">
-                <field-map field-name="shipmentId" />
-            </entity-find-one>
-            <!--The shipment must be exist to continue, otherwise a message error is generated-->
-            <if condition="!shipment">
-                <return error="true" message="The shipment ${shipmentId} does not exist" />
-            </if>
 
-            <if condition="shipment.statusId != 'ShipShipped'">
-                <return error="true" message="The shipment ${shipmentId} must be in status Shipped to register a fulfillment "/>
-            </if>
-
-            <!-- get the store id -->
-            <service-call name="mantle.shopify.ShopifyServices.get#LocationAndStoreId" out-map="context"   in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage']"/>
-            <service-call name="mantle.shipment.ShipmentInfoServices.get#ShipmentDisplayInfo" in-map="[shipmentId:shipmentId]" out-map="context"/>
-
-            <set field = "orderId" from="shipmentItemSourceList.first().orderId"/>
-            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader">
-                <field-map field-name="orderId" />
-            </entity-find-one>
-            
-            <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
-                <econdition field-name="orderId"  from="orderId"/>
-                <econdition field-name="itemTypeEnumId"  value="ItemProduct"/>
-                <econdition field-name="quantity"   operator="greater" from="0.0"/>
+            <entity-find entity-name="mantle.shipment.Shipment" list="shipments">
+                <econdition field-name="shopifyShipmentStatusId" operator="is-null"/>
+                <econditions combine="or">
+                    <econdition field-name="statusId" value="ShipDelivered"/>
+                    <econdition field-name="statusId" value="ShipShipped"/>
+                </econditions>
             </entity-find>
-        
-            <iterate list="allShipmentPackageContentList" entry="item">
-                <script>
-                    def productTemp = orderItems.find{it.productId == item.productId}
-                    def items = [:]
-                    items.id = productTemp.externalItemSeqId
-                    items.quantity = item.quantity
-                    line_items.add(items)
-                </script>
-            </iterate>
 
-            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentification">
-                <field-map field-name="partyId"  from="curCarrierDetail?.partyId"/>
-                <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
-            </entity-find-one>
-        
-            <set field="externalId" from="orderHeader.externalId" />
-            <set field="fulfillment.location_id" from="locationId" />
-            <set field="fulfillment.tracking_number" from="packageRouteSegList[0]?.trackingCode" />
-            <set field="fulfillment.tracking_company" from="partyIdentification?.idValue" />
-            <set field="fulfillment.line_items" from="line_items" />
-            <set field="messageText" from="groovy.json.JsonOutput.toJson([fulfillment:fulfillment])"/>
-            <!-- The service to create fulfillment is called only if  there are items were shipped -->
-            <if condition="line_items">
-                <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage', messageText:messageText, docSubControl:'createFulfillment', docControl:externalId]"/>
-            </if>
+            <iterate list="shipments" entry="shipment">
+
+                <set field="line_items" from="[]"/>
+                <set field="fulfillment" from="[:]"/>
+
+                <if condition="shipment.statusId  in ['ShipShipped','ShipDelivered']">
+                    <return error="true" message="The shipment ${shipment.shipmentId} must be in status Shipped or Delivered for registering a fulfillment "/>
+                </if>
+
+                <!-- get the store id -->
+                <service-call name="mantle.shopify.ShopifyServices.get#LocationAndStoreId" out-map="context"   in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage']"/>
+                <service-call name="mantle.shipment.ShipmentInfoServices.get#ShipmentDisplayInfo" in-map="[shipmentId:shipment.shipmentId]" out-map="context"/>
+                <set field="orderId" from="shipmentItemSourceList.first().orderId"/>
+                <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader">
+                    <field-map field-name="orderId" />
+                </entity-find-one>
+
+                <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
+                    <econdition field-name="orderId"  from="orderId"/>
+                    <econdition field-name="itemTypeEnumId"  value="ItemProduct"/>
+                    <econdition field-name="quantity"   operator="greater" from="0.0"/>
+                </entity-find>
+            
+                <iterate list="allShipmentPackageContentList" entry="item">
+                    <script>
+                        def productTemp = orderItems.find{it.productId == item.productId}
+                        def items = [:]
+                        items.id = productTemp.externalItemSeqId
+                        items.quantity = item.quantity
+                        line_items.add(items)
+                    </script>
+                </iterate>
+
+                <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentification">
+                    <field-map field-name="partyId"  from="curCarrierDetail?.partyId"/>
+                    <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
+                </entity-find-one>
+            
+                <set field="externalId" from="orderHeader.externalId" />
+                <set field="fulfillment.location_id" from="locationId" />
+                <set field="fulfillment.tracking_number" from="packageRouteSegList[0]?.trackingCode" />
+                <set field="fulfillment.tracking_company" from="partyIdentification?.idValue" />
+                <set field="fulfillment.line_items" from="line_items" />
+                <set field="messageText" from="groovy.json.JsonOutput.toJson([fulfillment:fulfillment])"/>
+
+                <!-- The service to create fulfillment is called only if  there are items were shipped -->
+                <if condition="line_items">
+
+                    <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:externalId, 
+                                                                                                                      systemMessageTypeId:'ShopifyCreateFulfillmentMessage',
+                                                                                                                      statusId:'SmsgProduced']" out-map="context"/>
+                    <if condition="systemMessageAlreadyExist">
+                        <continue/>
+                    </if>
+
+
+                    <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage',
+                                                                                             statusId:'SmsgProduced', 
+                                                                                             isOutgoing:'Y', 
+                                                                                             messageText:messageText, 
+                                                                                             docType:'json', 
+                                                                                             docSubType:'createFulfillment',
+                                                                                             docControl:externalId,
+                                                                                             docSubControl:'createFulfillment',
+                                                                                             shopifyOrderId:externalId,
+                                                                                             orderId:orderHeader.orderId,
+                                                                                             sentShipmentId:shipment.shipmentId
+                                                                                             ]" out-map="context"/>
+                </if>
+            </iterate>
         </actions>
     </service>
     
@@ -1635,6 +1654,13 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
+
+            <entity-find-one entity-name="mantle.shipment.Shipment" value-field="shipment" for-update="true">
+                <field-map field-name="shipmentId" from="systemMessage.sentShipmentId"/>
+            </entity-find-one>
+
+            <set field="shipment.shopifyShipmentStatusId"  value="ShipShipped"/>
+            <entity-update value-field="shipment"/>
         </actions>
     </service>
 
