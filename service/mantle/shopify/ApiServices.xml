@@ -796,7 +796,15 @@
                 <if condition="systemMessageAlreadyExist">
                     <continue/>
                 </if>
-                <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyGetOrdersMessage', statusId:'SmsgReceived', isOutgoing:'N', parentMessageId:systemMessageId, messageText:messageText, docType:'json', docSubType:'order', shopifyOrderId:order.id]" out-map="context"/>
+                <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyGetOrdersMessage',
+                                                                                         statusId:'SmsgReceived',
+                                                                                         isOutgoing:'N',
+                                                                                         parentMessageId:systemMessageId,
+                                                                                         messageText:messageText,
+                                                                                         docType:'json',
+                                                                                         docSubType:'order',
+                                                                                         shopifyOrderId:order.id,
+                                                                                         initDate:ec.user.nowTimestamp]" out-map="context"/>
             </iterate>
         </actions>
     </service>
@@ -1470,15 +1478,16 @@
                     </if>
 
                     <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyCalculateRefundMessage',
-                                                                                             statusId:'SmsgProduced', 
-                                                                                             isOutgoing:'Y', 
-                                                                                             messageText:messageText, 
-                                                                                             docType:'json', 
+                                                                                             statusId:'SmsgProduced',
+                                                                                             isOutgoing:'Y',
+                                                                                             messageText:messageText,
+                                                                                             docType:'json',
                                                                                              docSubType:'cancelOrder',
-                                                                                             docSubControl:'calculateRefund', 
+                                                                                             docSubControl:'calculateRefund',
                                                                                              docControl:externalId,
                                                                                              shopifyOrderId:order.externalId,
-                                                                                             orderId:order.orderId
+                                                                                             orderId:order.orderId,
+                                                                                             initDate:ec.user.nowTimestamp
                                                                                              ]" out-map="context"/>
                 </if>
             </iterate>
@@ -1632,13 +1641,14 @@
                                                                                              statusId:'SmsgProduced', 
                                                                                              isOutgoing:'Y', 
                                                                                              messageText:messageText, 
-                                                                                             docType:'json', 
+                                                                                             docType:'json',
                                                                                              docSubType:'createFulfillment',
                                                                                              docControl:externalId,
                                                                                              docSubControl:'createFulfillment',
                                                                                              shopifyOrderId:externalId,
                                                                                              orderId:orderHeader.orderId,
-                                                                                             sentShipmentId:shipment.shipmentId
+                                                                                             sentShipmentId:shipment.shipmentId,
+                                                                                             initDate:ec.user.nowTimestamp
                                                                                              ]" out-map="context"/>
                 </if>
             </iterate>
