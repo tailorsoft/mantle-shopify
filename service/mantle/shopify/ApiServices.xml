@@ -1586,7 +1586,7 @@
                 <set field="line_items" from="[]"/>
                 <set field="fulfillment" from="[:]"/>
 
-                <if condition="shipment.statusId  in ['ShipShipped','ShipDelivered']">
+                <if condition="!shipment.statusId  in ['ShipShipped','ShipDelivered']">
                     <return error="true" message="The shipment ${shipment.shipmentId} must be in status Shipped or Delivered for registering a fulfillment "/>
                 </if>
 
