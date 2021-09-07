@@ -1038,7 +1038,7 @@
                         </entity-find>
 
                         <if condition="productIdList.size() == 0">
-                            <return error="true" message="ERROR: THE PRODUCT ID ${orderItem.variant_id} ON SHOPIFY ORDER ${order.name} IS NOT REGISTERED ON DB, CONTACT THE ADMIN FOR CREATING ONE IN PRODUCTS SCREEEN"/>
+                            <return error="true" message="ERROR: THE PRODUCT ID ${orderItem.variant_id} ON SHOPIFY ORDER ${order.name} IS NOT REGISTERED ON DB, PLEASE CONTACT ADMIN"/>
                         </if>
 
                         <if condition="orderHeader &amp;&amp; orderPart &amp;&amp; productIdList">
