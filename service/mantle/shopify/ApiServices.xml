@@ -1600,7 +1600,8 @@
                 <set field="fulfillment" from="[:]"/>
 
                 <if condition="!shipment.statusId  in ['ShipShipped','ShipDelivered']">
-                    <return error="true" message="The shipment ${shipment.shipmentId} must be in status Shipped or Delivered for registering a fulfillment "/>
+                    <log message="The shipment ${shipment.shipmentId} must be in status Shipped or Delivered for registering a fulfillment "/>
+                    <continue/>
                 </if>
 
                 <!-- get the store id -->
@@ -1642,14 +1643,16 @@
                 <!-- The service to create fulfillment is called only if  there are items were shipped -->
                 <if condition="line_items">
 
+                    <if condition="!externalId">
+                        <log message="The order ${orderHeader.orderId} shipment belong to ${shipment.shipmentId} does not have shopifyId "/>
+                        <continue/>
+                    </if>
                     <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:externalId, 
                                                                                                                       systemMessageTypeId:'ShopifyCreateFulfillmentMessage',
                                                                                                                       statusId:'SmsgProduced']" out-map="context"/>
                     <if condition="systemMessageAlreadyExist">
                         <continue/>
                     </if>
-
-
                     <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage',
                                                                                              statusId:'SmsgProduced', 
                                                                                              isOutgoing:'Y', 
