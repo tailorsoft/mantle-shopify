@@ -833,8 +833,8 @@
                 <set field="shippingAddress" from="order.shipping_address"/>
                 <set field="billingAddress" from="order.billing_address"/>
 
-                <if condition="order.shipping_lines.size()==0">
-                    <return error="true" message="ERROR: NO PRODUCTS FOUND ON SHOPIFY ORDER ${order.id}"/>
+                <if condition="order.shipping_lines.size() == 0">
+                    <return error="true" message="ERROR: NO PRODUCTS FOUND ON SHOPIFY ORDER ${order.name} - ${order.id}"/>
                 </if>
 
                 <set field="carrierData" from="order.shipping_lines.first()"/>
@@ -843,24 +843,24 @@
                 <set field="discountApplications" from="order.discount_applications"/>
 
                 <if condition="!customer">
-                    <return error="true" message="ERROR: NO CUSTOMER FOUND ON SHOPIFY ORDER ${order.id}"/>
+                    <return error="true" message="ERROR: NO CUSTOMER FOUND ON SHOPIFY ORDER ${order.name} - ${order.id}"/>
 
                 </if>
                 <if condition="!shippingAddress">
-                    <return error="true" message="ERROR: NO SHIPPING ADDRESS FOUND ON SHOPIFY ORDER ${order.id}"/>
+                    <return error="true" message="ERROR: NO SHIPPING ADDRESS FOUND ON SHOPIFY ORDER ${order.name} - ${order.id}"/>
                 </if>
                 <if condition="!billingAddress">
                     <log message="NO BILLING ADDRESS FOUND ON RESPONSE, SHIPPING ADDRESS WILL BE ASSIGNED"/>
                     <set field="billingAddress" from="shippingAddress"/>
                 </if>
                 <if condition="!paymentDetails">
-                    <return error="true" message="ERROR: NO PAYMENT DETAILS FOUND ON SHOPIFY ORDER ${order.id}"/>
+                    <return error="true" message="ERROR: NO PAYMENT DETAILS FOUND ON SHOPIFY ORDER ${order.name} - ${order.id}"/>
                 </if>
                 <if condition="!orderItems">
-                    <return error="true" message="ERROR: NO ORDER ITEMS FOUND ON SHOPIFY ORDER ${order.id}"/>
+                    <return error="true" message="ERROR: NO ORDER ITEMS FOUND ON SHOPIFY ORDER ${order.name} - ${order.id}"/>
                 </if>
                 <if condition="!carrierData">
-                    <return error="true" message="ERROR: NO CARRIER DATA FOUND ON SHOPIFY ORDER ${order.id}"/>
+                    <return error="true" message="ERROR: NO CARRIER DATA FOUND ON SHOPIFY ORDER ${order.name} - ${order.id}"/>
                 </if>
                 
                 <!-- GETTING CORRECT CARRIER DATA-->
@@ -895,12 +895,12 @@
                                 <set field="moquiShipmentMethod" from="shipmentMethodList.first()"/>
                             </then>
                             <else>
-                                <return error="true" message="ERROR: SHIPMENT METHOD NOT FOUND FOR SHOPIFY ORDER ${order.id}"/>
+                                <return error="true" message="ERROR: THE SHIPMENT ${carrierData.title} METHOD SELECTED IS NOT REGISTER ON DB FOR SHOPIFY ORDER ${order.name} - ${order.id}"/>
                             </else>
                         </if>
                     </then>
                     <else>
-                        <return error="true" message="ERROR: NO CARRIER FOUND ON DB FOR SHOPIFY ORDER ${order.id}"/>
+                        <return error="true" message="ERROR: NO CARRIER FOUND ON DB FOR SHOPIFY ORDER ${order.name} - ${order.id}"/>
                     </else>
                 </if>
                 <service-call name="popstore.CustomerServices.find#PartyByEmail" in-map="[emailAddress:customer.email]" out-map="context"/>
@@ -909,7 +909,7 @@
                 </entity-find-one>
 
                 <if condition="createdOrder">
-                    <return error="true" message="SHOPIFY ORDER #${order.order_number} ALREADY CREATED, ORDER ID: ${createdOrder.orderId}"/>
+                    <return error="true" message="SHOPIFY ORDER #${order.order_number} ALREADY CREATED, WITH ORDER ID: ${createdOrder.orderId} ON DB"/>
                 </if>
                 
                 <if condition="partyIds.size() &gt; 0">
@@ -1038,7 +1038,7 @@
                         </entity-find>
 
                         <if condition="productIdList.size() == 0">
-                            <return error="true" message="ERROR: SHOPIFY VARIANT ID ${orderItem.variant_id} IS NOT REGISTERED IN PRODUCT IDENTIFICATION, CONTACT THE ADMIN"/>
+                            <return error="true" message="ERROR: THE PRODUCT ID ${orderItem.variant_id} ON SHOPIFY ORDER ${order.name} IS NOT REGISTERED ON DB, PLEASE CONTACT ADMIN"/>
                         </if>
 
                         <if condition="orderHeader &amp;&amp; orderPart &amp;&amp; productIdList">
