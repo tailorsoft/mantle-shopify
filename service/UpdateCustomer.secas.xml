@@ -6,4 +6,27 @@
             <service-call name="mantle.shopify.ApiServices.queue#UpdateCustomerSystemMessage"  in-map="[partyId:person.partyId]" out-map="context"/>
         </actions>
     </seca>
+    <seca id="CustomerEmailUpdate" service="create#mantle.party.contact.ContactMech" when="post-service" run-on-error="false">
+        <actions>
+            <entity-find-one entity-name="mantle.party.contact.ContactMech" value-field="contactMech"/>
+            <entity-find-one entity-name="mantle.party.contact.PartyContactMech" value-field="partyContactMech">
+                <field-map field-name="contactMechId" from="contactMech.contactMechId" />
+            </entity-find-one>
+            <service-call name="mantle.shopify.ApiServices.queue#UpdateCustomerSystemMessage"  in-map="[partyId:person.partyId]" out-map="context"/>
+        </actions>
+    </seca>
+    <seca id="CustomerEmailUpdate2" service="update#mantle.party.contact.ContactMech" when="post-service" run-on-error="false">
+        <actions>
+            <entity-find-one entity-name="mantle.party.contact.ContactMech" value-field="contactMech"/>
+            <entity-find-one entity-name="mantle.party.contact.PartyContactMech" value-field="partyContactMech">
+                <field-map field-name="contactMechId" from="contactMech.contactMechId" />
+            </entity-find-one>
+            <service-call name="mantle.shopify.ApiServices.queue#UpdateCustomerSystemMessage"  in-map="[partyId:person.partyId]" out-map="context"/>
+        </actions>
+    </seca>
+    <seca id="CustomerUpdateTelecomNumber" service="mantle.party.ContactServices.store#PartyContactInfo" when="post-service">
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.queue#UpdateCustomerSystemMessage"  in-map="[partyId:partyId]" out-map="context"/>
+        </actions>
+    </seca>
 </secas>
