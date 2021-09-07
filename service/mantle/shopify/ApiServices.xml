@@ -1285,6 +1285,10 @@
                 <return error="true" message="The customer ${partyId} does not exist" />
             </if>
 
+            <if condition="!partyIdentification">
+                <return error="true" message="The customer ${partyId} does not have shpopify indentification, contact the admin" />
+            </if>
+
             <entity-find entity-name="mantle.party.contact.PartyContactMech" list="userEmailIdList">
                 <econdition field-name="partyId" />
                 <econdition field-name="contactMechPurposeId" value="EmailPrimary" />
@@ -1392,8 +1396,17 @@
             <set field="customer.phone" from="phone"/>
             <set field="customer.addresses" from="addressList"/>
             <set field="messageText" from="groovy.json.JsonOutput.toJson([customer:customer])"/>
-            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-            in-map="[systemMessageTypeId:'ShopifyUpdateCustomerMessage', messageText:messageText, docSubType:'putCustomer', docSubControl:'putCustomer', docControl:customer.id]"/>
+
+            <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyUpdateCustomerMessage',
+                                                                                             statusId:'SmsgProduced',
+                                                                                             isOutgoing:'Y',
+                                                                                             messageText:messageText,
+                                                                                             docType:'json',
+                                                                                             docSubType:'putCustomer',
+                                                                                             docSubControl:'putCustomer',
+                                                                                             docControl:customer.id,
+                                                                                             initDate:ec.user.nowTimestamp
+                                                                                             ]" out-map="context"/>
         </actions>
     </service>
 
