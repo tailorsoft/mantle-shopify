@@ -1331,7 +1331,7 @@
                 </entity-find-one>
 
                 <if condition="!customerAddress">
-                    <log message="The party does not have register on db, contact the admin."/>
+                    <log message="The party does not have register on postalAddress, contact the admin."/>
                     <continue/>
                 </if>
                 <set field="firstAndLasNameCustomerAddres" from="customerAddress?.toName ? customerAddress?.toName.split(' ').findAll { it != ''} : ''"/>
