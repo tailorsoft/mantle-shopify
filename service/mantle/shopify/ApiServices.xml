@@ -1209,17 +1209,17 @@
         </in-parameters>
         <actions>
 
-            <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="shopifyInvenotoryItem">
+            <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="shopifyInventoryItem">
                 <field-map field-name="productId" from="productId"/>
                 <field-map field-name="productIdTypeEnumId" value="PidtInventoryItemShopify"/>
             </entity-find-one>
 
-            <if condition="!shopifyInvenotoryItem">
+            <if condition="!shopifyInventoryItem">
                 <return error="true"
                         message="The product ${productId} must be a variant product"/>
             </if>
  
-            <set field="inventoryItemId" from="shopifyInvenotoryItem.idValue"/>
+            <set field="inventoryItemId" from="shopifyInventoryItem.idValue"/>
 
             <!-- get the store id-->
             <service-call name="mantle.shopify.ShopifyServices.get#LocationAndStoreId" out-map="context"   in-map="[systemMessageTypeId:'ShopifySetInventoryMessage']"/>
