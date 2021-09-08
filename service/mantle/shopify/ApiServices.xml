@@ -1448,6 +1448,7 @@
             <entity-find entity-name="mantle.order.OrderHeader" list="orders">
                 <econdition field-name="shopifyOrderStatusId" operator="is-null"/>
                 <econdition field-name="externalId" operator="is-not-null"/>
+                <econdition field-name="systemMessageRemoteId" operator="is-not-null"/>
                 <econditions combine="or">
                     <econdition field-name="statusId" value="OrderCancelled"/>
                     <econdition field-name="statusId" value="OrderCompleted"/>
@@ -1592,6 +1593,7 @@
 
             <entity-find entity-name="mantle.shipment.Shipment" list="shipments">
                 <econdition field-name="shopifyShipmentStatusId" operator="is-null"/>
+                <econdition field-name="systemMessageRemoteId" operator="is-not-null"/>
                 <econditions combine="or">
                     <econdition field-name="statusId" value="ShipDelivered"/>
                     <econdition field-name="statusId" value="ShipShipped"/>
