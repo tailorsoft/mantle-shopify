@@ -833,8 +833,8 @@
                 <set field="shippingAddress" from="order.shipping_address"/>
                 <set field="billingAddress" from="order.billing_address"/>
 
-                <if condition="order.shipping_lines.size()==0">
-                    <return error="true" message="ERROR: NO PRODUCTS FOUND ON SHOPIFY ORDER ${order.id}"/>
+                <if condition="order.shipping_lines.size() == 0">
+                    <return error="true" message="ERROR: NO PRODUCTS FOUND ON SHOPIFY ORDER ${order.name} - ${order.id}"/>
                 </if>
 
                 <set field="carrierData" from="order.shipping_lines.first()"/>
@@ -843,24 +843,24 @@
                 <set field="discountApplications" from="order.discount_applications"/>
 
                 <if condition="!customer">
-                    <return error="true" message="ERROR: NO CUSTOMER FOUND ON SHOPIFY ORDER ${order.id}"/>
+                    <return error="true" message="ERROR: NO CUSTOMER FOUND ON SHOPIFY ORDER ${order.name} - ${order.id}"/>
 
                 </if>
                 <if condition="!shippingAddress">
-                    <return error="true" message="ERROR: NO SHIPPING ADDRESS FOUND ON SHOPIFY ORDER ${order.id}"/>
+                    <return error="true" message="ERROR: NO SHIPPING ADDRESS FOUND ON SHOPIFY ORDER ${order.name} - ${order.id}"/>
                 </if>
                 <if condition="!billingAddress">
                     <log message="NO BILLING ADDRESS FOUND ON RESPONSE, SHIPPING ADDRESS WILL BE ASSIGNED"/>
                     <set field="billingAddress" from="shippingAddress"/>
                 </if>
                 <if condition="!paymentDetails">
-                    <return error="true" message="ERROR: NO PAYMENT DETAILS FOUND ON SHOPIFY ORDER ${order.id}"/>
+                    <return error="true" message="ERROR: NO PAYMENT DETAILS FOUND ON SHOPIFY ORDER ${order.name} - ${order.id}"/>
                 </if>
                 <if condition="!orderItems">
-                    <return error="true" message="ERROR: NO ORDER ITEMS FOUND ON SHOPIFY ORDER ${order.id}"/>
+                    <return error="true" message="ERROR: NO ORDER ITEMS FOUND ON SHOPIFY ORDER ${order.name} - ${order.id}"/>
                 </if>
                 <if condition="!carrierData">
-                    <return error="true" message="ERROR: NO CARRIER DATA FOUND ON SHOPIFY ORDER ${order.id}"/>
+                    <return error="true" message="ERROR: NO CARRIER DATA FOUND ON SHOPIFY ORDER ${order.name} - ${order.id}"/>
                 </if>
                 
                 <!-- GETTING CORRECT CARRIER DATA-->
@@ -895,12 +895,12 @@
                                 <set field="moquiShipmentMethod" from="shipmentMethodList.first()"/>
                             </then>
                             <else>
-                                <return error="true" message="ERROR: SHIPMENT METHOD NOT FOUND FOR SHOPIFY ORDER ${order.id}"/>
+                                <return error="true" message="ERROR: THE SHIPMENT ${carrierData.title} METHOD SELECTED IS NOT REGISTER ON DB FOR SHOPIFY ORDER ${order.name} - ${order.id}"/>
                             </else>
                         </if>
                     </then>
                     <else>
-                        <return error="true" message="ERROR: NO CARRIER FOUND ON DB FOR SHOPIFY ORDER ${order.id}"/>
+                        <return error="true" message="ERROR: NO CARRIER FOUND ON DB FOR SHOPIFY ORDER ${order.name} - ${order.id}"/>
                     </else>
                 </if>
                 <service-call name="popstore.CustomerServices.find#PartyByEmail" in-map="[emailAddress:customer.email]" out-map="context"/>
@@ -909,7 +909,7 @@
                 </entity-find-one>
 
                 <if condition="createdOrder">
-                    <return error="true" message="SHOPIFY ORDER #${order.order_number} ALREADY CREATED, ORDER ID: ${createdOrder.orderId}"/>
+                    <return error="true" message="SHOPIFY ORDER #${order.order_number} ALREADY CREATED, WITH ORDER ID: ${createdOrder.orderId} ON DB"/>
                 </if>
                 
                 <if condition="partyIds.size() &gt; 0">
@@ -1038,7 +1038,7 @@
                         </entity-find>
 
                         <if condition="productIdList.size() == 0">
-                            <return error="true" message="ERROR: SHOPIFY VARIANT ID ${orderItem.variant_id} IS NOT REGISTERED IN PRODUCT IDENTIFICATION, CONTACT THE ADMIN"/>
+                            <return error="true" message="ERROR: THE PRODUCT ID ${orderItem.variant_id} ON SHOPIFY ORDER ${order.name} IS NOT REGISTERED ON DB, PLEASE CONTACT ADMIN"/>
                         </if>
 
                         <if condition="orderHeader &amp;&amp; orderPart &amp;&amp; productIdList">
@@ -1209,17 +1209,17 @@
         </in-parameters>
         <actions>
 
-            <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="shopifyInvenotoryItem">
+            <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="shopifyInventoryItem">
                 <field-map field-name="productId" from="productId"/>
                 <field-map field-name="productIdTypeEnumId" value="PidtInventoryItemShopify"/>
             </entity-find-one>
 
-            <if condition="!shopifyInvenotoryItem">
+            <if condition="!shopifyInventoryItem">
                 <return error="true"
                         message="The product ${productId} must be a variant product"/>
             </if>
  
-            <set field="inventoryItemId" from="shopifyInvenotoryItem.idValue"/>
+            <set field="inventoryItemId" from="shopifyInventoryItem.idValue"/>
 
             <!-- get the store id-->
             <service-call name="mantle.shopify.ShopifyServices.get#LocationAndStoreId" out-map="context"   in-map="[systemMessageTypeId:'ShopifySetInventoryMessage']"/>
@@ -1285,6 +1285,10 @@
                 <return error="true" message="The customer ${partyId} does not exist" />
             </if>
 
+            <if condition="!partyIdentification">
+                <return error="true" message="The customer ${partyId} does not have shpopify indentification, contact the admin" />
+            </if>
+
             <entity-find entity-name="mantle.party.contact.PartyContactMech" list="userEmailIdList">
                 <econdition field-name="partyId" />
                 <econdition field-name="contactMechPurposeId" value="EmailPrimary" />
@@ -1326,6 +1330,10 @@
                     <field-map field-name="contactMechId" from="customerAddressEntry.contactMechId"/>
                 </entity-find-one>
 
+                <if condition="!customerAddress">
+                    <log message="The party ${partyId} - ${person.firstName} ${person.lastName?:''} does not have register on postalAddress, contact the admin."/>
+                    <continue/>
+                </if>
                 <set field="firstAndLasNameCustomerAddres" from="customerAddress?.toName ? customerAddress?.toName.split(' ').findAll { it != ''} : ''"/>
                 <set field="firstNameAtAddress" from="firstAndLasNameCustomerAddres[0]"/>
                 <set field="lastNameAtAddress" from="firstAndLasNameCustomerAddres.size() >=1 ? firstAndLasNameCustomerAddres[1] : ''"/>
@@ -1392,8 +1400,17 @@
             <set field="customer.phone" from="phone"/>
             <set field="customer.addresses" from="addressList"/>
             <set field="messageText" from="groovy.json.JsonOutput.toJson([customer:customer])"/>
-            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-            in-map="[systemMessageTypeId:'ShopifyUpdateCustomerMessage', messageText:messageText, docSubType:'putCustomer', docSubControl:'putCustomer', docControl:customer.id]"/>
+
+            <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyUpdateCustomerMessage',
+                                                                                             statusId:'SmsgProduced',
+                                                                                             isOutgoing:'Y',
+                                                                                             messageText:messageText,
+                                                                                             docType:'json',
+                                                                                             docSubType:'putCustomer',
+                                                                                             docSubControl:'putCustomer',
+                                                                                             docControl:customer.id,
+                                                                                             initDate:ec.user.nowTimestamp
+                                                                                             ]" out-map="context"/>
         </actions>
     </service>
 
@@ -1586,8 +1603,9 @@
                 <set field="line_items" from="[]"/>
                 <set field="fulfillment" from="[:]"/>
 
-                <if condition="shipment.statusId  in ['ShipShipped','ShipDelivered']">
-                    <return error="true" message="The shipment ${shipment.shipmentId} must be in status Shipped or Delivered for registering a fulfillment "/>
+                <if condition="!shipment.statusId  in ['ShipShipped','ShipDelivered']">
+                    <log message="The shipment ${shipment.shipmentId} must be in status Shipped or Delivered for registering a fulfillment "/>
+                    <continue/>
                 </if>
 
                 <!-- get the store id -->
@@ -1628,15 +1646,16 @@
 
                 <!-- The service to create fulfillment is called only if  there are items were shipped -->
                 <if condition="line_items">
-
+                    <if condition="!externalId">
+                        <log message="The order ${orderHeader.orderId} that belong to shipment ${shipment.shipmentId} does not have shopifyId "/>
+                        <continue/>
+                    </if>
                     <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:externalId, 
                                                                                                                       systemMessageTypeId:'ShopifyCreateFulfillmentMessage',
                                                                                                                       statusId:'SmsgProduced']" out-map="context"/>
                     <if condition="systemMessageAlreadyExist">
                         <continue/>
                     </if>
-
-
                     <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage',
                                                                                              statusId:'SmsgProduced', 
                                                                                              isOutgoing:'Y', 
