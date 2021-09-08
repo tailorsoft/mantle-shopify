@@ -1646,7 +1646,6 @@
 
                 <!-- The service to create fulfillment is called only if  there are items were shipped -->
                 <if condition="line_items">
-
                     <if condition="!externalId">
                         <log message="The order ${orderHeader.orderId} shipment belong to ${shipment.shipmentId} does not have shopifyId "/>
                         <continue/>
