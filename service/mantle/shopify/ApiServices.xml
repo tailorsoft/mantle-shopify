@@ -1240,9 +1240,15 @@
                 inventory_item_id:inventoryItemId,
                 available:available
                 ])"/>
-               
-            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                          in-map="[systemMessageTypeId:'ShopifySetInventoryMessage', messageText:messageText, docSubType:'upDateInventoryLevel']"/>
+
+            <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifySetInventoryMessage',
+                                                                                             statusId:'SmsgProduced',
+                                                                                             isOutgoing:'Y',
+                                                                                             messageText:messageText,
+                                                                                             docType:'updateInventoryLevel',
+                                                                                             docSubType:'updateInventoryLevel',
+                                                                                             initDate:ec.user.nowTimestamp
+                                                                                             ]" out-map="context"/>
         </actions>
     </service>
         
