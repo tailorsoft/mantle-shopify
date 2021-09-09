@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <entity-facade-xml type="seed">
-    <moqui.service.job.ServiceJob jobName="get_order" description="make a http request to the Shopify store to get all paid orders" serviceName="mantle.shopify.ApiServices.queue#GetOrdersSystemMessage" cronExpression="0 0/05 * * * ?" fromDate ="2021-09-02" paused="N"/>
-    <moqui.service.job.ServiceJob jobName="cancel_order" description="make a http request to the Shopify store to get the order info that will be cancelled" serviceName="mantle.shopify.ApiServices.queue#CancelAndCalculateRefundOrderSystemMessage" cronExpression="0 0/05 * * * ?" fromDate ="2021-09-02" paused="N"/>
-    <moqui.service.job.ServiceJob jobName="create_fulfillment" description="make a http request to the Shopify store for registering a shipment" serviceName="mantle.shopify.ApiServices.queue#CreateFulfillmentSystemMessage" cronExpression="0 0/05 * * * ?" fromDate ="2021-09-02" paused="N"/>
+    <moqui.service.job.ServiceJob jobName="get_order" description="make a http request to the Shopify store to get all paid orders" serviceName="mantle.shopify.ApiServices.queue#GetOrdersSystemMessage" cronExpression="0 0/15 * * * ?" fromDate ="2021-09-02" paused="N"/>
+    <moqui.service.job.ServiceJob jobName="cancel_order" description="make a http request to the Shopify store to get the order info that will be cancelled" serviceName="mantle.shopify.ApiServices.queue#CancelAndCalculateRefundOrderSystemMessage" cronExpression="0 0/15 * * * ?" fromDate ="2021-09-02" paused="N"/>
+    <moqui.service.job.ServiceJob jobName="create_fulfillment" description="make a http request to the Shopify store for registering a shipment" serviceName="mantle.shopify.ApiServices.queue#CreateFulfillmentSystemMessage" cronExpression="0 0/15 * * * ?" fromDate ="2021-09-02" paused="N"/>
 </entity-facade-xml>
