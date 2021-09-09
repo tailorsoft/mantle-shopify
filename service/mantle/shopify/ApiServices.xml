@@ -1120,11 +1120,21 @@
                                                                                                unitAmount:carrierData.price]" out-map="context"/>
                     <if condition="orderHeader &amp;&amp; orderPart">
                         <!-- PAYMENT METHOD -->
-                        <service-call name="create#mantle.account.method.PaymentMethod" out-map="context" in-map="[ownerPartyId: partyId,
+                        <set field="creditCarddescription" from="paymentDetails.credit_card_company + ' ' + paymentDetails.credit_card_number"/>
+                        <entity-find entity-name="mantle.account.method.PaymentMethod" list="paymentMethods">
+                            <econdition field-name="ownerPartyId" from="partyId"/>
+                            <econdition field-name="firstNameOnAccount"  from="customer.first_name"/>
+                            <econdition field-name="paymentMethodTypeEnumId"  value="PmtCreditCard"/>
+                            <econdition field-name="description" from="creditCarddescription"/>
+                        </entity-find>
+                        <!-- if the payment method exists, the system won't create another one -->
+                        <if condition="!paymentMethods">
+                            <service-call name="create#mantle.account.method.PaymentMethod" out-map="context" in-map="[ownerPartyId: partyId,
                                                                                                            paymentMethodTypeEnumId:'PmtCreditCard',
                                                                                                            firstNameOnAccount: customer.first_name,
                                                                                                            lastNameOnAccount:customer.last_name,
-                                                                                                           description: paymentDetails.credit_card_company + ' ' + paymentDetails.credit_card_number ]"/>
+                                                                                                           description: creditCarddescription ]"/>
+                        </if>
                         <set field="fromPartyId" from="orderPart.customerPartyId"/>
                         <entity-find entity-name="mantle.order.OrderPartParty" list="billList">
                             <econdition field-name="orderId"/><econdition field-name="orderPartSeqId"/>
