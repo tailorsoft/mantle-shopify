@@ -1127,7 +1127,7 @@
                             <econdition field-name="paymentMethodTypeEnumId"  value="PmtCreditCard"/>
                             <econdition field-name="description" from="creditCarddescription"/>
                         </entity-find>
-                        <!-- The payment method is created only if is not duplicate -->
+                        <!-- if the payment method exists, no other is created -->
                         <if condition="!paymentMethods">
                             <service-call name="create#mantle.account.method.PaymentMethod" out-map="context" in-map="[ownerPartyId: partyId,
                                                                                                            paymentMethodTypeEnumId:'PmtCreditCard',
