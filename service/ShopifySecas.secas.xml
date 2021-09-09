@@ -11,4 +11,10 @@
             <service-call name="mantle.shopify.ApiServices.queue#UpdateCustomerSystemMessage"  in-map="[partyId:partyId]" out-map="context"/>
         </actions>
     </seca>
+    <seca id="UpdateProductInventory" service="create#mantle.product.asset.Asset" when="post-service" run-on-error="false">
+        <actions>
+            <entity-find-one entity-name="mantle.product.asset.Asset" value-field="asset"/>
+            <service-call name="mantle.shopify.ApiServices.queue#SetInventorySystemMessage"  in-map="[productId:asset.productId]" out-map="context"/>
+        </actions>
+    </seca>
 </secas>
