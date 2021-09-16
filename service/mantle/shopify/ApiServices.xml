@@ -1687,7 +1687,6 @@
                                                                                              messageText:messageText, 
                                                                                              docType:'json',
                                                                                              docSubType:'createFulfillment',
-                                                                                             docControl:externalId,
                                                                                              docSubControl:'createFulfillment',
                                                                                              shopifyOrderId:externalId,
                                                                                              orderId:orderHeader.orderId,
