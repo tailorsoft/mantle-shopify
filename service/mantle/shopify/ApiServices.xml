@@ -1241,7 +1241,7 @@
                 <econdition field-name="facilityId"  from="productStore.inventoryFacilityId"/>
                 <econdition field-name="assetTypeEnumId" value="AstTpInventory"/>
             </entity-find>
-            
+
             <set field="avilableToPromiseList" from="assetList*.availableToPromiseTotal"/>
             <set field="available" from="avilableToPromiseList.findAll{it != null}.sum()?:0"/>
 
@@ -1249,7 +1249,7 @@
                 location_id:locationId,
                 inventory_item_id:inventoryItemId,
                 available:available
-                ])"/>
+                ])"/>      lkfd
 
             <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifySetInventoryMessage',
                                                                                              statusId:'SmsgProduced',
@@ -1271,6 +1271,18 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
+        </actions>
+    </service>
+    <service verb="consume" noun="SetInventorySystemMessage">
+        <actions>
+            <entity-find entity-name="mantle.product.ProductInventoryUpdate" list="updatedProducts"/>
+            <iterate list="updatedProducts" entry="updatedProduct">
+                <log message="ENTRO..."/>
+                <service-call name="mantle.shopify.ApiServices.queue#SetInventorySystemMessage"
+                              in-map="[productId: updatedProduct.productId]"
+                              out-map="context"/>
+                <service-call name="delete#mantle.product.ProductInventoryUpdate"  in-map="[updateId:updatedProduct.updateId]" out-map="context"/>
+            </iterate>
         </actions>
     </service>
 
