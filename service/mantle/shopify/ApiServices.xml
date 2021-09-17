@@ -1249,7 +1249,7 @@
                 location_id:locationId,
                 inventory_item_id:inventoryItemId,
                 available:available
-                ])"/>      lkfd
+                ])"/>
 
             <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifySetInventoryMessage',
                                                                                              statusId:'SmsgProduced',
