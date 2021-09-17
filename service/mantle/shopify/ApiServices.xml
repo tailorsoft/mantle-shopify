@@ -1028,7 +1028,7 @@
                     <set field="discountAmount" value="0"/>
                     <if condition="discountApplications.size() &gt; 0">
                         <set field="discount" from="discountApplications[0]"/>
-                        <set field="discountAmount" from="Double.parseDouble(discount.value)"/>
+                        <script>def discountAmount = discount.value  as Double</script>
                         <set field="discountCalculatedAmount" from="discountAmount / orderItems.size()"/>
                     </if>
                     <!-- Adding product to created order -->
