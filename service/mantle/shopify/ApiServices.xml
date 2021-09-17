@@ -70,16 +70,16 @@
                             .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
                 } else {
                     if (systemMessage.docSubControl?.contains('cancelOrder')) {
-                        urlExpand = urlExpand + systemMessage.docControl + "/cancel.json"
+                        urlExpand = urlExpand + systemMessage.shopifyOrderId + "/cancel.json"
                     }
                     if (systemMessage.docSubControl?.contains('calculateRefund')) {
-                        urlExpand = urlExpand + systemMessage.docControl + "/refunds/calculate.json"
+                        urlExpand = urlExpand + systemMessage.shopifyOrderId + "/refunds/calculate.json"
                     }
                     if (systemMessage.docSubControl?.contains('createRefund')) {
-                        urlExpand = urlExpand + systemMessage.docControl + "/refunds.json"
+                        urlExpand = urlExpand + systemMessage.shopifyOrderId + "/refunds.json"
                     }    
                     if (systemMessage.docSubControl?.contains('createFulfillment')) {
-                        urlExpand = urlExpand + systemMessage.docControl + "/fulfillments.json"
+                        urlExpand = urlExpand + systemMessage.shopifyOrderId + "/fulfillments.json"
                     }
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.POST).uri(urlExpand)
@@ -1530,8 +1530,7 @@
                                                                                              docType:'json',
                                                                                              docSubType:'cancelOrder',
                                                                                              docSubControl:'calculateRefund',
-                                                                                             docControl:externalId,
-                                                                                             shopifyOrderId:order.externalId,
+                                                                                             shopifyOrderId:externalId,
                                                                                              orderId:order.orderId,
                                                                                              initDate:ec.user.nowTimestamp
                                                                                              ]" out-map="context"/>
@@ -1598,12 +1597,20 @@
                 <then>
                     <!--if the order has some fulfilled item, it's necessary to refund the cancel item -->
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', messageText:messageText,docSubControl:'createRefund', docControl:externalId]"/> 
+                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
+                             messageText:messageText,
+                             docSubControl:'createRefund',
+                             orderId:systemMessage.orderId,
+                             shopifyOrderId:externalId]"/>
                 </then>
                 <else>
                     <!-- if the order was cancelled by the user, its necessary to cancel all it's items -->
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage', messageText:messageText, docSubControl:'cancelOrder', docControl:externalId]"/> 
+                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
+                             messageText:messageText,
+                             docSubControl:'cancelOrder',
+                             orderId:systemMessage.orderId,
+                             shopifyOrderId:externalId]"/>
                 </else>
             </if>
 
@@ -1692,7 +1699,6 @@
                                                                                              messageText:messageText, 
                                                                                              docType:'json',
                                                                                              docSubType:'createFulfillment',
-                                                                                             docControl:externalId,
                                                                                              docSubControl:'createFulfillment',
                                                                                              shopifyOrderId:externalId,
                                                                                              orderId:orderHeader.orderId,
