@@ -804,6 +804,7 @@
                                                                                          docType:'json',
                                                                                          docSubType:'order',
                                                                                          shopifyOrderId:order.id,
+                                                                                         shopifyDisplayOrderId:order.order_number,
                                                                                          initDate:ec.user.nowTimestamp]" out-map="context"/>
             </iterate>
         </actions>
