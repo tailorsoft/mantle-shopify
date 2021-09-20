@@ -1025,23 +1025,20 @@
                                                                                   customerPartyId: partyId]" out-map="context"/>
                     <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader"/>
                     <entity-find-one entity-name="mantle.order.OrderPart" value-field="orderPart"/>
-                    <set field="discountAmount" value="0"/>
+
                     <if condition="discountApplications.size() &gt; 0">
                         <set field="discount" from="discountApplications[0]"/>
-                        <set field="discountAmount" from="Double.parseDouble(discount.value)"/>
-                        <set field="discountCalculatedAmount" from="discountAmount / orderItems.size()"/>
                     </if>
+                    
                     <!-- Adding product to created order -->
                     <iterate list="orderItems" entry="orderItem">
                         <entity-find entity-name="mantle.product.ProductIdentification" list="productIdList">
                             <econdition field-name="idValue" from="orderItem.variant_id"/>
                             <econdition field-name="productIdTypeEnumId" value="PidtVariantShopify"/>
                         </entity-find>
-
                         <if condition="productIdList.size() == 0">
                             <return error="true" message="ERROR: THE PRODUCT ID ${orderItem.variant_id} ON SHOPIFY ORDER ${order.name} IS NOT REGISTERED ON DB, PLEASE CONTACT ADMIN"/>
                         </if>
-
                         <if condition="orderHeader &amp;&amp; orderPart &amp;&amp; productIdList">
                             <set field="productId" from="productIdList.first().productId"/>
                             <service-call name="mantle.order.OrderServices.create#OrderItem" in-map="[orderId: orderHeader.orderId,
@@ -1066,42 +1063,16 @@
                                 </iterate>
                             </if>
                             <!-- DISCOUNTS APPLICATIONS -->
-                            <if condition="Double.parseDouble(discountAmount) &gt; 0">
-                                <if condition="orderItem.discount_allocations.size() &gt; 0"><then>
-                                    <service-call name="mantle.order.OrderServices.create#OrderItem" in-map="[orderId: orderHeader.orderId,
-                                                                                    productId: productId,
-                                                                                    orderItemSeqId: orderItemSeqId,
-                                                                                    orderPartSeqId: orderPart.orderPartSeqId,
-                                                                                    itemTypeEnumId: 'ItemDiscount',
-                                                                                    quantity: 1,
-                                                                                    productStoreId: productStore.productStoreId,
-                                                                                    promoCodeText: discount.title,
-                                                                                    unitAmount: Double.parseDouble(orderItem.discount_allocations[0].amount) * -1]" out-map="context"/>
-                                </then><else>
-                                    <if condition="discountAmount - discountCalculatedAmount &gt; discountCalculatedAmount"><then>
+                            <if condition="orderItem.discount_allocations.size() &gt; 0">
                                         <service-call name="mantle.order.OrderServices.create#OrderItem" in-map="[orderId: orderHeader.orderId,
-                                                                                    productId: productId,
-                                                                                    orderPartSeqId: orderPart.orderPartSeqId,
-                                                                                    orderItemSeqId: orderItemSeqId,
-                                                                                    itemTypeEnumId: 'ItemDiscount',
-                                                                                    quantity: 1,
-                                                                                    productStoreId: productStore.productStoreId,
-                                                                                    promoCodeText: discount.title,
-                                                                                    unitAmount: discountCalculatedAmount * -1]" out-map="context"/>
-                                        <set field="discountAmount" from="discountAmount - discountCalculatedAmount"/>
-                                    </then><else>
-                                        <service-call name="mantle.order.OrderServices.create#OrderItem" in-map="[orderId: orderHeader.orderId,
-                                                                                    productId: productId,
-                                                                                    orderPartSeqId: orderPart.orderPartSeqId,
-                                                                                    orderItemSeqId: orderItemSeqId,
-                                                                                    itemTypeEnumId: 'ItemDiscount',
-                                                                                    quantity: 1,
-                                                                                    productStoreId: productStore.productStoreId,
-                                                                                    promoCodeText: discount.title,
-                                                                                    unitAmount:discountAmount * -1]" out-map="context"/>
-                                        <set field="discountAmount" value="0"/>
-                                    </else></if>
-                                </else></if>
+                                                                                        productId: productId,
+                                                                                        orderItemSeqId: orderItemSeqId,
+                                                                                        orderPartSeqId: orderPart.orderPartSeqId,
+                                                                                        itemTypeEnumId: 'ItemDiscount',
+                                                                                        quantity: 1,
+                                                                                        productStoreId: productStore.productStoreId,
+                                                                                        promoCodeText: discount.title,
+                                                                                        unitAmount: Double.parseDouble(orderItem.discount_allocations[0].amount) * -1]" out-map="context"/>
                             </if>
                             <entity-find entity-name="mantle.order.OrderItem" list="orderItemList">
                                 <econdition field-name="orderId" from="orderHeader.orderId"/>
@@ -1116,7 +1087,7 @@
                      <service-call name="mantle.order.OrderServices.create#OrderItem" in-map="[orderId: orderHeader.orderId,
                                                                                                orderPartSeqId: orderPart.orderPartSeqId,
                                                                                                itemTypeEnumId: 'ItemShipping',
-                                                                                               itemDescription : 'Shipping',
+                                                                                               itemDescription : carrierData.title,
                                                                                                quantity: 1,
                                                                                                unitAmount:carrierData.price]" out-map="context"/>
                     <if condition="orderHeader &amp;&amp; orderPart">
