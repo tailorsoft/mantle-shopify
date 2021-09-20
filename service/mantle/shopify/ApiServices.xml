@@ -1248,13 +1248,14 @@
     <service verb="consume" noun="SetInventorySystemMessage">
         <actions>
             <entity-find entity-name="mantle.product.ProductInventoryUpdate" list="updatedProducts"/>
-            <iterate list="updatedProducts" entry="updatedProduct">
-                <log message="ENTRO..."/>
-                <service-call name="mantle.shopify.ApiServices.queue#SetInventorySystemMessage"
-                              in-map="[productId: updatedProduct.productId]"
-                              out-map="context"/>
-                <service-call name="delete#mantle.product.ProductInventoryUpdate"  in-map="[updateId:updatedProduct.updateId]" out-map="context"/>
-            </iterate>
+            <if condition="updatedProducts.size() &gt; 0">
+                <iterate list="updatedProducts" entry="updatedProduct">
+                    <service-call name="mantle.shopify.ApiServices.queue#SetInventorySystemMessage"
+                                  in-map="[productId: updatedProduct.productId]"
+                                  out-map="context"/>
+                    <service-call name="delete#mantle.product.ProductInventoryUpdate"  in-map="[updateId:updatedProduct.updateId]" out-map="context"/>
+                </iterate>
+            </if>
         </actions>
     </service>
 
