@@ -11,10 +11,22 @@
             <service-call name="mantle.shopify.ApiServices.queue#UpdateCustomerSystemMessage"  in-map="[partyId:partyId]" out-map="context"/>
         </actions>
     </seca>
-    <seca id="UpdateProductInventory" service="create#mantle.product.asset.Asset" when="post-service" run-on-error="false">
+    <seca id="CreateProductInventory" service="create#mantle.product.asset.Asset" when="post-service" run-on-error="false">
         <actions>
             <entity-find-one entity-name="mantle.product.asset.Asset" value-field="asset"/>
-            <service-call name="create#mantle.product.ProductInventoryUpdate"  in-map="[productId:asset.productId, assetId: asset.assetId, initDate: asset.receivedDate]" out-map="context"/>
+            <entity-find entity-name="mantle.product.ProductInventoryUpdate" list="updatedProducts"/>
+            <if condition="!updatedProducts.find{it.productId.equals(asset.productId)}">
+                <service-call name="create#mantle.product.ProductInventoryUpdate"  in-map="[productId:asset.productId, initDate: asset.receivedDate]" out-map="context"/>
+            </if>
+        </actions>
+    </seca>
+    <seca id="UpdateProductInventory" service="create#mantle.product.asset.AssetDetail" when="post-service" run-on-error="false">
+        <actions>
+            <entity-find-one entity-name="mantle.product.asset.AssetDetail" value-field="assetDetail"/>
+            <entity-find entity-name="mantle.product.ProductInventoryUpdate" list="updatedProducts"/>
+            <if condition="!updatedProducts.find{it.productId.equals(assetDetail.productId)}">
+                <service-call name="create#mantle.product.ProductInventoryUpdate"  in-map="[productId:assetDetail.productId, initDate: assetDetail.effectiveDate]" out-map="context"/>
+            </if>
         </actions>
     </seca>
 
