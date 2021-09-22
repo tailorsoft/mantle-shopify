@@ -16,6 +16,9 @@
         <field name="shopifyDisplayOrderId" type="text-medium"/>
         <field name="sentShipmentId" type="text-medium"/>
     </extend-entity>
+    <extend-entity entity-name="Shipment" package="mantle.shipment">
+        <field name="shopifyShipmentStatusId" type="text-short"/>
+    </extend-entity>
     <extend-entity entity-name="OrderHeader" package="mantle.order">
         <field name="shopifyOrderStatusId" type="text-short"/>
     </extend-entity>
