@@ -1445,11 +1445,15 @@
 
     <service verb="queue" noun="CancelAndCalculateRefundOrderSystemMessage" authenticate="anonymous-all">
         <description>Service to cancel and calculate the refund</description>
+        <in-parameters>
+            <parameter name="orderId" required="true" />
+        </in-parameters>
         <actions>
             <entity-find entity-name="mantle.order.OrderHeader" list="orders">
                 <econdition field-name="shopifyOrderStatusId" operator="is-null"/>
                 <econdition field-name="externalId" operator="is-not-null"/>
                 <econdition field-name="systemMessageRemoteId" operator="is-not-null"/>
+                <econdition field-name="orderId"/>
                 <econditions combine="or">
                     <econdition field-name="statusId" value="OrderCancelled"/>
                     <econdition field-name="statusId" value="OrderCompleted"/>
@@ -1597,11 +1601,15 @@
 
     <service verb="queue" noun="CreateFulfillmentSystemMessage" authenticate="anonymous-all">
         <description>Service to register a fulfillment for a order</description>
+        <in-parameters>
+            <parameter name="shipmentId" required="true" />
+        </in-parameters>
         <actions>
 
             <entity-find entity-name="mantle.shipment.Shipment" list="shipments">
                 <econdition field-name="shopifyShipmentStatusId" operator="is-null"/>
                 <econdition field-name="systemMessageRemoteId" operator="is-not-null"/>
+                <econdition field-name="shipmentId"/>
                 <econditions combine="or">
                     <econdition field-name="statusId" value="ShipDelivered"/>
                     <econdition field-name="statusId" value="ShipShipped"/>
@@ -1674,6 +1682,7 @@
                                                                                              docSubType:'createFulfillment',
                                                                                              docSubControl:'createFulfillment',
                                                                                              shopifyOrderId:externalId,
+                                                                                             shopifyDisplayOrderId:orderHeader.displayId,
                                                                                              orderId:orderHeader.orderId,
                                                                                              sentShipmentId:shipment.shipmentId,
                                                                                              initDate:ec.user.nowTimestamp
