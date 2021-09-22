@@ -4,7 +4,6 @@
     <entity entity-name="ProductInventoryUpdate" package="mantle.product" cache="never">
         <field name="updateId" type="id" is-pk="true"/>
         <field name="productId" type="text-medium"/>
-        <field name="assetId" type="text-medium"/>
         <field name="initDate" type="date-time"/>
     </entity>
     <extend-entity entity-name="SystemMessage" package="moqui.service.message">
