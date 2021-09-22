@@ -192,6 +192,7 @@
                     <econdition field-name="statusId" value="SmsgConsuming"/>
                     <econdition field-name="statusId" value="SmsgSent"/>
                     <econdition field-name="statusId" value="SmsgSending"/>
+                    <econdition field-name="statusId" value="SmsgError"/>
                     <econdition field-name="statusId"/>
                 </econditions>
             </entity-find>

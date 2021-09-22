@@ -1,19 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <entities xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/entity-definition-2.1.xsd">
+    <entity entity-name="ProductInventoryUpdate" package="mantle.product" cache="never">
+        <field name="updateId" type="id" is-pk="true"/>
+        <field name="productId" type="text-medium"/>
+        <field name="assetId" type="text-medium"/>
+        <field name="initDate" type="date-time"/>
+    </entity>
     <extend-entity entity-name="SystemMessage" package="moqui.service.message">
         <field name="sentproductId" type="text-medium"/>
         <field name="sentProductCategoryId" type="text-medium"/>
         <field name="sentPartyId" type="text-medium"/>
         <field name="sentContactMechId" type="text-medium"/>
         <field name="shopifyOrderId" type="text-medium"/>
+        <field name="shopifyDisplayOrderId" type="text-medium"/>
         <field name="sentShipmentId" type="text-medium"/>
-    </extend-entity>
-    <extend-entity entity-name="OrderHeader" package="mantle.order">
-        <field name="shopifyOrderStatusId" type="text-short"/>
     </extend-entity>
     <extend-entity entity-name="Shipment" package="mantle.shipment">
         <field name="shopifyShipmentStatusId" type="text-short"/>
+    </extend-entity>
+    <extend-entity entity-name="OrderHeader" package="mantle.order">
+        <field name="shopifyOrderStatusId" type="text-short"/>
     </extend-entity>
     <extend-entity entity-name="ProductCategoryMember" package="mantle.product.category">
         <field name="shopifyId" type="id"/>
