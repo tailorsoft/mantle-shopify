@@ -1451,7 +1451,7 @@
         <actions>
 
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order"/>
-            
+
             <set field="refund_line_items" from="[]"/>
             <set field="refund" from="[:]"/>
             <set field="shipping" from="[:]"/>
@@ -1460,7 +1460,7 @@
                 <econdition field-name="itemTypeEnumId"  value="ItemProduct"/>
                 <econdition field-name="quantityCancelled"   operator="greater" from="0.0"/>
             </entity-find>
-        
+
             <iterate list="orderItems" entry="item">
                 <script>
                     def items = [:]
@@ -1470,7 +1470,7 @@
                     refund_line_items.add(items)
                 </script>
             </iterate>
-        
+
             <set field="externalId" from="order.externalId" />
             <set field="currencyUomId" from="order.currencyUomId" />
             <set field="shipping.full_refund" value="true"/>
@@ -1480,17 +1480,17 @@
             <set field="refund.orderStatus" from="order.statusId" />
             <set field="refund.orderId" from="externalId" />
             <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
-        
+
             <!-- The service to canculate refund order is called only if exist items to cancel -->
             <if condition="refund_line_items">
                 <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:order.externalId, 
                                                                                                                     systemMessageTypeId:'ShopifyCalculateRefundMessage',
                                                                                                                     statusId:'SmsgProduced']" out-map="context"/>
-            
+
                 <if condition="systemMessageAlreadyExist">
-                    <continue/>
+                    <return error="true" message="ERROR: a System Message already exist for this order ${orderId}"/>
                 </if>
-            
+
                 <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyCalculateRefundMessage',
                                                                                             statusId:'SmsgProduced',
                                                                                             isOutgoing:'Y',
@@ -1499,6 +1499,7 @@
                                                                                             docSubType:'cancelOrder',
                                                                                             docSubControl:'calculateRefund',
                                                                                             shopifyOrderId:externalId,
+                                                                                            shopifyDisplayOrderId:order.displayId,
                                                                                             orderId:order.orderId,
                                                                                             initDate:ec.user.nowTimestamp
                                                                                             ]" out-map="context"/>
@@ -1602,8 +1603,7 @@
             <set field="fulfillment" from="[:]"/>
 
             <if condition="!shipment.statusId  in ['ShipShipped','ShipDelivered']">
-                <log message="The shipment ${shipment.shipmentId} must be in status Shipped or Delivered for registering a fulfillment "/>
-                <continue/>
+                <return error="true" message="ERROR:The shipment ${shipment.shipmentId} must be in status Shipped or Delivered for registering a fulfillment "/>
             </if>
 
             <!-- get the store id -->
@@ -1644,15 +1644,11 @@
 
             <!-- The service to create fulfillment is called only if  there are items were shipped -->
             <if condition="line_items">
-                <if condition="!externalId">
-                    <log message="The order ${orderHeader.orderId} that belong to shipment ${shipment.shipmentId} does not have shopifyId "/>
-                    <continue/>
-                </if>
                 <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:externalId,
                                                                                                                   systemMessageTypeId:'ShopifyCreateFulfillmentMessage',
                                                                                                                   statusId:'SmsgProduced']" out-map="context"/>
                 <if condition="systemMessageAlreadyExist">
-                    <continue/>
+                    <return error="true" message="ERROR: a System Message already exist for the shipment ${shipmentId}"/>
                 </if>
                 <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage',
                                                                                             statusId:'SmsgProduced', 
