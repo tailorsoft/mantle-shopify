@@ -31,7 +31,7 @@
     </extend-entity>
 
     <extend-entity entity-name="SystemMessageRemote" package="moqui.service.message">
-        <field name="password" type="text-long" encrypt="true"/>
+        <field name="passwordLong" type="text-very-long" encrypt="true"/>
     </extend-entity>
 
     <view-entity entity-name="CustomerInfoView" package="brokerageengine.party.customer">
