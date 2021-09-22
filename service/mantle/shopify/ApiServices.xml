@@ -922,8 +922,8 @@
                                                                                                   lastName:customer.last_name,
                                                                                                   username: customer.email,
                                                                                                   emailAddress:customer.email]" out-map="context"/>
-                        <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId:partyId, emailAddress:customer.email, emailContactMechPurposeId:'EmailPrimary']"/>
                         <service-call name="create#mantle.party.PartyIdentification" in-map="[partyId:partyId, partyIdTypeEnumId:'PtidShopify', idValue:customer.id]" out-map="context"/>
+                        <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId:partyId, emailAddress:customer.email, emailContactMechPurposeId:'EmailPrimary']"/>
                         <log message="CUSTOMER CREATED ${partyId}"/>
                     </else>
                 </if>
