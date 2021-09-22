@@ -1184,7 +1184,7 @@
         </actions>
     </service>
 
-    <service verb="queue" noun="SetInventorySystemMessage">
+    <service verb="queue" noun="SetInventorySystemMessage" authenticate="anonymous-all">
         <description>Service to update the quantity available in stock for a product</description>
         <in-parameters>
             <parameter name="productId" required="true"/>
