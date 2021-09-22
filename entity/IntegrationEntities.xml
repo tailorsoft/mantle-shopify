@@ -4,7 +4,6 @@
     <entity entity-name="ProductInventoryUpdate" package="mantle.product" cache="never">
         <field name="updateId" type="id" is-pk="true"/>
         <field name="productId" type="text-medium"/>
-        <field name="assetId" type="text-medium"/>
         <field name="initDate" type="date-time"/>
     </entity>
     <extend-entity entity-name="SystemMessage" package="moqui.service.message">
@@ -32,7 +31,7 @@
     </extend-entity>
 
     <extend-entity entity-name="SystemMessageRemote" package="moqui.service.message">
-        <field name="password" type="text-long" encrypt="true"/>
+        <field name="passwordLong" type="text-very-long" encrypt="true"/>
     </extend-entity>
 
     <view-entity entity-name="CustomerInfoView" package="brokerageengine.party.customer">
