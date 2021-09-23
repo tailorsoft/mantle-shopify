@@ -86,7 +86,7 @@
                             .addHeader("Content-Type", "application/json").jsonObject(systemMessage.messageText)
                 }
 
-                restClient.basicAuth(systemMessageRemote.username,systemMessageRemote.passwordLong)
+                restClient.basicAuth(systemMessageRemote.username,systemMessageRemote.password)
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
                 if (restResponse.statusCode < 200 || restResponse.statusCode >= 300) {
                     String errMsg = restResponse.text()

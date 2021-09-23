@@ -30,10 +30,6 @@
         <field name="shopifyDefaultAddress" type="text-short"/>
     </extend-entity>
 
-    <extend-entity entity-name="SystemMessageRemote" package="moqui.service.message">
-        <field name="passwordLong" type="text-very-long" encrypt="true"/>
-    </extend-entity>
-
     <view-entity entity-name="CustomerInfoView" package="brokerageengine.party.customer">
         <member-entity entity-alias="PTY" entity-name="mantle.party.Party" />
         <member-entity entity-alias="PTR" join-from-alias="PTY" entity-name="mantle.party.PartyRole" join-optional="true" >
