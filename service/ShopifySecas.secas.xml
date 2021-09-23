@@ -1,16 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <secas xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-eca-2.1.xsd">
-    <seca id="UpdateBasiCustomerInfo" service="update#mantle.party.Person" when="post-service" run-on-error="false">
-        <actions>
-            <entity-find-one entity-name="mantle.party.Person" value-field="person"/>
-            <service-call name="mantle.shopify.ApiServices.queue#UpdateCustomerSystemMessage"  in-map="[partyId:person.partyId]" out-map="context"/>
-        </actions>
-    </seca>
-    <seca id="UpdateAddressPhoneAndEmailCustomerInfo" service="mantle.party.ContactServices.store#PartyContactInfo" when="post-service">
-        <actions>
-            <service-call name="mantle.shopify.ApiServices.queue#UpdateCustomerSystemMessage"  in-map="[partyId:partyId]" out-map="context"/>
-        </actions>
-    </seca>
     <seca id="CreateProductInventory" service="create#mantle.product.asset.Asset" when="post-service" run-on-error="false">
         <actions>
             <entity-find-one entity-name="mantle.product.asset.Asset" value-field="asset"/>
@@ -29,19 +18,11 @@
             </if>
         </actions>
     </seca>
-
     <seca id="CancelOrder" service="update#mantle.order.OrderHeader" when="post-service" run-on-error="false">
         <condition><expression>statusChanged &amp;&amp; statusId in ['OrderCancelled','OrderCompleted'] </expression></condition>
         <actions>
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order"/>
             <service-call name="mantle.shopify.ApiServices.queue#CancelAndCalculateRefundOrderSystemMessage" in-map="[orderId:order.orderId]" out-map="context"/>
-        </actions>
-    </seca>
-    <seca id="CreateFulfillment" service="update#mantle.shipment.Shipment" when="post-service" run-on-error="false">
-        <condition><expression>statusChanged &amp;&amp; statusId in ['ShipShipped','ShipDelivered'] </expression></condition>
-        <actions>
-            <entity-find-one entity-name="mantle.shipment.Shipment" value-field="shipment"/>
-            <service-call name="mantle.shopify.ApiServices.queue#CreateFulfillmentSystemMessage" in-map="[shipmentId:shipment.shipmentId]" out-map="context"/>
         </actions>
     </seca>
 </secas>
