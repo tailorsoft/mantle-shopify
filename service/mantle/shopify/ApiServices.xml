@@ -1452,57 +1452,60 @@
 
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order"/>
 
-            <set field="refund_line_items" from="[]"/>
-            <set field="refund" from="[:]"/>
-            <set field="shipping" from="[:]"/>
-            <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
-                <econdition field-name="orderId"  from="order.orderId"/>
-                <econdition field-name="itemTypeEnumId"  value="ItemProduct"/>
-                <econdition field-name="quantityCancelled"   operator="greater" from="0.0"/>
-            </entity-find>
+            <!-- only shopify orders are processed -->
+            <if condition="order.salesChannelEnumId == 'ScShopify'">
+                <set field="refund_line_items" from="[]"/>
+                <set field="refund" from="[:]"/>
+                <set field="shipping" from="[:]"/>
+                <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
+                    <econdition field-name="orderId"  from="order.orderId"/>
+                    <econdition field-name="itemTypeEnumId"  value="ItemProduct"/>
+                    <econdition field-name="quantityCancelled"   operator="greater" from="0.0"/>
+                </entity-find>
 
-            <iterate list="orderItems" entry="item">
-                <script>
-                    def items = [:]
-                    items.line_item_id = item.externalItemSeqId
-                    items.quantity = item.quantityCancelled
-                    items.restock_type = 'cancel'
-                    refund_line_items.add(items)
-                </script>
-            </iterate>
+                <iterate list="orderItems" entry="item">
+                    <script>
+                        def items = [:]
+                        items.line_item_id = item.externalItemSeqId
+                        items.quantity = item.quantityCancelled
+                        items.restock_type = 'cancel'
+                        refund_line_items.add(items)
+                    </script>
+                </iterate>
 
-            <set field="externalId" from="order.externalId" />
-            <set field="currencyUomId" from="order.currencyUomId" />
-            <set field="shipping.full_refund" value="true"/>
-            <set field="refund.shipping" from="shipping"/>
-            <set field="refund.currency" from="currencyUomId"/>
-            <set field="refund.refund_line_items" from="refund_line_items"/>
-            <set field="refund.orderStatus" from="order.statusId" />
-            <set field="refund.orderId" from="externalId" />
-            <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
+                <set field="externalId" from="order.externalId" />
+                <set field="currencyUomId" from="order.currencyUomId" />
+                <set field="shipping.full_refund" value="true"/>
+                <set field="refund.shipping" from="shipping"/>
+                <set field="refund.currency" from="currencyUomId"/>
+                <set field="refund.refund_line_items" from="refund_line_items"/>
+                <set field="refund.orderStatus" from="order.statusId" />
+                <set field="refund.orderId" from="externalId" />
+                <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
 
-            <!-- The service to canculate refund order is called only if exist items to cancel -->
-            <if condition="refund_line_items">
-                <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:order.externalId, 
-                                                                                                                    systemMessageTypeId:'ShopifyCalculateRefundMessage',
-                                                                                                                    statusId:'SmsgProduced']" out-map="context"/>
+                <!-- The service to calculate refund order is called only if exist items to cancel -->
+                <if condition="refund_line_items">
+                    <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:order.externalId, 
+                                                                                                                        systemMessageTypeId:'ShopifyCalculateRefundMessage',
+                                                                                                                        statusId:'SmsgProduced']" out-map="context"/>
 
-                <if condition="systemMessageAlreadyExist">
-                    <return error="true" message="ERROR: a System Message already exist for this order ${orderId}"/>
+                    <if condition="systemMessageAlreadyExist">
+                        <return error="true" message="ERROR: a System Message already exist for this order ${orderId}"/>
+                    </if>
+
+                    <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyCalculateRefundMessage',
+                                                                                                statusId:'SmsgProduced',
+                                                                                                isOutgoing:'Y',
+                                                                                                messageText:messageText,
+                                                                                                docType:'json',
+                                                                                                docSubType:'cancelOrder',
+                                                                                                docSubControl:'calculateRefund',
+                                                                                                shopifyOrderId:externalId,
+                                                                                                shopifyDisplayOrderId:order.displayId,
+                                                                                                orderId:order.orderId,
+                                                                                                initDate:ec.user.nowTimestamp
+                                                                                                ]" out-map="context"/>
                 </if>
-
-                <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyCalculateRefundMessage',
-                                                                                            statusId:'SmsgProduced',
-                                                                                            isOutgoing:'Y',
-                                                                                            messageText:messageText,
-                                                                                            docType:'json',
-                                                                                            docSubType:'cancelOrder',
-                                                                                            docSubControl:'calculateRefund',
-                                                                                            shopifyOrderId:externalId,
-                                                                                            shopifyDisplayOrderId:order.displayId,
-                                                                                            orderId:order.orderId,
-                                                                                            initDate:ec.user.nowTimestamp
-                                                                                            ]" out-map="context"/>
             </if>
         </actions>
     </service>
@@ -1614,7 +1617,7 @@
                 <field-map field-name="orderId" />
             </entity-find-one>
 
-            <!-- only shopify order are processed -->
+            <!-- only shopify orders are processed -->
             <if condition="orderHeader.salesChannelEnumId == 'ScShopify'">
                 <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
                     <econdition field-name="orderId"  from="orderId"/>
@@ -1644,7 +1647,7 @@
                 <set field="fulfillment.line_items" from="line_items" />
                 <set field="messageText" from="groovy.json.JsonOutput.toJson([fulfillment:fulfillment])"/>
 
-                <!-- The service to create fulfillment is called only if  there are items were shipped -->
+                <!-- The service to create fulfillment is called only if there are shipped items  -->
                 <if condition="line_items">
                     <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:externalId,
                                                                                                                       systemMessageTypeId:'ShopifyCreateFulfillmentMessage',
