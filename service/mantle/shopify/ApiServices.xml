@@ -1452,7 +1452,7 @@
 
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order"/>
 
-            <!-- only shopify order are processed -->
+            <!-- only shopify orders are processed -->
             <if condition="order.salesChannelEnumId == 'ScShopify'">
                 <set field="refund_line_items" from="[]"/>
                 <set field="refund" from="[:]"/>
@@ -1483,7 +1483,7 @@
                 <set field="refund.orderId" from="externalId" />
                 <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
 
-                <!-- The service to canculate refund order is called only if exist items to cancel -->
+                <!-- The service to calculate refund order is called only if exist items to cancel -->
                 <if condition="refund_line_items">
                     <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:order.externalId, 
                                                                                                                         systemMessageTypeId:'ShopifyCalculateRefundMessage',
@@ -1617,7 +1617,7 @@
                 <field-map field-name="orderId" />
             </entity-find-one>
 
-            <!-- only shopify order are processed -->
+            <!-- only shopify orders are processed -->
             <if condition="orderHeader.salesChannelEnumId == 'ScShopify'">
                 <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
                     <econdition field-name="orderId"  from="orderId"/>
