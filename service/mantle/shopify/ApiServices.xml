@@ -1647,7 +1647,7 @@
                 <set field="fulfillment.line_items" from="line_items" />
                 <set field="messageText" from="groovy.json.JsonOutput.toJson([fulfillment:fulfillment])"/>
 
-                <!-- The service to create fulfillment is called only if  there are items were shipped -->
+                <!-- The service to create fulfillment is called only if there are shipped items  -->
                 <if condition="line_items">
                     <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:externalId,
                                                                                                                       systemMessageTypeId:'ShopifyCreateFulfillmentMessage',
