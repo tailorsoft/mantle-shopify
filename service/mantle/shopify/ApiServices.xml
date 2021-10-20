@@ -915,7 +915,13 @@
                 
                 <if condition="partyIds.size() &gt; 0">
                     <then>
+
+                        <log message="SEARCHING FOR CUSTOMER ${customer.email}"/>
+                        <log message="PARTY IDS : ${partyIds}"/>
                         <set field="partyId" from="partyIds.first()"/>
+
+                        <!--Store to make sure that the party identification is created if the user already existed in Moqui -->
+                        <service-call name="store#mantle.party.PartyIdentification" in-map="[partyId:partyId, partyIdTypeEnumId:'PtidShopify', idValue:customer.id]" out-map="context"/>
                     </then>
                     <else>
                         <service-call name="mantle.party.PartyServices.create#Person" in-map="[firstName:customer.first_name,
@@ -941,6 +947,10 @@
 
                     <if condition="postalMechList.size() &gt; 0">
                         <then>
+
+                                <!--BORRAR
+                                LOG-->
+                            <log message="POSTAL MECH LIST : ${postalMechList}"/>
                             <set field="postalMech" from="postalMechList.first()"/>
                             <if condition="postalMech.address1.equals(shippingAddress?.address1 ?: '' ) || postalMech.address2.equals(shippingAddress?.address2 ?: '' )">
                                 <set field="postalContactMechId" from="postalMech.contactMechId"/>
