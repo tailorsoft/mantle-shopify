@@ -3,12 +3,28 @@
     <seca id="UpdateBasiCustomerInfo" service="update#mantle.party.Person" when="post-service" run-on-error="false">
         <actions>
             <entity-find-one entity-name="mantle.party.Person" value-field="person"/>
-            <service-call name="mantle.shopify.ApiServices.queue#UpdateCustomerSystemMessage"  in-map="[partyId:person.partyId]" out-map="context"/>
+            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentification">
+                <field-map field-name="partyId" from="person.partyId"/>
+                <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
+            </entity-find-one>
+            <if condition="partyIdentification"><then>
+                <service-call name="mantle.shopify.ApiServices.queue#UpdateCustomerSystemMessage"  in-map="[partyId:person.partyId]" out-map="context"/>
+            </then><else>
+                <message type="warning">The customer does not have Shopify Id, you can add it in PartyIdentification entity in order to make purchases in the Shopify Store</message>
+            </else></if>
         </actions>
     </seca>
     <seca id="UpdateAddressPhoneAndEmailCustomerInfo" service="mantle.party.ContactServices.store#PartyContactInfo" when="post-service">
         <actions>
-            <service-call name="mantle.shopify.ApiServices.queue#UpdateCustomerSystemMessage"  in-map="[partyId:partyId]" out-map="context"/>
+            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentification">
+                <field-map field-name="partyId" from="partyId"/>
+                <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
+            </entity-find-one>
+            <if condition="partyIdentification"><then>
+                <service-call name="mantle.shopify.ApiServices.queue#UpdateCustomerSystemMessage"  in-map="[partyId:partyId]" out-map="context"/>
+            </then><else>
+                <message type="warning">The customer does not have Shopify Id, you can add it in PartyIdentification entity in order to make purchases in the Shopify Store</message>
+            </else></if>
         </actions>
     </seca>
     <seca id="CreateProductInventory" service="create#mantle.product.asset.Asset" when="post-service" run-on-error="false">
@@ -29,7 +45,6 @@
             </if>
         </actions>
     </seca>
-
     <seca id="CancelOrder" service="update#mantle.order.OrderHeader" when="post-service" run-on-error="false">
         <condition><expression>statusChanged &amp;&amp; statusId in ['OrderCancelled','OrderCompleted'] </expression></condition>
         <actions>

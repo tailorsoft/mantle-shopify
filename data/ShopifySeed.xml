@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <entity-facade-xml type="seed">
+    <moqui.service.job.ServiceJob jobName="shopify_get_order" description="make a http request to the Shopify store to get all paid orders" serviceName="mantle.shopify.ApiServices.queue#GetOrdersSystemMessage" cronExpression="0 0 * ? * *" fromDate ="2021-09-02" paused="N"/>
+    <moqui.service.job.ServiceJob jobName="shopify_set_inventory" description="make a http request to the Shopify to update product inventory" serviceName="mantle.shopify.ApiServices.consume#SetInventorySystemMessage" cronExpression="0 0 0/1 ? * * *" fromDate ="2021-09-02" paused="N"/>
+
     <moqui.basic.Enumeration description="Shopify Product ID" enumId="PidtShopify"  enumTypeId="ProductIdentificationType"/>
     <moqui.basic.Enumeration description="Shopify Product Variant ID" enumId="PidtVariantShopify"  enumTypeId="ProductIdentificationType"/>
     <moqui.basic.Enumeration description="Shopify Product Inventory Item ID" enumId="PidtInventoryItemShopify"  enumTypeId="ProductIdentificationType"/>
@@ -13,7 +16,7 @@
     <moqui.basic.Enumeration description="Free Shipping" enumId="FreeShipping"  enumTypeId="ShopifyShippingMethod"/>
     <moqui.basic.Enumeration description="Standard Shipping" enumId="StandardShipping"  enumTypeId="ShopifyShippingMethod"/>
     <mantle.party.PartyIdentification partyId="_NA_" partyIdTypeEnumId="PtidCarrierShopify"  idValue="shopify"/>
-    <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="_NA_" shipmentMethodEnumId="ShMthGround"  description="Standard"/>
+    <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="_NA_" shipmentMethodEnumId="ShMthGround"  description="Standard Shipping"/>
     <mantle.product.store.ProductStoreSetting productStoreId="RCHERBALS" settingTypeEnumId="ShopifyStoreId"  settingValue="59386101956"/>
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyUpdateProductMessage" description="Shopify Product SystemMessage Type"
             sendServiceName="mantle.shopify.ApiServices.send#UpdateStatusProductSystemMessage" />
