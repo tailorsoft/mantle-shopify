@@ -392,7 +392,6 @@
         </actions>
     </service>
 
-
     <service verb="queue" noun="UpdateStatusProductSystemMessage">
         <in-parameters>
             <parameter name="productId" required="true"/>
@@ -1256,6 +1255,7 @@
                           out-map="context" />
         </actions>
     </service>
+
     <service verb="consume" noun="SetInventorySystemMessage">
         <actions>
             <entity-find entity-name="mantle.product.ProductInventoryUpdate" list="updatedProducts"/>
