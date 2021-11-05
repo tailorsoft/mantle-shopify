@@ -392,7 +392,6 @@
         </actions>
     </service>
 
-
     <service verb="queue" noun="UpdateStatusProductSystemMessage">
         <in-parameters>
             <parameter name="productId" required="true"/>
@@ -949,11 +948,9 @@
                     <if condition="postalMechList.size() &gt; 0">
                         <then>
 
-                                <!--BORRAR
-                                LOG-->
                             <log message="POSTAL MECH LIST : ${postalMechList}"/>
                             <set field="postalMech" from="postalMechList.first()"/>
-                            <if condition="postalMech.address1.equals(shippingAddress?.address1 ?: '' ) || postalMech.address2.equals(shippingAddress?.address2 ?: '' )">
+                            <if condition="postalMech.add  ress1.equals(shippingAddress?.address1 ?: '' ) || postalMech.address2.equals(shippingAddress?.address2 ?: '' )">
                                 <set field="postalContactMechId" from="postalMech.contactMechId"/>
                                 <log message="SHIPPING ADDRESS ALREADY EXISTS"/>
                             </if>
@@ -1256,6 +1253,7 @@
                           out-map="context" />
         </actions>
     </service>
+
     <service verb="consume" noun="SetInventorySystemMessage">
         <actions>
             <entity-find entity-name="mantle.product.ProductInventoryUpdate" list="updatedProducts"/>
