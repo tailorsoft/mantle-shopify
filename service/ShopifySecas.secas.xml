@@ -56,6 +56,10 @@
         <condition><expression>statusChanged &amp;&amp; statusId in ['ShipShipped','ShipDelivered'] </expression></condition>
         <actions>
             <entity-find-one entity-name="mantle.shipment.Shipment" value-field="shipment"/>
+            <service-call name="mantle.shipment.ShipmentInfoServices.get#ShipmentDisplayInfo" in-map="[shipmentId:shipment.shipmentId]" out-map="context"/>
+            <if  condition="shipmentItemSourceList.isEmpty() || shipmentItemSourceList.first().orderId == null">
+                <return error="false"/>
+            </if>
             <service-call name="mantle.shopify.ApiServices.queue#CreateFulfillmentSystemMessage" in-map="[shipmentId:shipment.shipmentId]" out-map="context"/>
         </actions>
     </seca>
