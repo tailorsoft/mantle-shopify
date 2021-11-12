@@ -1397,9 +1397,6 @@
                     if (phoneNumber?.contactNumber) {
                             phone = phone + phoneNumber.contactNumber.replace('-','')
                     }
-                    if (phone) {
-                            phone = '+' +phone
-                    }
                     return phone
                 }
             </script>
