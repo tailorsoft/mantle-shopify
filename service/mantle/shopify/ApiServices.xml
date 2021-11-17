@@ -392,7 +392,6 @@
         </actions>
     </service>
 
-
     <service verb="queue" noun="UpdateStatusProductSystemMessage">
         <in-parameters>
             <parameter name="productId" required="true"/>
@@ -930,6 +929,7 @@
                                                                                                   emailAddress:customer.email]" out-map="context"/>
                         <service-call name="create#mantle.party.PartyIdentification" in-map="[partyId:partyId, partyIdTypeEnumId:'PtidShopify', idValue:customer.id]" out-map="context"/>
                         <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId:partyId, emailAddress:customer.email, emailContactMechPurposeId:'EmailPrimary']"/>
+                        <service-call name="create#mantle.party.PartyRole" in-map="[partyId:partyId, roleTypeId:'Customer']"/>
                         <log message="CUSTOMER CREATED ${partyId}"/>
                     </else>
                 </if>
@@ -1255,6 +1255,7 @@
                           out-map="context" />
         </actions>
     </service>
+
     <service verb="consume" noun="SetInventorySystemMessage">
         <actions>
             <entity-find entity-name="mantle.product.ProductInventoryUpdate" list="updatedProducts"/>
