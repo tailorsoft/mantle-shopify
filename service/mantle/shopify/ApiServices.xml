@@ -936,7 +936,7 @@
                     <entity-find entity-name="mantle.party.contact.PartyContactMechPostalAddress" list="postalMechList">
                         <econdition field-name="partyId" from="partyId"/>
                         <econdition field-name="contactMechPurposeId" value="PostalPrimary"/>
-                        <econdition field-name="address1" from="shippingAddress?.address1"/>
+                        <econdition field-name="address1" from="shippingAddress?.address1" ignore-case="true"/>
                         <econdition field-name="address2" from="shippingAddress?.address2" ignore-case="true" ignore-if-empty="true"/>
                         <date-filter/>
                     </entity-find>
