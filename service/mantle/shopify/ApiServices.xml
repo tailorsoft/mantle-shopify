@@ -948,8 +948,6 @@
                     <if condition="postalMechList.size() &gt; 0">
                         <then>
 
-                                <!--BORRAR
-                                LOG-->
                             <log message="POSTAL MECH LIST : ${postalMechList}"/>
                             <set field="postalMech" from="postalMechList.first()"/>
                             <if condition="postalMech.address1.equals(shippingAddress?.address1 ?: '' ) || postalMech.address2.equals(shippingAddress?.address2 ?: '' )">
