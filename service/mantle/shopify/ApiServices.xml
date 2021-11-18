@@ -933,6 +933,7 @@
                         <log message="CUSTOMER CREATED ${partyId}"/>
                     </else>
                 </if>
+
                 <entity-find entity-name="mantle.party.contact.PartyContactMechPostalAddress" list="postalMechList">
                     <econdition field-name="partyId" from="partyId"/>
                     <econdition field-name="contactMechPurposeId" value="PostalPrimary"/>
@@ -940,61 +941,75 @@
                     <econdition field-name="address2" from="shippingAddress?.address2" ignore-case="true" ignore-if-empty="true"/>
                     <date-filter/>
                 </entity-find>
+                <if condition="postalMechList.size() &gt; 0">
+                    <then>
+                        <log message="POSTAL MECH LIST : ${postalMechList}"/>
+                        <set field="postalMech" from="postalMechList.first()"/>
+                        <set field="postalContactMechId" from="postalMech.contactMechId"/>
+                        <log message="SHIPPING ADDRESS ALREADY EXISTS"/>
+                    </then>
+                    <else>
+                        <entity-find entity-name="moqui.basic.Geo" list="shippingCountryList">
+                            <econdition field-name="geoTypeEnumId" value="GEOT_COUNTRY"/>
+                            <econdition field-name="geoCodeAlpha2" from="shippingAddress.country_code"/>
+                        </entity-find>
+                        <entity-find entity-name="moqui.basic.Geo" list="shippingStateList">
+                            <econdition field-name="geoId" from="shippingCountryList.first().geoId + '_' + shippingAddress.province_code"/>
+                            <econdition field-name="geoTypeEnumId" value="GEOT_STATE"/>
+                            <econdition field-name="geoCodeAlpha2" from="shippingAddress.province_code"/>
+                        </entity-find>
+                        <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
+                                                                                                      address1:shippingAddress.address1,
+                                                                                                      address2:shippingAddress.address2,
+                                                                                                      postalContactMechPurposeId: 'PostalPrimary',
+                                                                                                      toName: shippingAddress.name,
+                                                                                                      postalCode:shippingAddress.zip,
+                                                                                                      countryGeoId: shippingCountryList.first().geoId,
+                                                                                                      stateProvinceGeoId: shippingStateList.first().geoId,
+                                                                                                      city: shippingAddress.city,
+                                                                                                      emailAddress: customer.email]" out-map="shippingMechData"/>
+                        <set field="postalContactMechId" from="shippingMechData.postalContactMechId"/>
+                    </else>
+                </if>
 
-                    <if condition="postalMechList.size() &gt; 0">
-                        <then>
+                <!--Find Postal Address for billing-->
+                <entity-find entity-name="mantle.party.contact.PartyContactMechPostalAddress" list="postalBillMechList">
+                    <econdition field-name="partyId" from="partyId"/>
+                    <econdition field-name="contactMechPurposeId" value="PostalBilling"/>
+                    <econdition field-name="address1" from="billingAddress?.address1" ignore-case="true"/>
+                    <econdition field-name="address2" from="billingAddress?.address2" ignore-case="true" ignore-if-empty="true"/>
+                    <date-filter/>
+                </entity-find>
+                <if condition="postalBillMechList &gt; 0">
+                    <then>
+                        <log message="BILLING MECH LIST: ${postalBillMechList}"/>
+                        <set field="billingMech" from="postalBillMechList.first()"/>
+                        <set field ="billingMechId" from="billingMech.contactMechId"/>
+                        <log message="BILLING ADDRESS ALREADY EXISTS"/>
+                    </then>
+                    <else>
+                        <entity-find entity-name="moqui.basic.Geo" list="billingCountryList">
+                            <econdition field-name="geoTypeEnumId" value="GEOT_COUNTRY"/>
+                            <econdition field-name="geoCodeAlpha2" from="billingAddress.country_code"/>
+                        </entity-find>
+                        <entity-find entity-name="moqui.basic.Geo" list="billingStateList">
+                            <econdition field-name="geoId" from="billingCountryList.first().geoId + '_' + billingAddress.province_code"/>
+                            <econdition field-name="geoTypeEnumId" value="GEOT_STATE"/>
+                            <econdition field-name="geoCodeAlpha2" from="billingAddress.province_code"/>
+                        </entity-find>
+                        <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
+                                                                                                      address1:billingAddress.address1,
+                                                                                                      address2:billingAddress.address2,
+                                                                                                      postalContactMechPurposeId: 'PostalBilling',
+                                                                                                      toName: billingAddress.name,
+                                                                                                      postalCode:billingAddress.zip,
+                                                                                                      countryGeoId: billingCountryList.first().geoId,
+                                                                                                      stateProvinceGeoId: billingStateList.first().geoId,
+                                                                                                      city: billingAddress.city,
+                                                                                                      emailAddress: customer.email]" out-map="billingMechData"/>
+                    </else>
+                </if>
 
-                                <!--BORRAR
-                                LOG-->
-                            <log message="POSTAL MECH LIST : ${postalMechList}"/>
-                            <set field="postalMech" from="postalMechList.first()"/>
-                            <if condition="postalMech.address1.equals(shippingAddress?.address1 ?: '' ) || postalMech.address2.equals(shippingAddress?.address2 ?: '' )">
-                                <set field="postalContactMechId" from="postalMech.contactMechId"/>
-                                <log message="SHIPPING ADDRESS ALREADY EXISTS"/>
-                            </if>
-                        </then>
-                        <else>
-                            <entity-find entity-name="moqui.basic.Geo" list="shippingCountryList">
-                                <econdition field-name="geoTypeEnumId" value="GEOT_COUNTRY"/>
-                                <econdition field-name="geoCodeAlpha2" from="shippingAddress.country_code"/>
-                            </entity-find>
-                            <entity-find entity-name="moqui.basic.Geo" list="shippingStateList">
-                                <econdition field-name="geoId" from="shippingCountryList.first().geoId + '_' + shippingAddress.province_code"/>
-                                <econdition field-name="geoTypeEnumId" value="GEOT_STATE"/>
-                                <econdition field-name="geoCodeAlpha2" from="shippingAddress.province_code"/>
-                            </entity-find>
-                            <entity-find entity-name="moqui.basic.Geo" list="billingCountryList">
-                                <econdition field-name="geoTypeEnumId" value="GEOT_COUNTRY"/>
-                                <econdition field-name="geoCodeAlpha2" from="billingAddress.country_code"/>
-                            </entity-find>
-                            <entity-find entity-name="moqui.basic.Geo" list="billingStateList">
-                                <econdition field-name="geoId" from="billingCountryList.first().geoId + '_' + billingAddress.province_code"/>
-                                <econdition field-name="geoTypeEnumId" value="GEOT_STATE"/>
-                                <econdition field-name="geoCodeAlpha2" from="billingAddress.province_code"/>
-                            </entity-find>
-                            <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
-                                                                                                          address1:shippingAddress.address1,
-                                                                                                          address2:shippingAddress.address2,
-                                                                                                          postalContactMechPurposeId: 'PostalPrimary',
-                                                                                                          toName: shippingAddress.name,
-                                                                                                          postalCode:shippingAddress.zip,
-                                                                                                          countryGeoId: shippingCountryList.first().geoId,
-                                                                                                          stateProvinceGeoId: shippingStateList.first().geoId,
-                                                                                                          city: shippingAddress.city,
-                                                                                                          emailAddress: customer.email]" out-map="shippingMechData"/>
-                            <set field="postalContactMechId" from="shippingMechData.postalContactMechId"/>
-                            <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
-                                                                                                          address1:billingAddress.address1,
-                                                                                                          address2:billingAddress.address2,
-                                                                                                          postalContactMechPurposeId: 'PostalBilling',
-                                                                                                          toName: billingAddress.name,
-                                                                                                          postalCode:billingAddress.zip,
-                                                                                                          countryGeoId: billingCountryList.first().geoId,
-                                                                                                          stateProvinceGeoId: billingStateList.first().geoId,
-                                                                                                          city: billingAddress.city,
-                                                                                                          emailAddress: customer.email]" out-map="billingMechData"/>
-                        </else>
-                    </if>
                     <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber" list="telecomMechList">
                         <econdition field-name="partyId" from="partyId"/>
                         <econdition field-name="contactMechPurposeId" value="PhonePrimary"/>
@@ -1255,6 +1270,7 @@
                           out-map="context" />
         </actions>
     </service>
+
     <service verb="consume" noun="SetInventorySystemMessage">
         <actions>
             <entity-find entity-name="mantle.product.ProductInventoryUpdate" list="updatedProducts"/>
