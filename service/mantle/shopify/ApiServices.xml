@@ -933,17 +933,13 @@
                         <log message="CUSTOMER CREATED ${partyId}"/>
                     </else>
                 </if>
-                    <entity-find entity-name="mantle.party.contact.PartyContactMechPostalAddress" list="postalMechList">
-                        <econdition field-name="partyId" from="partyId"/>
-                        <econdition field-name="contactMechPurposeId" value="PostalPrimary"/>
-                        <econdition field-name="address1" from="shippingAddress?.address1"/>
-                        <econdition field-name="address2" from="shippingAddress?.address2" ignore-case="true" ignore-if-empty="true"/>
-                        <date-filter/>
-                    </entity-find>
-                    <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber" list="telecomMechList">
-                        <econdition field-name="partyId" from="partyId"/>
-                        <econdition field-name="contactMechPurposeId" value="PhonePrimary"/>
-                    </entity-find>
+                <entity-find entity-name="mantle.party.contact.PartyContactMechPostalAddress" list="postalMechList">
+                    <econdition field-name="partyId" from="partyId"/>
+                    <econdition field-name="contactMechPurposeId" value="PostalPrimary"/>
+                    <econdition field-name="address1" from="shippingAddress?.address1" ignore-case="true"/>
+                    <econdition field-name="address2" from="shippingAddress?.address2" ignore-case="true" ignore-if-empty="true"/>
+                    <date-filter/>
+                </entity-find>
 
                     <if condition="postalMechList.size() &gt; 0">
                         <then>
@@ -997,12 +993,10 @@
                                                                                                           emailAddress: customer.email]" out-map="billingMechData"/>
                         </else>
                     </if>
-                    <if condition="shippingAddress.phone">
-                        <set field="contactNumber" from="shippingAddress.phone.replaceAll('-','')"/>
-                        <set field="contactNumber" from="contactNumber.replaceAll('\\+','')"/>
-                        <set field="phoneCountryCode" from="contactNumber.substring(0,3)"/>
-                        <set field="phoneNumber" from="contactNumber.substring(3).replaceAll(' ','')"/>
-                    </if>
+                    <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber" list="telecomMechList">
+                        <econdition field-name="partyId" from="partyId"/>
+                        <econdition field-name="contactMechPurposeId" value="PhonePrimary"/>
+                    </entity-find>
                     <if condition="telecomMechList.size() &gt; 0">
                         <then>
                             <set field="telecomMech" from="telecomMechList.first()"/>
@@ -1012,6 +1006,12 @@
                             </if>
                         </then>
                         <else>
+                            <if condition="shippingAddress.phone">
+                                <set field="contactNumber" from="shippingAddress.phone.replaceAll('-','')"/>
+                                <set field="contactNumber" from="contactNumber.replaceAll('\\+','')"/>
+                                <set field="phoneCountryCode" from="contactNumber.substring(0,3)"/>
+                                <set field="phoneNumber" from="contactNumber.substring(3).replaceAll(' ','')"/>
+                            </if>
                             <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
                                                                                                           contactNumber: phoneNumber,
                                                                                                           countryCode: phoneCountryCode,
