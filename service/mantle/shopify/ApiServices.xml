@@ -1003,11 +1003,13 @@
                     </if>
                     <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber" list="telecomMechList">
                         <econdition field-name="partyId" from="partyId"/>
-                        <econdition field-name="contactNumber" from="phoneNumber"/>
+                        <econdition field-name="contactMechPurposeId" value="PhonePrimary"/>
                     </entity-find>
                     <if condition="telecomMechList.size() &gt; 0">
+                        <set field="telecomMech" from="telecomMechList.find{it.contactNumber.replace('-','').equals(phoneNumber)}"/>
+                    </if>
+                    <if condition="telecomMech">
                         <then>
-                            <set field="telecomMech" from="telecomMechList.first()"/>
                             <set field="telecomContactMechId" from="telecomMech.contactMechId"/>
                             <log message="TELECOM NUMBER ALREADY EXISTS"/>
                         </then>
