@@ -1009,6 +1009,7 @@
                                                                                                       stateProvinceGeoId: billingStateList.first().geoId,
                                                                                                       city: billingAddress.city,
                                                                                                       emailAddress: customer.email]" out-map="billingMechData"/>
+                        <set field="billingMechId" from="billingMechData.postalContactMechId"/>
                     </else>
                 </if>
 
