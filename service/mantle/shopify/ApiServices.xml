@@ -1242,7 +1242,7 @@
         </actions>
     </service>
         
-    <service verb="send" noun="SetInventorySystemMessage">
+    <service verb="send" noun="SetInventorySystemMessage" authenticate="anonymous-all">
         <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
         <in-parameters>
             <parameter name="systemMessageId" required="true"/>
@@ -1254,7 +1254,7 @@
         </actions>
     </service>
 
-    <service verb="consume" noun="SetInventorySystemMessage">
+    <service verb="consume" noun="SetInventorySystemMessage" authenticate="anonymous-all">
         <actions>
             <entity-find entity-name="mantle.product.ProductInventoryUpdate" list="updatedProducts"/>
             <if condition="updatedProducts.size() &gt; 0">
