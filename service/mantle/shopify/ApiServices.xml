@@ -834,7 +834,7 @@
                 <set field="billingAddress" from="order.billing_address"/>
 
                 <if condition="order.shipping_lines.size() == 0">
-                    <return error="true" message="ERROR: NO PRODUCTS FOUND ON SHOPIFY ORDER ${order.name} - ${order.id}"/>
+                    <return error="true" message="ERROR: NO SHIPPING METHOD FOUND ON SHOPIFY ORDER ${order.name} - ${order.id}"/>
                 </if>
 
                 <set field="carrierData" from="order.shipping_lines.first()"/>
