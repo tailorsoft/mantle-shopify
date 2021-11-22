@@ -1123,11 +1123,12 @@
                         </entity-find>
                         <!-- if the payment method exists, the system won't create another one -->
                         <if condition="!paymentMethods">
-                            <service-call name="create#mantle.account.method.PaymentMethod" out-map="context" in-map="[ownerPartyId: partyId,
-                                                                                                           paymentMethodTypeEnumId:'PmtCreditCard',
-                                                                                                           firstNameOnAccount: customer.first_name,
-                                                                                                           lastNameOnAccount:customer.last_name,
-                                                                                                           description: creditCarddescription ]"/>
+                                <service-call name="create#mantle.account.method.PaymentMethod" out-map="context" in-map="[ownerPartyId: partyId,
+                                                                                                               paymentMethodTypeEnumId:'PmtCreditCard',
+                                                                                                               postalContactMechId: billingMechId,
+                                                                                                               firstNameOnAccount: customer.first_name,
+                                                                                                               lastNameOnAccount:customer.last_name,
+                                                                                                               description: creditCarddescription ]"/>
                         </if>
                         <set field="fromPartyId" from="orderPart.customerPartyId"/>
                         <entity-find entity-name="mantle.order.OrderPartParty" list="billList">
