@@ -1122,13 +1122,34 @@
                             <econdition field-name="description" from="creditCarddescription"/>
                         </entity-find>
                         <!-- if the payment method exists, the system won't create another one -->
-                        <if condition="!paymentMethods">
+                        <if condition="paymentMethods.size() &gt; 0">
+                            <then>
+                                <set field="paymentMethod" from="paymentMethods.first()"/>
+                                <if condition="paymentMethod.postalContactMechId">
+                                    <then>
+                                        <if condition="paymentMethod.postalContactMechId != billingMechId">
+                                            <service-call name="create#mantle.account.method.PaymentMethod" out-map="context" in-map="[ownerPartyId: partyId,
+                                                                                                                       paymentMethodTypeEnumId:'PmtCreditCard',
+                                                                                                                       postalContactMechId: billingMechId,
+                                                                                                                       firstNameOnAccount: customer.first_name,
+                                                                                                                       lastNameOnAccount:customer.last_name,
+                                                                                                                       description: creditCarddescription ]"/>
+                                        </if>
+                                    </then>
+                                    <else>
+                                        <service-call name="update#mantle.account.method.PaymentMethod" out-map="context" in-map="[paymentMethodId: paymentMethod.paymentMethodId,
+                                                                                                                                    postalContactMechId: billingMechId]"/>
+                                    </else>
+                                </if>
+                            </then>
+                            <else>
                                 <service-call name="create#mantle.account.method.PaymentMethod" out-map="context" in-map="[ownerPartyId: partyId,
                                                                                                                paymentMethodTypeEnumId:'PmtCreditCard',
                                                                                                                postalContactMechId: billingMechId,
                                                                                                                firstNameOnAccount: customer.first_name,
                                                                                                                lastNameOnAccount:customer.last_name,
                                                                                                                description: creditCarddescription ]"/>
+                            </else>
                         </if>
                         <set field="fromPartyId" from="orderPart.customerPartyId"/>
                         <entity-find entity-name="mantle.order.OrderPartParty" list="billList">
