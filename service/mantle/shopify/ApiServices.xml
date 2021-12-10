@@ -1305,7 +1305,7 @@
     </service>
 
     <service verb="queue" noun="UpdateCustomerSystemMessage">
-        <description>Service to updte customer</description>
+        <description>Service to update customer</description>
         <in-parameters>
             <parameter name="partyId" required="true" />
         </in-parameters>
@@ -1380,9 +1380,9 @@
                     <log message="The party ${partyId} - ${person.firstName} ${person.lastName?:''} does not have register on postalAddress, contact the admin."/>
                     <continue/>
                 </if>
-                <set field="firstAndLasNameCustomerAddres" from="customerAddress?.toName ? customerAddress?.toName.split(' ').findAll { it != ''} : ['','']"/>
-                <set field="firstNameAtAddress" from="firstAndLasNameCustomerAddres[0]"/>
-                <set field="lastNameAtAddress" from="firstAndLasNameCustomerAddres.size() >=1 ? firstAndLasNameCustomerAddres[1] : ''"/>
+                <set field="firstAndLastNameCustomerAddress" from="customerAddress?.toName ? customerAddress?.toName.split(' ').findAll { it != ''} : ['','']"/>
+                <set field="firstNameAtAddress" from="firstAndLastNameCustomerAddress[0]"/>
+                <set field="lastNameAtAddress" from="firstAndLastNameCustomerAddress.size() >=1 ? firstAndLastNameCustomerAddress[1] : ''"/>
 
                 <entity-find-one entity-name="moqui.basic.Geo" value-field="geoContry">
                     <field-map field-name="geoId" from="customerAddress?.countryGeoId"/>
