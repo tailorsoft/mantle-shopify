@@ -53,7 +53,10 @@
                         urlExpand = urlExpand + json.shopifyCustomerId + '/addresses.json'
                     }else if (systemMessage.docSubType?.contains('getCollects') ){
                         urlExpand = urlExpand + json.shopifyId
-                    }else{
+                    }else if (systemMessage.docSubType?.contains('getTransactions') ){
+                        urlExpand = urlExpand + json.orderId + '\transactions.json'
+                    }
+                    else{
                         urlExpand = urlExpand + systemMessage.messageText
                     }
                     logger.info("URL EXPAND ${urlExpand}")
