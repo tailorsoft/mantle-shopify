@@ -54,7 +54,7 @@
                     }else if (systemMessage.docSubType?.contains('getCollects') ){
                         urlExpand = urlExpand + json.shopifyId
                     }else if (systemMessage.docSubType?.contains('getTransactions') ){
-                        urlExpand = urlExpand + json.orderId + '\transactions.json'
+                        urlExpand = urlExpand + systemMessage.shopifyOrderId + '\transactions.json'
                     }
                     else{
                         urlExpand = urlExpand + systemMessage.messageText
@@ -1758,6 +1758,31 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
+        </actions>
+    </service>
+
+    <service verb="queue" noun="GetOrderTransactionsSystemMessage">
+        <in-parameters>
+            <parameter name="shopifyOrderId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:shopifyOrderId,
+                                                                                                                      systemMessageTypeId:'ShopifyGetOrderTransactionsMessage',
+                                                                                                                      statusId:'SmsgProduced']" out-map="context"/>
+            <if condition="systemMessageAlreadyExist">
+                <return error="true" message="ERROR: a System Message already exist to get this order's transactions ${shopifyOrderId}"/>
+            </if>
+
+            <!--CREATE SYSTEM MESSAGE -->
+            <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyGetOrderTransactionsMessage',
+                                                                                                statusId:'SmsgProduced',
+                                                                                                isOutgoing:'Y',
+                                                                                                messageText:'',
+                                                                                                docSubType:'getTransactions',
+                                                                                                docSubControl:'getTransactions',
+                                                                                                shopifyOrderId:shopifyOrderId,
+                                                                                                initDate:ec.user.nowTimestamp
+                                                                                                ]" out-map="context"/>
         </actions>
     </service>
 </services>
