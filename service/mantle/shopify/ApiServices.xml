@@ -1160,6 +1160,7 @@
                             <econdition field-name="roleTypeId" value="CustomerBillTo"/>
                         </entity-find>
                         <if condition="billToList"><set field="fromPartyId" from="billToList[0].partyId"/></if>
+
                         <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context"
                                       in-map="context + [amount:(amount ?: orderPart.partTotal), amountUomId:orderHeader.currencyUomId,
                               statusId:'PmntDelivered', effectiveDate:ec.user.nowTimestamp, fromPartyId:fromPartyId, toPartyId:orderPart.vendorPartyId]"/>
@@ -1774,7 +1775,7 @@
             </if>
 
             <!--CREATE SYSTEM MESSAGE -->
-            <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyGetOrderTransactionsMessage',
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" in-map="[systemMessageTypeId:'ShopifyGetOrderTransactionsMessage',
                                                                                                 statusId:'SmsgProduced',
                                                                                                 isOutgoing:'Y',
                                                                                                 messageText:'',
@@ -1783,6 +1784,23 @@
                                                                                                 shopifyOrderId:shopifyOrderId,
                                                                                                 initDate:ec.user.nowTimestamp
                                                                                                 ]" out-map="context"/>
+        </actions>
+    </service>
+
+    <service verb="send" noun="GetOrderTransactionsSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="pmtReferenceNumber"/>
+        </out-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context"/>
+            <set field="transactions" from="response.transactions"/>
+            <set field="AuthTransaction" from="print(transactions?.find{it.kind.equals('sale') || it.kind.equals('authorization')} ?: '')"/>
         </actions>
     </service>
 </services>
