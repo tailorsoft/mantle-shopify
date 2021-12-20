@@ -1183,7 +1183,7 @@
                                                                                                               statusId: 'OrderApproved']"/>
                         <service-call name="mantle.shopify.ApiServices.queue#GetCustomerAddressesSystemMessage" out-map="context"
                                       in-map="[postalMechId:postalContactMechId, partyId:partyId]"/>
-                        <service-call name="mantle.shopify.ApiServices.queue#GetOrderTransactionsSystemMessage" out-map="context" in-map="[orderId: orderHeader.externalId]"/>
+                        <service-call name="mantle.shopify.ApiServices.queue#GetOrderTransactionsSystemMessage" out-map="context" in-map="[shopifyOrderId: orderHeader.externalId]"/>
                     </if>
 
             </if>
@@ -1803,9 +1803,17 @@
                           out-map="context"/>
             <set field="transactions" from="response.transactions"/>
             <set field="AuthTransaction" from="transactions?.find{it.kind.equals('sale') || it.kind.equals('authorization')} ?: ''"/>
-            <entity-find entity-name="mantle.order.OrderHeader" value-field="orderHeader">
+            <entity-find entity-name="mantle.order.OrderHeader" value-field="orderHeaders">
                 <econdition field-name="externalId" from="AuthTransaction.orderId"/>
             </entity-find>
+            <if condition="orderHeaders.size() &gt;&gt; 0">
+                <then>
+                    <set field="orderHeader" from="orderHeaders.first()"/>
+                </then>
+                <else>
+                    <return error="true" message="There is no record in the database with OrderShopifyId ${AuthTransaction.orderId}"/>
+                </else>
+            </if>
             <entity-find-related-one relationship-name="mantle.account.payment.Payment" value-field="orderHeader" to-value-field="Payment"/>
             <if condition="!Payment">
                 <then>
