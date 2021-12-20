@@ -1160,10 +1160,15 @@
                             <econdition field-name="roleTypeId" value="CustomerBillTo"/>
                         </entity-find>
                         <if condition="billToList"><set field="fromPartyId" from="billToList[0].partyId"/></if>
-
+                        <service-call name="mantle.shopify.ApiServices.queue#GetOrderTransactionsSystemMessage"/>
                         <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context"
-                                      in-map="context + [amount:(amount ?: orderPart.partTotal), amountUomId:orderHeader.currencyUomId,
-                              statusId:'PmntDelivered', effectiveDate:ec.user.nowTimestamp, fromPartyId:fromPartyId, toPartyId:orderPart.vendorPartyId]"/>
+                                      in-map="context + [amount:(amount ?: orderPart.partTotal),
+                                                amountUomId:orderHeader.currencyUomId,
+                                                statusId:'PmntDelivered',
+                                                effectiveDate:ec.user.nowTimestamp,
+                                                fromPartyId:fromPartyId,
+                                                toPartyId:orderPart.vendorPartyId,
+                                                paymentRefNum:pmtReferenceNumber]"/>
                         <service-call name="mantle.order.OrderServices.set#OrderBillingShippingInfo" in-map="[orderId: orderHeader.orderId,
                                                                                                       paymentId: paymentId,
                                                                                                       paymentMethodId: paymentMethodId,
@@ -1792,15 +1797,25 @@
         <in-parameters>
             <parameter name="systemMessageId" required="true"/>
         </in-parameters>
-        <out-parameters>
-            <parameter name="pmtReferenceNumber"/>
-        </out-parameters>
         <actions>
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context"/>
             <set field="transactions" from="response.transactions"/>
-            <set field="AuthTransaction" from="print(transactions?.find{it.kind.equals('sale') || it.kind.equals('authorization')} ?: '')"/>
+            <set field="AuthTransaction" from="transactions?.find{it.kind.equals('sale') || it.kind.equals('authorization')} ?: ''"/>
+            <entity-find entity-name="mantle.order.OrderHeader" value-field="orderHeader">
+                <econdition field-name="externalId" from="AuthTransaction.orderId"/>
+            </entity-find>
+            <entity-find-related-one relationship-name="mantle.account.payment.Payment" value-field="orderHeader" to-value-field="Payment"/>
+            <if condition="!Payment">
+                <then>
+                    <return error="true" message="The order ${AuthTransaction.orderId} does not have an associated payment. Please contact the admin"/>erfvvv
+                </then>
+                <else>
+                    <set field="authorizationKey" from="(AuthTransaction?.authorization?:'').split('#')[0]?:''"/>
+                    <service-call name="update#mantle.account.payment.Payment" out-map="context" in-map="[paymentId: Payment.paymentId, paymentRefNum: authorizationKey]"/>
+                </else>
+            </if>
         </actions>
     </service>
 </services>
