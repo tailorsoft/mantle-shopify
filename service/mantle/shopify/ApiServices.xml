@@ -1160,7 +1160,6 @@
                             <econdition field-name="roleTypeId" value="CustomerBillTo"/>
                         </entity-find>
                         <if condition="billToList"><set field="fromPartyId" from="billToList[0].partyId"/></if>
-                        <service-call name="mantle.shopify.ApiServices.queue#GetOrderTransactionsSystemMessage"/>
                         <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context"
                                       in-map="context + [amount:(amount ?: orderPart.partTotal),
                                                 amountUomId:orderHeader.currencyUomId,
@@ -1184,6 +1183,7 @@
                                                                                                               statusId: 'OrderApproved']"/>
                         <service-call name="mantle.shopify.ApiServices.queue#GetCustomerAddressesSystemMessage" out-map="context"
                                       in-map="[postalMechId:postalContactMechId, partyId:partyId]"/>
+                        <service-call name="mantle.shopify.ApiServices.queue#GetOrderTransactionsSystemMessage" out-map="context" in-map="[orderId: orderHeader.externalId]"/>
                     </if>
 
             </if>
