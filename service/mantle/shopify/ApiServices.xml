@@ -54,7 +54,7 @@
                     }else if (systemMessage.docSubType?.contains('getCollects') ){
                         urlExpand = urlExpand + json.shopifyId
                     }else if (systemMessage.docSubType?.contains('getTransactions') ){
-                        urlExpand = urlExpand + systemMessage.shopifyOrderId + '\transactions.json'
+                        urlExpand = urlExpand + systemMessage.shopifyOrderId + '/transactions.json'
                     }
                     else{
                         urlExpand = urlExpand + systemMessage.messageText
@@ -1046,7 +1046,7 @@
                                                                                   disableShippingCalc:'Y',
                                                                                   disableTaxCalc:'Y',
                                                                                   salesChannelEnumId: 'ScShopify',
-                                                                                  systemMessageRemoteId: systemMessageRemote.systemMessageRemoteId,
+                                                                                  systemMessageRemoteId: systemMessageRemote.systemMessagexzId,
                                                                                   customerPartyId: partyId]" out-map="context"/>
                     <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader"/>
                     <entity-find-one entity-name="mantle.order.OrderPart" value-field="orderPart"/>
@@ -1166,8 +1166,7 @@
                                                 statusId:'PmntDelivered',
                                                 effectiveDate:ec.user.nowTimestamp,
                                                 fromPartyId:fromPartyId,
-                                                toPartyId:orderPart.vendorPartyId,
-                                                paymentRefNum:pmtReferenceNumber]"/>
+                                                toPartyId:orderPart.vendorPartyId]"/>
                         <service-call name="mantle.order.OrderServices.set#OrderBillingShippingInfo" in-map="[orderId: orderHeader.orderId,
                                                                                                       paymentId: paymentId,
                                                                                                       paymentMethodId: paymentMethodId,
@@ -1783,7 +1782,7 @@
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" in-map="[systemMessageTypeId:'ShopifyGetOrderTransactionsMessage',
                                                                                                 statusId:'SmsgProduced',
                                                                                                 isOutgoing:'Y',
-                                                                                                messageText:'',
+                                                                                                messageText:'{'shopifyOrderId': shopifyOrderId} ',
                                                                                                 docSubType:'getTransactions',
                                                                                                 docSubControl:'getTransactions',
                                                                                                 shopifyOrderId:shopifyOrderId,
@@ -1802,26 +1801,27 @@
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context"/>
             <set field="transactions" from="response.transactions"/>
+            <log message="TRANSACTIONS: ${transactions}"/>
             <set field="AuthTransaction" from="transactions?.find{it.kind.equals('sale') || it.kind.equals('authorization')} ?: ''"/>
-            <entity-find entity-name="mantle.order.OrderHeader" value-field="orderHeaders">
-                <econdition field-name="externalId" from="AuthTransaction.orderId"/>
+            <entity-find entity-name="mantle.order.OrderHeader" list="orderHeaders">
+                <econdition field-name="externalId" from="AuthTransaction.order_id"/>
             </entity-find>
             <if condition="orderHeaders.size() &gt;&gt; 0">
                 <then>
                     <set field="orderHeader" from="orderHeaders.first()"/>
                 </then>
                 <else>
-                    <return error="true" message="There is no record in the database with OrderShopifyId ${AuthTransaction.orderId}"/>
+                    <return error="true" message="There is no record in the database with OrderShopifyId ${AuthTransaction.order_id}"/>
                 </else>
             </if>
             <entity-find-related-one relationship-name="mantle.account.payment.Payment" value-field="orderHeader" to-value-field="Payment"/>
             <if condition="!Payment">
                 <then>
-                    <return error="true" message="The order ${AuthTransaction.orderId} does not have an associated payment. Please contact the admin"/>erfvvv
+                    <return error="true" message="The order ${AuthTransaction.order_Id} does not have an associated payment. Please contact the admin"/>erfvvv
                 </then>
                 <else>
                     <set field="authorizationKey" from="(AuthTransaction?.authorization?:'').split('#')[0]?:''"/>
-                    <service-call name="update#mantle.account.payment.Payment" out-map="context" in-map="[paymentId: Payment.paymentId, paymentRefNum: authorizationKey]"/>
+                    <service-call name="mantle.account.PaymentServices.update#Payment" out-map="context" in-map="[paymentId: Payment.paymentId, paymentRefNum: authorizationKey]"/>
                 </else>
             </if>
         </actions>
