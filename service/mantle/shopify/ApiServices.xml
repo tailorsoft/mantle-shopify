@@ -1782,7 +1782,7 @@
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" in-map="[systemMessageTypeId:'ShopifyGetOrderTransactionsMessage',
                                                                                                 statusId:'SmsgProduced',
                                                                                                 isOutgoing:'Y',
-                                                                                                messageText:'{'shopifyOrderId': shopifyOrderId} ',
+                                                                                                messageText:'{}',
                                                                                                 docSubType:'getTransactions',
                                                                                                 docSubControl:'getTransactions',
                                                                                                 shopifyOrderId:shopifyOrderId,
