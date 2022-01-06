@@ -53,7 +53,10 @@
                         urlExpand = urlExpand + json.shopifyCustomerId + '/addresses.json'
                     }else if (systemMessage.docSubType?.contains('getCollects') ){
                         urlExpand = urlExpand + json.shopifyId
-                    }else{
+                    }else if (systemMessage.docSubType?.contains('getTransactions') ){
+                        urlExpand = urlExpand + systemMessage.shopifyOrderId + '/transactions.json'
+                    }
+                    else{
                         urlExpand = urlExpand + systemMessage.messageText
                     }
                     logger.info("URL EXPAND ${urlExpand}")
@@ -1158,8 +1161,12 @@
                         </entity-find>
                         <if condition="billToList"><set field="fromPartyId" from="billToList[0].partyId"/></if>
                         <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context"
-                                      in-map="context + [amount:(amount ?: orderPart.partTotal), amountUomId:orderHeader.currencyUomId,
-                              statusId:'PmntDelivered', effectiveDate:ec.user.nowTimestamp, fromPartyId:fromPartyId, toPartyId:orderPart.vendorPartyId]"/>
+                                      in-map="context + [amount:(amount ?: orderPart.partTotal),
+                                                amountUomId:orderHeader.currencyUomId,
+                                                statusId:'PmntDelivered',
+                                                effectiveDate:ec.user.nowTimestamp,
+                                                fromPartyId:fromPartyId,
+                                                toPartyId:orderPart.vendorPartyId]"/>
                         <service-call name="mantle.order.OrderServices.set#OrderBillingShippingInfo" in-map="[orderId: orderHeader.orderId,
                                                                                                       paymentId: paymentId,
                                                                                                       paymentMethodId: paymentMethodId,
@@ -1175,6 +1182,7 @@
                                                                                                               statusId: 'OrderApproved']"/>
                         <service-call name="mantle.shopify.ApiServices.queue#GetCustomerAddressesSystemMessage" out-map="context"
                                       in-map="[postalMechId:postalContactMechId, partyId:partyId]"/>
+                        <service-call name="mantle.shopify.ApiServices.queue#GetOrderTransactionsSystemMessage" out-map="context" in-map="[shopifyOrderId: orderHeader.externalId]"/>
                     </if>
 
             </if>
@@ -1755,6 +1763,67 @@
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
+        </actions>
+    </service>
+
+    <service verb="queue" noun="GetOrderTransactionsSystemMessage">
+        <in-parameters>
+            <parameter name="shopifyOrderId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:shopifyOrderId,
+                                                                                                                      systemMessageTypeId:'ShopifyGetOrderTransactionsMessage',
+                                                                                                                      statusId:'SmsgProduced']" out-map="context"/>
+            <if condition="systemMessageAlreadyExist">
+                <return error="true" message="ERROR: a System Message already exist to get this order's transactions ${shopifyOrderId}"/>
+            </if>
+
+            <!--CREATE SYSTEM MESSAGE -->
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" in-map="[systemMessageTypeId:'ShopifyGetOrderTransactionsMessage',
+                                                                                                statusId:'SmsgProduced',
+                                                                                                isOutgoing:'Y',
+                                                                                                messageText:'{}',
+                                                                                                docSubType:'getTransactions',
+                                                                                                docSubControl:'getTransactions',
+                                                                                                shopifyOrderId:shopifyOrderId,
+                                                                                                initDate:ec.user.nowTimestamp
+                                                                                                ]" out-map="context"/>
+        </actions>
+    </service>
+
+    <service verb="send" noun="GetOrderTransactionsSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context"/>
+            <set field="transactions" from="response.transactions"/>
+            <log message="TRANSACTIONS: ${transactions}"/>
+            <set field="AuthTransaction" from="transactions?.find{it.kind.equals('sale') || it.kind.equals('authorization')} ?: ''"/>
+            <entity-find entity-name="mantle.order.OrderHeader" list="orderHeaders">
+                <econdition field-name="externalId" from="AuthTransaction.order_id"/>
+            </entity-find>
+            <if condition="orderHeaders.size() &gt;&gt; 0">
+                <then>
+                    <set field="orderHeader" from="orderHeaders.first()"/>
+                </then>
+                <else>
+                    <return error="true" message="There is no record in the database with OrderShopifyId ${AuthTransaction.order_id}"/>
+                </else>
+            </if>
+            <entity-find-related-one relationship-name="mantle.account.payment.Payment" value-field="orderHeader" to-value-field="Payment"/>
+            <if condition="!Payment">
+                <then>
+                    <return error="true" message="The order ${AuthTransaction.order_Id} does not have an associated payment. Please contact the admin"/>erfvvv
+                </then>
+                <else>
+                    <set field="authorizationKey" from="(AuthTransaction?.authorization?:'').split('#')[0]?:''"/>
+                    <service-call name="mantle.account.PaymentServices.update#Payment" out-map="context" in-map="[paymentId: Payment.paymentId, paymentRefNum: authorizationKey]"/>
+                </else>
+            </if>
         </actions>
     </service>
 </services>
