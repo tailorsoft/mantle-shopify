@@ -1118,7 +1118,7 @@
                         <entity-find entity-name="mantle.account.method.PaymentMethod" list="paymentMethods">
                             <econdition field-name="ownerPartyId" from="partyId"/>
                             <econdition field-name="firstNameOnAccount"  from="billingAddress.first_name"/>
-                            <econdition field-name="lastNameOnAccount" from="billingAdress.last_name"/>
+                            <econdition field-name="lastNameOnAccount" from="billingAddress.last_name"/>
                             <econdition field-name="paymentMethodTypeEnumId"  value="PmtCreditCard"/>
                             <econdition field-name="description" from="creditCarddescription"/>
                         </entity-find>
@@ -1132,8 +1132,8 @@
                                             <service-call name="create#mantle.account.method.PaymentMethod" out-map="context" in-map="[ownerPartyId: partyId,
                                                                                                                        paymentMethodTypeEnumId:'PmtCreditCard',
                                                                                                                        postalContactMechId: billingMechId,
-                                                                                                                       firstNameOnAccount: customer.first_name,
-                                                                                                                       lastNameOnAccount:customer.last_name,
+                                                                                                                       firstNameOnAccount: billingAddress.first_name,
+                                                                                                                       lastNameOnAccount:billingAddress.last_name,
                                                                                                                        description: creditCarddescription ]"/>
                                         </if>
                                     </then>
