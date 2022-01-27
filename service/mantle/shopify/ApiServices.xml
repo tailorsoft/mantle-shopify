@@ -1133,7 +1133,7 @@
                                                                                                                        paymentMethodTypeEnumId:'PmtCreditCard',
                                                                                                                        postalContactMechId: billingMechId,
                                                                                                                        firstNameOnAccount: billingAddress.first_name,
-                                                                                                                       lastNameOnAccount:billingAddress.last_name,
+                                                                                                                       lastNameOnAccount: billingAddress.last_name,
                                                                                                                        description: creditCarddescription ]"/>
                                         </if>
                                     </then>
@@ -1148,7 +1148,7 @@
                                                                                                                paymentMethodTypeEnumId:'PmtCreditCard',
                                                                                                                postalContactMechId: billingMechId,
                                                                                                                firstNameOnAccount: billingAddress.first_name,
-                                                                                                               lastNameOnAccount:billingAddress.last_name,
+                                                                                                               lastNameOnAccount: billingAddress.last_name,
                                                                                                                description: creditCarddescription ]"/>
                             </else>
                         </if>
