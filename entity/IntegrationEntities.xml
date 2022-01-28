@@ -6,8 +6,17 @@
         <field name="productId" type="text-medium"/>
         <field name="initDate" type="date-time"/>
     </entity>
+    <entity entity-name="Location" package="moqui.basic">
+        <field name="locationId" type="id" is-pk="true"/>
+        <field name="geoTypeEnumId" type="id"/>
+        <field name="locationName" type="text-medium"/>
+        <field name="locationCodeAlpha2" type="text-medium"/>
+        <field name="locationCurrency" type="text-medium"/>
+        <field name="locationPhoneCode" type="text-medium"/>
+        <field name="lastUpdatedStamp" type="date-time"/>
+    </entity>
     <extend-entity entity-name="SystemMessage" package="moqui.service.message">
-        <field name="sentproductId" type="text-medium"/>
+        <field name="sentProductId" type="text-medium"/>
         <field name="sentProductCategoryId" type="text-medium"/>
         <field name="sentPartyId" type="text-medium"/>
         <field name="sentContactMechId" type="text-medium"/>
