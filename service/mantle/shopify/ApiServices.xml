@@ -1002,7 +1002,7 @@
                             <set field="phoneCountryCode" from="shippingAddress.phone.substring(0,1)"/>
                             <set field="phoneAreaCode" from="shippingAddress.phone.substring(2,5)"/>
                             <set field="phoneNumber" from="shippingAddress.phone.substring(6)"/>
-                            <set field="phoneNumber" from="phoneNumber.replaceAll('-','')"/>
+                            <set field="phoneNumber" from="phoneNumber.replace('-','')"/>
                         </else></if>
                     </if>
                     <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber" list="telecomMechList">
