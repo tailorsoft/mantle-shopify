@@ -957,28 +957,28 @@
                         <set field="shippingPhoneNumber" from="shippingAddress.phone.substring(6)"/>
                         <set field="shippingPhoneNumber" from="shippingPhoneNumber.replace('-','')"/>
                     </else></if>
-                </if>
-                <!-- Checking shipping phone existence -->
-                <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber" list="shippingTelecomMechList">
-                    <econdition field-name="partyId" from="partyId"/>
-                    <econdition field-name="contactMechPurposeId" value="PhonePrimary"/>
-                </entity-find>
-                <if condition="shippingTelecomMechList.size() &gt; 0">
-                    <set field="shippingTelecomMech" from="shippingTelecomMechList.find{it.contactNumber.replace('-','').equals(shippingPhoneNumber.replace('-',''))}"/>
-                </if>
-                <if condition="shippingTelecomMech">
-                    <then>
-                        <set field="telecomContactMechId" from="telecomMech.contactMechId"/>
-                        <log message="SHIPPING PHONE NUMBER ALREADY EXISTS"/>
-                    </then>
-                    <else>
-                        <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
+                    <!-- Checking shipping phone existence -->
+                    <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber" list="shippingTelecomMechList">
+                        <econdition field-name="partyId" from="partyId"/>
+                        <econdition field-name="contactMechPurposeId" value="PhonePrimary"/>
+                    </entity-find>
+                    <if condition="shippingTelecomMechList.size() &gt; 0">
+                        <set field="shippingTelecomMech" from="shippingTelecomMechList.find{it.contactNumber.replace('-','').equals(shippingPhoneNumber.replace('-',''))}"/>
+                    </if>
+                    <if condition="shippingTelecomMech">
+                        <then>
+                            <set field="shippingTelecomContactMechId" from="shippingTelecomMech.contactMechId"/>
+                            <log message="SHIPPING PHONE NUMBER ALREADY EXISTS"/>
+                        </then>
+                        <else>
+                            <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
                                                                                                       contactNumber: shippingPhoneNumber,
                                                                                                       countryCode: shippingPhoneCountryCode,
                                                                                                       areaCode: shippingPhoneAreaCode,
                                                                                                       telecomContactMechPurposeId:&apos;PhonePrimary&apos;]" out-map="telecomMechData"/>
-                        <set field="telecomContactMechId" from="telecomMechData.telecomContactMechId"/>
-                    </else>
+                            <set field="shippingTelecomContactMechId" from="telecomMechData.telecomContactMechId"/>
+                        </else>
+                    </if>
                 </if>
                 <if condition="postalMechList.size() &gt; 0">
                     <then>
@@ -986,9 +986,11 @@
                         <set field="postalMech" from="postalMechList.first()"/>
                         <set field="postalContactMechId" from="postalMech.contactMechId"/>
                         <log message="SHIPPING ADDRESS ALREADY EXISTS"/>
-                        <if condition="postalMech.telecomContactMechId != telecomContactMechId">
-                            <service-call name="update#mantle.party.contact.PostalAddress" in-map="[telecomContactMechId: telecomContactMechId,
+                        <if condition="shippingTelecomContactMechId">
+                            <if condition="postalMech.telecomContactMechId != shippingTelecomContactMechId">
+                                <service-call name="update#mantle.party.contact.PostalAddress" in-map="[telecomContactMechId: shippingTelecomContactMechId,
                                                                                                     contactMechId: postalMech.contactMechId]" out-map="context"/>
+                            </if>
                         </if>
                     </then>
                     <else>
@@ -1001,10 +1003,11 @@
                             <econdition field-name="geoTypeEnumId" value="GEOT_STATE"/>
                             <econdition field-name="geoCodeAlpha2" from="shippingAddress.province_code"/>
                         </entity-find>
-                        <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
+                        <if condition="shippingTelecomContactMechId"><then>
+                            <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
                                                                                                       address1:shippingAddress.address1,
                                                                                                       address2:shippingAddress.address2,
-                                                                                                      telecomContactMechId: telecomContactMechId,
+                                                                                                      telecomContactMechId: shippingTelecomContactMechId,
                                                                                                       postalContactMechPurposeId: 'PostalPrimary',
                                                                                                       toName: shippingAddress.name,
                                                                                                       postalCode:shippingAddress.zip,
@@ -1012,6 +1015,18 @@
                                                                                                       stateProvinceGeoId: shippingStateList.first().geoId,
                                                                                                       city: shippingAddress.city,
                                                                                                       emailAddress: customer.email]" out-map="shippingMechData"/>
+                        </then><else>
+                            <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
+                                                                                                      address1:shippingAddress.address1,
+                                                                                                      address2:shippingAddress.address2,
+                                                                                                      postalContactMechPurposeId: 'PostalPrimary',
+                                                                                                      toName: shippingAddress.name,
+                                                                                                      postalCode:shippingAddress.zip,
+                                                                                                      countryGeoId: shippingCountryList.first().geoId,
+                                                                                                      stateProvinceGeoId: shippingStateList.first().geoId,
+                                                                                                      city: shippingAddress.city,
+                                                                                                      emailAddress: customer.email]" out-map="shippingMechData"/>
+                        </else></if>
                         <set field="postalContactMechId" from="shippingMechData.postalContactMechId"/>
                     </else>
                 </if>
@@ -1036,29 +1051,29 @@
                         <set field="billingPhoneNumber" from="billingAddress.phone.substring(6)"/>
                         <set field="billingPhoneNumber" from="billingPhoneNumber.replace('-','')"/>
                     </else></if>
-                </if>
-                <!-- Checking billing phone existence -->
-                <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber" list="billingTelecomMechList">
-                    <econdition field-name="partyId" from="partyId"/>
-                    <econdition field-name="contactMechPurposeId" value="PhonePayment"/>
-                </entity-find>
-                <if condition="billingTelecomMechList.size() &gt; 0">
-                    <set field="billingTelecomMech" from="billingTelecomMechList.find{it.contactNumber.replace('-','').equals(billingPhoneNumber.replace('-',''))}"/>
-                </if>
-                <if condition="billingTelecomMech">
-                    <then>
-                        <log message="BILLING PHONE NUMBER ALREADY EXISTS"/>
-                        <set field="telecomContactMechId" from="billingTelecomMech.telecomContactMechId"/>
+                    <!-- Checking billing phone existence -->
+                    <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber" list="billingTelecomMechList">
+                        <econdition field-name="partyId" from="partyId"/>
+                        <econdition field-name="contactMechPurposeId" value="PhonePayment"/>
+                    </entity-find>
+                    <if condition="billingTelecomMechList.size() &gt; 0">
+                        <set field="billingTelecomMech" from="billingTelecomMechList.find{it.contactNumber.replace('-','').equals(billingPhoneNumber.replace('-',''))}"/>
+                    </if>
+                    <if condition="billingTelecomMech">
+                        <then>
+                            <log message="BILLING PHONE NUMBER ALREADY EXISTS"/>
+                            <set field="billingTelecomContactMechId" from="billingTelecomMech.telecomContactMechId"/>
 
-                    </then>
-                    <else>
-                        <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
+                        </then>
+                        <else>
+                            <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
                                                                                                           contactNumber: billingPhoneNumber,
                                                                                                           countryCode: billingPhoneCountryCode,
                                                                                                           areaCode: billingPhoneAreaCode,
                                                                                                           telecomContactMechPurposeId:&apos;PhoneBilling&apos;]" out-map="telecomMechData"/>
-                        <set field="telecomContactMechId" from="telecomMechData.telecomContactMechId"/>
-                    </else>
+                            <set field="billingTelecomContactMechId" from="telecomMechData.telecomContactMechId"/>
+                        </else>
+                    </if>
                 </if>
                 <if condition="postalBillMechList.size() &gt; 0">
                     <then>
@@ -1066,9 +1081,11 @@
                         <set field="billingMech" from="postalBillMechList.first()"/>
                         <set field ="billingMechId" from="billingMech.contactMechId"/>
                         <log message="BILLING ADDRESS ALREADY EXISTS"/>
-                        <if condition="billingMech.telecomContactMechId != telecomContactMechId">
-                            <service-call name="update#mantle.party.contact.PostalAddress" in-map="[telecomContactMechId: telecomContactMechId,
-                                                                                                    contactMechId: billingMech.contactMechId]" out-map="context"/>
+                        <if condition="billingTelecomContactMechId">
+                            <if condition="billingMech.telecomContactMechId != billingTelecomContactMechId">
+                                <service-call name="update#mantle.party.contact.PostalAddress" in-map="[telecomContactMechId: billingTelecomContactMechId,
+                                                                                                        contactMechId: billingMech.contactMechId]" out-map="context"/>
+                            </if>
                         </if>
                     </then>
                     <else>
@@ -1081,10 +1098,11 @@
                             <econdition field-name="geoTypeEnumId" value="GEOT_STATE"/>
                             <econdition field-name="geoCodeAlpha2" from="billingAddress.province_code"/>
                         </entity-find>
-                        <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
+                        <if condition="billingTelecomContactMechId"><then>
+                            <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
                                                                                                       address1:billingAddress.address1,
                                                                                                       address2:billingAddress.address2,
-                                                                                                      telecomContactMechId: telecomContactMechId,
+                                                                                                      telecomContactMechId: billingTelecomContactMechId,
                                                                                                       postalContactMechPurposeId: 'PostalBilling',
                                                                                                       toName: billingAddress.name,
                                                                                                       postalCode:billingAddress.zip,
@@ -1092,6 +1110,18 @@
                                                                                                       stateProvinceGeoId: billingStateList.first().geoId,
                                                                                                       city: billingAddress.city,
                                                                                                       emailAddress: customer.email]" out-map="billingMechData"/>
+                        </then><else>
+                            <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
+                                                                                                      address1:billingAddress.address1,
+                                                                                                      address2:billingAddress.address2,
+                                                                                                      postalContactMechPurposeId: 'PostalBilling',
+                                                                                                      toName: billingAddress.name,
+                                                                                                      postalCode:billingAddress.zip,
+                                                                                                      countryGeoId: billingCountryList.first().geoId,
+                                                                                                      stateProvinceGeoId: billingStateList.first().geoId,
+                                                                                                      city: billingAddress.city,
+                                                                                                      emailAddress: customer.email]" out-map="billingMechData"/>
+                        </else></if>
                         <set field="billingMechId" from="billingMechData.postalContactMechId"/>
                     </else>
                 </if>
@@ -1309,7 +1339,7 @@
 
             <if condition="!shopifyInventoryItem">
                 <return error="true"
-                        message="The product ${productId} must be a variant product"/>
+                        message="The product ${productId} must have a shopify inventory item"/>
             </if>
  
             <set field="inventoryItemId" from="shopifyInventoryItem.idValue"/>
