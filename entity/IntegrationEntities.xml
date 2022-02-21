@@ -7,7 +7,7 @@
         <field name="initDate" type="date-time"/>
     </entity>
     <extend-entity entity-name="SystemMessage" package="moqui.service.message">
-        <field name="sentproductId" type="text-medium"/>
+        <field name="sentProductId" type="text-medium"/>
         <field name="sentProductCategoryId" type="text-medium"/>
         <field name="sentPartyId" type="text-medium"/>
         <field name="sentContactMechId" type="text-medium"/>
