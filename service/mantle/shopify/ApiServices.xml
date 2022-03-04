@@ -1326,7 +1326,7 @@
     </service>
 
     <service verb="queue" noun="SetInventorySystemMessage" authenticate="anonymous-all">
-        <description>Service to update the quantity available in stock for a product</description>
+        <description>Service to update the quantity available in shopify's stock for a product</description>
         <in-parameters>
             <parameter name="productId" required="true"/>
         </in-parameters>
