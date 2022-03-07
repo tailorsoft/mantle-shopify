@@ -1355,8 +1355,8 @@
                 <econdition field-name="assetTypeEnumId" value="AstTpInventory"/>
             </entity-find>
 
-            <set field="avilableToPromiseList" from="assetList*.availableToPromiseTotal"/>
-            <set field="available" from="avilableToPromiseList.findAll{it != null}.sum()?:0"/>
+            <set field="availableToPromiseList" from="assetList*.availableToPromiseTotal"/>
+            <set field="available" from="availableToPromiseList.findAll{it != null}.sum()?:0"/>
 
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
                 location_id:locationId,
