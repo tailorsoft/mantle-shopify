@@ -1338,8 +1338,8 @@
             </entity-find-one>
 
             <if condition="!shopifyInventoryItem">
-                <return error="true"
-                        message="The product ${productId} must have a shopify inventory item"/>
+                <log message="The product ${productId} was not updated for it doesn't have a  shopify inventory item Id associated"/>
+                <return/>
             </if>
  
             <set field="inventoryItemId" from="shopifyInventoryItem.idValue"/>
