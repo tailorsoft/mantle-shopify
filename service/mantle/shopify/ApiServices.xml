@@ -156,7 +156,7 @@
                 <econdition field-name="settingTypeEnumId" value="PsstProductImageUrl"/>
             </entity-find>
 
-            <if condition="productImageLocationList.size()>0">
+            <if condition="productImageLocationList.size()&gt;'0">
                 <then>
                     <set field="productImageLocation" from="productImageLocationList.first()"/>
                 </then>
@@ -1326,7 +1326,7 @@
     </service>
 
     <service verb="queue" noun="SetInventorySystemMessage" authenticate="anonymous-all">
-        <description>Service to update the quantity available in stock for a product</description>
+        <description>Service to update the quantity available in shopify's stock for a product</description>
         <in-parameters>
             <parameter name="productId" required="true"/>
         </in-parameters>
@@ -1338,8 +1338,8 @@
             </entity-find-one>
 
             <if condition="!shopifyInventoryItem">
-                <return error="true"
-                        message="The product ${productId} must have a shopify inventory item"/>
+                <log message="The product ${productId} was not updated for it doesn't have a  shopify inventory item Id associated"/>
+                <return/>
             </if>
  
             <set field="inventoryItemId" from="shopifyInventoryItem.idValue"/>
@@ -1355,8 +1355,8 @@
                 <econdition field-name="assetTypeEnumId" value="AstTpInventory"/>
             </entity-find>
 
-            <set field="avilableToPromiseList" from="assetList*.availableToPromiseTotal"/>
-            <set field="available" from="avilableToPromiseList.findAll{it != null}.sum()?:0"/>
+            <set field="availableToPromiseList" from="assetList*.availableToPromiseTotal"/>
+            <set field="available" from="availableToPromiseList.findAll{it != null}.sum()?:0"/>
 
             <set field="messageText" from="groovy.json.JsonOutput.toJson([
                 location_id:locationId,
