@@ -156,7 +156,7 @@
                 <econdition field-name="settingTypeEnumId" value="PsstProductImageUrl"/>
             </entity-find>
 
-            <if condition="productImageLocationList.size()&gt;'0">
+            <if condition="productImageLocationList.size()&gt;0">
                 <then>
                     <set field="productImageLocation" from="productImageLocationList.first()"/>
                 </then>
