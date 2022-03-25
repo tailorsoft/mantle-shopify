@@ -1332,6 +1332,16 @@
         </in-parameters>
         <actions>
 
+            <entity-find-one entity-name="mantle.product.Product" value-field="product">
+                <field-map field-name="productId" from="productId"/>
+                <field-map field-name="productTypeEnumId" value="PtAsset"/>
+            </entity-find-one>
+
+            <if condition="!product">
+                <log message="There is no product ${productId}. Cannot update"/>
+                <return/>
+            </if>
+
             <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="shopifyInventoryItem">
                 <field-map field-name="productId" from="productId"/>
                 <field-map field-name="productIdTypeEnumId" value="PidtInventoryItemShopify"/>
