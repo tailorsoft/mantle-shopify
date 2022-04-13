@@ -1220,12 +1220,17 @@
                                 <if condition="paymentMethod.postalContactMechId">
                                     <then>
                                         <if condition="paymentMethod.postalContactMechId != billingMechId">
-                                            <service-call name="create#mantle.account.method.PaymentMethod" out-map="context" in-map="[ownerPartyId: partyId,
+                                            <then>
+                                                <service-call name="create#mantle.account.method.PaymentMethod" out-map="context" in-map="[ownerPartyId: partyId,
                                                                                                                        paymentMethodTypeEnumId:'PmtCreditCard',
                                                                                                                        postalContactMechId: billingMechId,
                                                                                                                        firstNameOnAccount: billingAddress.first_name,
                                                                                                                        lastNameOnAccount: billingAddress.last_name,
                                                                                                                        description: creditCarddescription ]"/>
+                                            </then>
+                                            <else>
+                                                <set field="paymentMethodId" from="paymentMethod.paymentMethodId"/>
+                                            </else>
                                         </if>
                                     </then>
                                     <else>
