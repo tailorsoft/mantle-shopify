@@ -1788,7 +1788,7 @@
 
                 <!-- The service to create fulfillment is called only if there are shipped items  -->
                 <if condition="line_items">
-                    <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:externalId,
+                    <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedShipmentSystemMessage" in-map="[shipmentId:shipment.shipmentId,
                                                                                                                       systemMessageTypeId:'ShopifyCreateFulfillmentMessage',
                                                                                                                       statusId:'SmsgProduced']" out-map="context"/>
                     <if condition="systemMessageAlreadyExist">

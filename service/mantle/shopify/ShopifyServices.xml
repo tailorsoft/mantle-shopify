@@ -201,4 +201,33 @@
             </if>
         </actions>
     </service>
+
+    <service verb="validate" noun="AlreadyCreatedShipmentSystemMessage">
+        <in-parameters>
+            <parameter name="shipmentId" required="true" />
+            <parameter name="systemMessageTypeId" required="true" />
+            <parameter name="statusId" required="true" />
+        </in-parameters>
+        <out-parameters>
+            <parameter name="systemMessageAlreadyExist"/>
+        </out-parameters>
+        <actions>
+            <set field="systemMessageAlreadyExist" from="false"/>
+            <entity-find entity-name="moqui.service.message.SystemMessage" list="systemMessageAlreadyCreated">
+                <econdition field-name="sentShipmentId" from="shipmentId"/>
+                <econdition field-name="systemMessageTypeId"/>
+                <econditions combine="or">
+                    <econdition field-name="statusId" value="SmsgConsumed"/>
+                    <econdition field-name="statusId" value="SmsgConsuming"/>
+                    <econdition field-name="statusId" value="SmsgSent"/>
+                    <econdition field-name="statusId" value="SmsgSending"/>
+                    <econdition field-name="statusId" value="SmsgError"/>
+                    <econdition field-name="statusId"/>
+                </econditions>
+            </entity-find>
+            <if condition="systemMessageAlreadyCreated.size() > 0 ">
+                <set field="systemMessageAlreadyExist" from="true"/>
+            </if>
+        </actions>
+    </service>
 </services>
