@@ -1788,11 +1788,18 @@
 
                 <!-- The service to create fulfillment is called only if there are shipped items  -->
                 <if condition="line_items">
-                    <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:externalId,
+                    <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedShipmentSystemMessage" in-map="[shipmentId:shipment.shipmentId,
                                                                                                                       systemMessageTypeId:'ShopifyCreateFulfillmentMessage',
                                                                                                                       statusId:'SmsgProduced']" out-map="context"/>
                     <if condition="systemMessageAlreadyExist">
-                        <return error="true" message="ERROR: a System Message already exist for the shipment ${shipmentId}"/>
+                        <if condition="shipment.statusId.equals('ShipDelivered')">
+                            <then>
+                                <return message="The fulfillment notificaton was sent to shopify when the status was set to shipped"/>
+                            </then>
+                            <else>
+                                <return error="true" message="ERROR: a System Message already exist for the shipment ${shipmentId}"/>
+                            </else>
+                        </if>
                     </if>
                     <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyCreateFulfillmentMessage',
                                                                                                 statusId:'SmsgProduced', 
