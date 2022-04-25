@@ -1903,7 +1903,7 @@
                           out-map="context"/>
             <set field="transactions" from="response.transactions"/>
             <log message="TRANSACTIONS: ${transactions}"/>
-            <set field="AuthTransaction" from="transactions?.find{it.kind.equals('sale') || it.kind.equals('authorization')} ?: ''"/>
+            <set field="AuthTransaction" from="transactions?.find{(it.kind.equals('sale') || it.kind.equals('authorization')) &amp;&amp; it.status.equals('success')} ?: ''"/>
             <entity-find entity-name="mantle.order.OrderHeader" list="orderHeaders">
                 <econdition field-name="externalId" from="AuthTransaction.order_id"/>
             </entity-find>
