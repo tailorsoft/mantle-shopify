@@ -1918,7 +1918,7 @@
             <entity-find-related-one relationship-name="mantle.account.payment.Payment" value-field="orderHeader" to-value-field="Payment"/>
             <if condition="!Payment">
                 <then>
-                    <return error="true" message="The order ${AuthTransaction.order_Id} does not have an associated payment. Please contact the admin"/>erfvvv
+                    <return error="true" message="The order ${AuthTransaction.order_Id} does not have an associated payment. Please contact the admin"/>
                 </then>
                 <else>
                     <set field="authorizationKey" from="(AuthTransaction?.authorization?:'').split('#')[0]?:''"/>
