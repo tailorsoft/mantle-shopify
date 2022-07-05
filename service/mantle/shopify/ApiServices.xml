@@ -1699,7 +1699,7 @@
                 </script>
             </iterate>
 
-<!--            <set field="shipping.full_refund" value="true"/>-->
+            <set field="shipping.full_refund" value="true"/>
 <!--            <set field="refund.currency" from="response.refund.currency"/>-->
 <!--            <set field="refund.shipping" from="shipping"/>-->
 <!--            <set field="refund.refund_line_items" from="refund_line_items"/>-->
@@ -1729,7 +1729,7 @@
         <actions>
             <set field="refund" from="[:]"/>
 
-            <set field="shipping.full_refund" value="true"/>
+<!--            <set field="shipping.full_refund" value="true"/>-->
             <set field="refund.currency" from="currency"/>
             <set field="refund.shipping" from="shipping"/>
             <set field="refund.refund_line_items" from="refund_line_items"/>
