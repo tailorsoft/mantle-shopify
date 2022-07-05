@@ -1634,7 +1634,7 @@
                                                                                                                         statusId:'SmsgProduced']" out-map="context"/>
 
                     <if condition="systemMessageAlreadyExist">
-                        <return error="true" message="ERROR: a System Message already exist for this order ${orderId}"/>
+                        <return error="true" message="ERROR: a System Message already exist for this order refund ${orderId}"/>
                     </if>
 
                     <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyCalculateRefundMessage',
@@ -1699,8 +1699,37 @@
                 </script>
             </iterate>
 
+<!--            <set field="shipping.full_refund" value="true"/>-->
+<!--            <set field="refund.currency" from="response.refund.currency"/>-->
+<!--            <set field="refund.shipping" from="shipping"/>-->
+<!--            <set field="refund.refund_line_items" from="refund_line_items"/>-->
+<!--            <set field="refund.transactions" from="transactions"/>-->
+<!--            <set field="externalId" from="orderId" />-->
+            <service-call name="mantle.shopify.ApiServices.queue#cancelOrRefundSystemMessage"
+                      in-map="[currency:response.refund.currency, transactions: transactions, shipping:shipping,
+                                refund_line_items:refund_line_items, externalId:orderId]"/>
+
+            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToUpdate" for-update="true">
+                <field-map  field-name="externalId" from="externalId" />
+            </entity-find-one>
+            <set field="orderToUpdate.shopifyOrderStatusId"  value="OrderCancelled"/>
+            <entity-update value-field="orderToUpdate"/>
+        </actions>
+    </service>
+
+    <!-- TODO: Add system messaage building logic for cancel or refund-->
+    <service verb="queue" noun="CancelOrRefundSystemMessage">
+        <in-parameters>
+            <parameter name="currency"/>
+            <parameter name="transactions"/>
+            <parameter name="refund_line_items"/>
+            <parameter name="shipping"/>
+            <parameter name="externalId"/>
+        </in-parameters>
+        <actions>
+
             <set field="shipping.full_refund" value="true"/>
-            <set field="refund.currency" from="response.refund.currency"/>
+            <set field="refund.currency" from="currency"/>
             <set field="refund.shipping" from="shipping"/>
             <set field="refund.refund_line_items" from="refund_line_items"/>
             <set field="refund.transactions" from="transactions"/>
@@ -1708,11 +1737,11 @@
 
             <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
 
-            <if condition="orderStatus == 'OrderCompleted'" > 
+            <if condition="orderStatus == 'OrderCompleted'" >
                 <then>
                     <!--if the order has some fulfilled item, it's necessary to refund the cancel item -->
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
+                                  in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
                              messageText:messageText,
                              docSubControl:'createRefund',
                              orderId:systemMessage.orderId,
@@ -1721,7 +1750,7 @@
                 <else>
                     <!-- if the order was cancelled by the user, its necessary to cancel all it's items -->
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
+                                  in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
                              messageText:messageText,
                              docSubControl:'cancelOrder',
                              orderId:systemMessage.orderId,
@@ -1731,10 +1760,11 @@
 
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToUpdate" for-update="true">
                 <field-map  field-name="externalId" from="externalId" />
-            </entity-find-one>
+            </entity-find-one>S
             <set field="orderToUpdate.shopifyOrderStatusId"  value="OrderCancelled"/>
             <entity-update value-field="orderToUpdate"/>
         </actions>
+
     </service>
 
     <service verb="queue" noun="CreateFulfillmentSystemMessage" authenticate="anonymous-all">
