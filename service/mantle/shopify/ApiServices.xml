@@ -1727,13 +1727,14 @@
             <parameter name="externalId"/>
         </in-parameters>
         <actions>
+            <set field="refund" from="[:]"/>
 
             <set field="shipping.full_refund" value="true"/>
             <set field="refund.currency" from="currency"/>
             <set field="refund.shipping" from="shipping"/>
             <set field="refund.refund_line_items" from="refund_line_items"/>
             <set field="refund.transactions" from="transactions"/>
-            <set field="externalId" from="orderId" />
+<!--            <set field="externalId" from="orderId" />-->
 
             <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
 
