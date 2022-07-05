@@ -1705,7 +1705,7 @@
 <!--            <set field="refund.refund_line_items" from="refund_line_items"/>-->
 <!--            <set field="refund.transactions" from="transactions"/>-->
 <!--            <set field="externalId" from="orderId" />-->
-            <service-call name="mantle.shopify.ApiServices.queue#cancelOrRefundSystemMessage"
+            <service-call name="mantle.shopify.ApiServices.queue#CancelOrRefundSystemMessage"
                       in-map="[currency:response.refund.currency, transactions: transactions, shipping:shipping,
                                 refund_line_items:refund_line_items, externalId:orderId]"/>
 
