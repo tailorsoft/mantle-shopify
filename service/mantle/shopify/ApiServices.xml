@@ -1669,7 +1669,7 @@
                 def jsonSlurper = new JsonSlurper()
                 def order = jsonSlurper.parseText(systemMessage.messageText)
             </script>
-            
+
             <set field="orderStatus" from="order.refund.orderStatus"/>
             <set field="orderId" from="order.refund.orderId"/>
             <set field="refund" from="[:]"/>
@@ -1707,7 +1707,7 @@
 <!--            <set field="externalId" from="orderId" />-->
             <service-call name="mantle.shopify.ApiServices.queue#CancelOrRefundSystemMessage"
                       in-map="[currency:response.refund.currency, transactions: transactions, shipping:shipping,
-                                refund_line_items:refund_line_items, externalId:orderId]"/>
+                                refund_line_items:refund_line_items, externalId:orderId, moquiOrderId: systemMessage.orderId]"/>
 
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToUpdate" for-update="true">
                 <field-map  field-name="externalId" from="externalId" />
@@ -1725,6 +1725,7 @@
             <parameter name="refund_line_items"/>
             <parameter name="shipping"/>
             <parameter name="externalId"/>
+            <parameter name="moquiOrderId"/>
         </in-parameters>
         <actions>
             <set field="refund" from="[:]"/>
@@ -1734,10 +1735,15 @@
             <set field="refund.shipping" from="shipping"/>
             <set field="refund.refund_line_items" from="refund_line_items"/>
             <set field="refund.transactions" from="transactions"/>
+            <log message="\n\n\n Refund object : ${refund} \n\n\n"/>
 <!--            <set field="externalId" from="orderId" />-->
 
             <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
 
+            <log message="\n\n\n\n Message text is : ${messageText} \n\n\n\n\n"/>
+<!--            <script>-->
+<!--                def messageText = groovy.json.JsonOutput.toJson([refund:refund])-->
+<!--            </script>-->
             <if condition="orderStatus == 'OrderCompleted'" >
                 <then>
                     <!--if the order has some fulfilled item, it's necessary to refund the cancel item -->
@@ -1745,7 +1751,7 @@
                                   in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
                              messageText:messageText,
                              docSubControl:'createRefund',
-                             orderId:systemMessage.orderId,
+                             orderId:moquiOrderId,
                              shopifyOrderId:externalId]"/>
                 </then>
                 <else>
@@ -1754,14 +1760,14 @@
                                   in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
                              messageText:messageText,
                              docSubControl:'cancelOrder',
-                             orderId:systemMessage.orderId,
+                             orderId:moquiOrderId,
                              shopifyOrderId:externalId]"/>
                 </else>
             </if>
 
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToUpdate" for-update="true">
                 <field-map  field-name="externalId" from="externalId" />
-            </entity-find-one>S
+            </entity-find-one>
             <set field="orderToUpdate.shopifyOrderStatusId"  value="OrderCancelled"/>
             <entity-update value-field="orderToUpdate"/>
         </actions>
