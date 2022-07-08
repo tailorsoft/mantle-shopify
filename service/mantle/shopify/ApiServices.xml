@@ -1256,6 +1256,7 @@
                         <if condition="billToList"><set field="fromPartyId" from="billToList[0].partyId"/></if>
                         <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context"
                                       in-map="context + [amount:(amount ?: orderPart.partTotal),
+                                                memo: 'Shopify Order - ' + order.order_number,
                                                 amountUomId:orderHeader.currencyUomId,
                                                 statusId:'PmntDelivered',
                                                 effectiveDate:ec.user.nowTimestamp,
@@ -1918,7 +1919,7 @@
             <entity-find-related-one relationship-name="mantle.account.payment.Payment" value-field="orderHeader" to-value-field="Payment"/>
             <if condition="!Payment">
                 <then>
-                    <return error="true" message="The order ${AuthTransaction.order_Id} does not have an associated payment. Please contact the admin"/>erfvvv
+                    <return error="true" message="The order ${AuthTransaction.order_Id} does not have an associated payment. Please contact the admin"/>
                 </then>
                 <else>
                     <set field="authorizationKey" from="(AuthTransaction?.authorization?:'').split('#')[0]?:''"/>
