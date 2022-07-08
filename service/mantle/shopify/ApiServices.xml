@@ -1706,8 +1706,7 @@
 <!--            <set field="refund.transactions" from="transactions"/>-->
 <!--            <set field="externalId" from="orderId" />-->
             <service-call name="mantle.shopify.ApiServices.queue#CancelOrRefundSystemMessage"
-                      in-map="[currency:response.refund.currency, transactions: transactions, shipping:shipping,
-                                refund_line_items:refund_line_items, externalId:orderId, moquiOrderId: systemMessage.orderId]"/>
+                      in-map="context+[currency:response.refund.currency,externalId:orderId, moquiOrderId: systemMessage.orderId]"/>
 
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToUpdate" for-update="true">
                 <field-map  field-name="externalId" from="externalId" />
@@ -1721,9 +1720,9 @@
     <service verb="queue" noun="CancelOrRefundSystemMessage">
         <in-parameters>
             <parameter name="currency"/>
-            <parameter name="transactions"/>
-            <parameter name="refund_line_items"/>
-            <parameter name="shipping"/>
+            <parameter name="transactions" type="List"/>
+            <parameter name="refund_line_items" type="List"/>
+            <parameter name="shipping" type="Map"/>
             <parameter name="externalId"/>
             <parameter name="moquiOrderId"/>
         </in-parameters>
