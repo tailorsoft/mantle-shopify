@@ -50,6 +50,8 @@
         <actions>
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order"/>
             <service-call name="mantle.shopify.ApiServices.queue#CancelAndCalculateRefundOrderSystemMessage" in-map="[orderId:order.orderId]" out-map="context"/>
+            <service-call name="mantle.shopify.ApiServices.send#CancelAndCalculateRefundOrderSystemMessage" in-map="[systemMessageId: systemMessageId]" out-map="context"/>
+            <service-call name="mantle.shopify.ApiServices.queue#CancelOrRefundSystemMessage" in-map="context"/>
         </actions>
     </seca>
     <seca id="CreateFulfillment" service="update#mantle.shipment.Shipment" when="post-service" run-on-error="false">

@@ -1592,6 +1592,9 @@
         <in-parameters>
             <parameter name="orderId" required="true" />
         </in-parameters>
+        <out-parameters>
+            <parameter name="systemMessageId"/>
+        </out-parameters>
         <actions>
 
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order"/>
@@ -1659,6 +1662,14 @@
         <in-parameters>
             <parameter name="systemMessageId" required="true"/>
         </in-parameters>
+        <out-parameters>
+            <parameter name="currency"/>
+            <parameter name="transactions" type="List"/>
+            <parameter name="refund_line_items" type="List"/>
+            <parameter name="shipping" type="Map"/>
+            <parameter name="externalId"/>
+            <parameter name="moquiOrderId"/>
+        </out-parameters>
         <actions>
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
                           in-map="[systemMessageId: systemMessageId]"
@@ -1705,9 +1716,11 @@
 <!--            <set field="refund.refund_line_items" from="refund_line_items"/>-->
 <!--            <set field="refund.transactions" from="transactions"/>-->
 <!--            <set field="externalId" from="orderId" />-->
-            <service-call name="mantle.shopify.ApiServices.queue#CancelOrRefundSystemMessage"
-                      in-map="context+[currency:response.refund.currency,externalId:orderId, moquiOrderId: systemMessage.orderId]"/>
-
+<!--            <service-call name="mantle.shopify.ApiServices.queue#CancelOrRefundSystemMessage"-->
+<!--                      in-map="context+[currency:response.refund.currency,externalId:orderId, moquiOrderId: systemMessage.orderId]"/>-->
+            <set field="moquiOrderId" from="systemMessage.orderId"/>
+            <set field="externalId" from="orderId"/>
+            <set field="currency" from="response.refund.currency"/>
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToUpdate" for-update="true">
                 <field-map  field-name="externalId" from="externalId" />
             </entity-find-one>
