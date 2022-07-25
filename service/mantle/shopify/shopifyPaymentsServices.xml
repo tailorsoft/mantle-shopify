@@ -2,10 +2,40 @@
 <services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
 
-    <service verb="refund" noun="payment">
-        <in-map>
+    <service verb="refund" noun="Payment">
+        <in-parameters>
             <parameter name="paymentId"/>
             <parameter name="amount"/>
-        </in-map>
+        </in-parameters>
+        <!-- Find Order from payment -->
+        <actions>
+            <entity-find-one entity-name="mantle.account.payment.Payment" value-field="paymentToRefund">
+                <field-map field-name="paymentId"/>
+            </entity-find-one>
+            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToRefund">
+                <field-map field-name="orderId" from="paymentToRefund.orderId"/>
+            </entity-find-one>
+            <set field="refundReason" value="Shopify gateway refund"/>
+            <set field="externalId" from="orderToRefund.externalId"/>
+            <set field="moquiOrderId" from="paymentToRefund.orderId"/>
+            <set field="shipping" from="[:]"/>
+            <set field="shipping.full_refund" value="true"/>
+            <set field="currency" value="USD"/>
+            <set field="refund_line_items" from="[]"/>
+            <set field="transactions" from="[]"/>
+
+            <script>
+                transaction = [:];
+
+                transaction.parent_id = paymentToRefund.shopifyId;
+                transaction.amount = amount;
+                transaction.kind = "refund";
+                transaction.gateway = "shopify_payments";
+                transactions.add(transaction);
+            </script>
+
+            <service-call name="mantle.shopify.ApiServices.queue#CancelOrRefundSystemMessage" in-map="context"/>
+
+        </actions>
     </service>
 </services>

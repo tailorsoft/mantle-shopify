@@ -947,6 +947,7 @@
                 <!-- Find or create shipping phone number -->
                 <!-- Phone formatting -->
                 <if condition="shippingAddress.phone">
+                    <set field="shippingAddress.phone" from='shippingAddress.phone.replace("+","")'/>
                     <if condition="shippingAddress.phone.size() != 14"><then>
                         <set field="shippingPhoneNumber" from="shippingAddress.phone"/>
                         <set field="shippingPhoneCountryCode" value=""/>
@@ -1041,6 +1042,7 @@
                 <!-- Find or create billing phone number -->
                 <!-- Phone formatting -->
                 <if condition="billingAddress.phone">
+                    <set field="billingAddress.phone" from='billingAddress.phone.replace("+","")'/>
                     <if condition="billingAddress.phone.size() != 14"><then>
                         <set field="billingPhoneNumber" from="billingAddress.phone"/>
                         <set field="billingPhoneCountryCode" value=""/>
@@ -1260,7 +1262,8 @@
                                                 statusId:'PmntDelivered',
                                                 effectiveDate:ec.user.nowTimestamp,
                                                 fromPartyId:fromPartyId,
-                                                toPartyId:orderPart.vendorPartyId]"/>
+                                                toPartyId:orderPart.vendorPartyId,
+                                                memo: 'Shopify Order' + '-' +order.order_number]"/>
                         <service-call name="mantle.order.OrderServices.set#OrderBillingShippingInfo" in-map="[orderId: orderHeader.orderId,
                                                                                                       paymentId: paymentId,
                                                                                                       paymentMethodId: paymentMethodId,
@@ -1596,7 +1599,6 @@
             <parameter name="systemMessageId"/>
         </out-parameters>
         <actions>
-
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order"/>
 
             <!-- only shopify orders are processed -->
@@ -1639,7 +1641,6 @@
                     <if condition="systemMessageAlreadyExist">
                         <return error="true" message="ERROR: a System Message already exist for this order refund ${orderId}"/>
                     </if>
-
                     <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyCalculateRefundMessage',
                                                                                                 statusId:'SmsgProduced',
                                                                                                 isOutgoing:'Y',
@@ -1738,9 +1739,15 @@
             <parameter name="shipping" type="Map"/>
             <parameter name="externalId"/>
             <parameter name="moquiOrderId"/>
+            <parameter name="refundReason"/>
         </in-parameters>
         <actions>
             <set field="refund" from="[:]"/>
+
+
+            <if condition="refundReason">
+                <set field="refund.note" from="refundReason"/>
+            </if>
 
 <!--            <set field="shipping.full_refund" value="true"/>-->
             <set field="refund.currency" from="currency"/>
@@ -1752,10 +1759,6 @@
 
             <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
 
-            <log message="\n\n\n\n Message text is : ${messageText} \n\n\n\n\n"/>
-<!--            <script>-->
-<!--                def messageText = groovy.json.JsonOutput.toJson([refund:refund])-->
-<!--            </script>-->
             <if condition="orderStatus == 'OrderCompleted'" >
                 <then>
                     <!--if the order has some fulfilled item, it's necessary to refund the cancel item -->
@@ -1971,7 +1974,9 @@
                 </then>
                 <else>
                     <set field="authorizationKey" from="(AuthTransaction?.authorization?:'').split('#')[0]?:''"/>
-                    <service-call name="mantle.account.PaymentServices.update#Payment" out-map="context" in-map="[paymentId: Payment.paymentId, paymentRefNum: authorizationKey]"/>
+                    <set field="txIdShopify" from="AuthTransaction.id"/>
+                    <service-call name="mantle.account.PaymentServices.update#Payment" out-map="context"
+                                  in-map="[paymentId: Payment.paymentId, paymentRefNum: authorizationKey, shopifyId: txIdShopify]"/>
                 </else>
             </if>
         </actions>
