@@ -1258,7 +1258,6 @@
                         <if condition="billToList"><set field="fromPartyId" from="billToList[0].partyId"/></if>
                         <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context"
                                       in-map="context + [amount:(amount ?: orderPart.partTotal),
-                                                memo: 'Shopify Order - ' + order.order_number,
                                                 amountUomId:orderHeader.currencyUomId,
                                                 statusId:'PmntDelivered',
                                                 effectiveDate:ec.user.nowTimestamp,
