@@ -947,6 +947,7 @@
                 <!-- Find or create shipping phone number -->
                 <!-- Phone formatting -->
                 <if condition="shippingAddress.phone">
+                    <set field="shippingAddress.phone" from='shippingAddress.phone.replace("+","")'/>
                     <if condition="shippingAddress.phone.size() != 14"><then>
                         <set field="shippingPhoneNumber" from="shippingAddress.phone"/>
                         <set field="shippingPhoneCountryCode" value=""/>
@@ -1041,6 +1042,7 @@
                 <!-- Find or create billing phone number -->
                 <!-- Phone formatting -->
                 <if condition="billingAddress.phone">
+                    <set field="billingAddress.phone" from='billingAddress.phone.replace("+","")'/>
                     <if condition="billingAddress.phone.size() != 14"><then>
                         <set field="billingPhoneNumber" from="billingAddress.phone"/>
                         <set field="billingPhoneCountryCode" value=""/>
@@ -1261,7 +1263,8 @@
                                                 statusId:'PmntDelivered',
                                                 effectiveDate:ec.user.nowTimestamp,
                                                 fromPartyId:fromPartyId,
-                                                toPartyId:orderPart.vendorPartyId]"/>
+                                                toPartyId:orderPart.vendorPartyId,
+                                                memo: 'Shopify Order' + '-' +order.order_number]"/>
                         <service-call name="mantle.order.OrderServices.set#OrderBillingShippingInfo" in-map="[orderId: orderHeader.orderId,
                                                                                                       paymentId: paymentId,
                                                                                                       paymentMethodId: paymentMethodId,
@@ -1593,8 +1596,10 @@
         <in-parameters>
             <parameter name="orderId" required="true" />
         </in-parameters>
+        <out-parameters>
+            <parameter name="systemMessageId"/>
+        </out-parameters>
         <actions>
-
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order"/>
 
             <!-- only shopify orders are processed -->
@@ -1635,9 +1640,8 @@
                                                                                                                         statusId:'SmsgProduced']" out-map="context"/>
 
                     <if condition="systemMessageAlreadyExist">
-                        <return error="true" message="ERROR: a System Message already exist for this order ${orderId}"/>
+                        <return error="true" message="ERROR: a System Message already exist for this order refund ${orderId}"/>
                     </if>
-
                     <service-call name="create#moqui.service.message.SystemMessage" in-map="[systemMessageTypeId:'ShopifyCalculateRefundMessage',
                                                                                                 statusId:'SmsgProduced',
                                                                                                 isOutgoing:'Y',
@@ -1660,6 +1664,14 @@
         <in-parameters>
             <parameter name="systemMessageId" required="true"/>
         </in-parameters>
+        <out-parameters>
+            <parameter name="currency"/>
+            <parameter name="transactions" type="List"/>
+            <parameter name="refund_line_items" type="List"/>
+            <parameter name="shipping" type="Map"/>
+            <parameter name="externalId"/>
+            <parameter name="moquiOrderId"/>
+        </out-parameters>
         <actions>
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
                           in-map="[systemMessageId: systemMessageId]"
@@ -1670,7 +1682,7 @@
                 def jsonSlurper = new JsonSlurper()
                 def order = jsonSlurper.parseText(systemMessage.messageText)
             </script>
-            
+
             <set field="orderStatus" from="order.refund.orderStatus"/>
             <set field="orderId" from="order.refund.orderId"/>
             <set field="refund" from="[:]"/>
@@ -1701,31 +1713,70 @@
             </iterate>
 
             <set field="shipping.full_refund" value="true"/>
-            <set field="refund.currency" from="response.refund.currency"/>
+<!--            <set field="refund.currency" from="response.refund.currency"/>-->
+<!--            <set field="refund.shipping" from="shipping"/>-->
+<!--            <set field="refund.refund_line_items" from="refund_line_items"/>-->
+<!--            <set field="refund.transactions" from="transactions"/>-->
+<!--            <set field="externalId" from="orderId" />-->
+<!--            <service-call name="mantle.shopify.ApiServices.queue#CancelOrRefundSystemMessage"-->
+<!--                      in-map="context+[currency:response.refund.currency,externalId:orderId, moquiOrderId: systemMessage.orderId]"/>-->
+            <set field="moquiOrderId" from="systemMessage.orderId"/>
+            <set field="externalId" from="orderId"/>
+            <set field="currency" from="response.refund.currency"/>
+            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToUpdate" for-update="true">
+                <field-map  field-name="externalId" from="externalId" />
+            </entity-find-one>
+            <set field="orderToUpdate.shopifyOrderStatusId"  value="OrderCancelled"/>
+            <entity-update value-field="orderToUpdate"/>
+        </actions>
+    </service>
+
+    <!-- TODO: Add system messaage building logic for cancel or refund-->
+    <service verb="queue" noun="CancelOrRefundSystemMessage">
+        <in-parameters>
+            <parameter name="currency"/>
+            <parameter name="transactions" type="List"/>
+            <parameter name="refund_line_items" type="List"/>
+            <parameter name="shipping" type="Map"/>
+            <parameter name="externalId"/>
+            <parameter name="moquiOrderId"/>
+            <parameter name="refundReason"/>
+        </in-parameters>
+        <actions>
+            <set field="refund" from="[:]"/>
+
+
+            <if condition="refundReason">
+                <set field="refund.note" from="refundReason"/>
+            </if>
+
+<!--            <set field="shipping.full_refund" value="true"/>-->
+            <set field="refund.currency" from="currency"/>
             <set field="refund.shipping" from="shipping"/>
             <set field="refund.refund_line_items" from="refund_line_items"/>
             <set field="refund.transactions" from="transactions"/>
-            <set field="externalId" from="orderId" />
+            <log message="\n\n\n Refund object : ${refund} \n\n\n"/>
+<!--            <set field="externalId" from="orderId" />-->
 
             <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
 
-            <if condition="orderStatus == 'OrderCompleted'" > 
+            <if condition="orderStatus == 'OrderCompleted'" >
                 <then>
                     <!--if the order has some fulfilled item, it's necessary to refund the cancel item -->
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
+                                  in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
                              messageText:messageText,
                              docSubControl:'createRefund',
-                             orderId:systemMessage.orderId,
+                             orderId:moquiOrderId,
                              shopifyOrderId:externalId]"/>
                 </then>
                 <else>
                     <!-- if the order was cancelled by the user, its necessary to cancel all it's items -->
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
+                                  in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
                              messageText:messageText,
                              docSubControl:'cancelOrder',
-                             orderId:systemMessage.orderId,
+                             orderId:moquiOrderId,
                              shopifyOrderId:externalId]"/>
                 </else>
             </if>
@@ -1736,6 +1787,7 @@
             <set field="orderToUpdate.shopifyOrderStatusId"  value="OrderCancelled"/>
             <entity-update value-field="orderToUpdate"/>
         </actions>
+
     </service>
 
     <service verb="queue" noun="CreateFulfillmentSystemMessage" authenticate="anonymous-all">
@@ -1923,7 +1975,9 @@
                 </then>
                 <else>
                     <set field="authorizationKey" from="(AuthTransaction?.authorization?:'').split('#')[0]?:''"/>
-                    <service-call name="mantle.account.PaymentServices.update#Payment" out-map="context" in-map="[paymentId: Payment.paymentId, paymentRefNum: authorizationKey]"/>
+                    <set field="txIdShopify" from="AuthTransaction.id"/>
+                    <service-call name="mantle.account.PaymentServices.update#Payment" out-map="context"
+                                  in-map="[paymentId: Payment.paymentId, paymentRefNum: authorizationKey, shopifyId: txIdShopify]"/>
                 </else>
             </if>
         </actions>
