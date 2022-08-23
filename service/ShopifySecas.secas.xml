@@ -50,8 +50,15 @@
         <actions>
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order"/>
             <service-call name="mantle.shopify.ApiServices.queue#CancelAndCalculateRefundOrderSystemMessage" in-map="[orderId:order.orderId]" out-map="context"/>
-            <service-call name="mantle.shopify.ApiServices.send#CancelAndCalculateRefundOrderSystemMessage" in-map="[systemMessageId: systemMessageId]" out-map="context"/>
-            <service-call name="mantle.shopify.ApiServices.queue#CancelOrRefundSystemMessage" in-map="context"/>
+            <if condition="systemMessageId">
+                <then>
+                    <service-call name="mantle.shopify.ApiServices.send#CancelAndCalculateRefundOrderSystemMessage" in-map="[systemMessageId: systemMessageId]" out-map="context"/>
+                    <service-call name="mantle.shopify.ApiServices.queue#CancelOrRefundSystemMessage" in-map="context"/>
+                </then>
+                <else>
+                    <log message="No Cancel and calculate message created for order ${order.orderId}"/>
+                </else>
+            </if>
         </actions>
     </seca>
     <seca id="CreateFulfillment" service="update#mantle.shipment.Shipment" when="post-service" run-on-error="false">
