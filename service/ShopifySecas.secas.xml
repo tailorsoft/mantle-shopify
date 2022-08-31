@@ -55,7 +55,7 @@
                     <return error="false"/>
             </if>
             <log message = "Created Calculate Refund SM for order: ${order.orderId}, with SystemMessageId: ${systemMessageId}"/>
-            <service-call name="mantle.shopify. ApiServices.send#CancelAndCalculateRefundOrderSystemMessage" in-map="[systemMessageId: systemMessageId]" out-map="context"/>
+            <service-call name="mantle.shopify.ApiServices.send#CancelAndCalculateRefundOrderSystemMessage" in-map="[systemMessageId: systemMessageId]" out-map="context"/>
             <log message = "Sent Calculate Refund SM for order: ${order.orderId}, with SystemMessageId: ${systemMessageId}"/>
             <service-call name="mantle.shopify.ApiServices.queue#CancelOrRefundSystemMessage" in-map="context"/>
             <log message = "Queued Cancel or Refund SM for order: ${order.orderId}, with SystemMessageId: ${systemMessageId}"/>
