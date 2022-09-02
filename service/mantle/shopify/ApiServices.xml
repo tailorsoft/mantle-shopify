@@ -1744,6 +1744,7 @@
         <actions>
             <set field="refund" from="[:]"/>
 
+            <log message="Starting queue of Cancer Refund SM for order: ${moquiOrderId}"/>
 
             <if condition="refundReason">
                 <set field="refund.note" from="refundReason"/>
@@ -1759,32 +1760,41 @@
 
             <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
 
+            <log message="Message Text set:\n ${messageText}"/>
+
             <if condition="orderStatus == 'OrderCompleted'" >
                 <then>
                     <!--if the order has some fulfilled item, it's necessary to refund the cancel item -->
+                    <log message="Queueing Refund System Message for order ${moquiOrderId}"/>
+
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                                   in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
                              messageText:messageText,
                              docSubControl:'createRefund',
                              orderId:moquiOrderId,
                              shopifyOrderId:externalId]"/>
+                    <log message="Queued Refund System Message for order ${moquiOrderId}"/>
                 </then>
                 <else>
                     <!-- if the order was cancelled by the user, its necessary to cancel all it's items -->
+                    <log message="Queueing Cancel System Message for order ${moquiOrderId}"/>
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                                   in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
                              messageText:messageText,
                              docSubControl:'cancelOrder',
                              orderId:moquiOrderId,
                              shopifyOrderId:externalId]"/>
+                    <log message="Queued Cancel System Message for order ${moquiOrderId}"/>
                 </else>
             </if>
 
+            <log message="Going for the last order update for shopify status cancelled"/>
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToUpdate" for-update="true">
                 <field-map  field-name="externalId" from="externalId" />
             </entity-find-one>
             <set field="orderToUpdate.shopifyOrderStatusId"  value="OrderCancelled"/>
             <entity-update value-field="orderToUpdate"/>
+            <log message="And I'm done"/>
         </actions>
 
     </service>
