@@ -45,7 +45,7 @@
             </if>
         </actions>
     </seca>
-    <seca id="CancelOrder" service="update#mantle.order.OrderHeader" when="post-service" run-on-error="false">
+    <seca id="CancelOrder" service="update#mantle.order.OrderHeader" when="tx-commit" run-on-error="false">
         <condition><expression>statusChanged &amp;&amp; statusId in ['OrderCancelled','OrderCompleted'] </expression></condition>
         <actions>
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order"/>
