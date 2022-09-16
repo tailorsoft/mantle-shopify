@@ -49,15 +49,15 @@
         <condition><expression>statusChanged &amp;&amp; statusId in ['OrderCancelled','OrderCompleted'] </expression></condition>
         <actions>
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order"/>
-            <service-call name="mantle.shopify.ApiServices.queue#CancelAndCalculateRefundOrderSystemMessage" in-map="[orderId:order.orderId]" out-map="context"/>
+            <service-call name="mantle.shopify.ApiServices.queue#CancelAndCalculateRefundOrderSystemMessage" in-map="[orderId:order.orderId,authUsername:'Shopify',authPassword:'Test1234!']" out-map="context"/>
             <if condition="!systemMessageId">
                     <log message="No Cancel and calculate message created for order ${order.orderId}"/>
                     <return error="false"/>
             </if>
             <log message = "Created Calculate Refund SM for order: ${order.orderId}, with SystemMessageId: ${systemMessageId}"/>
-            <service-call name="mantle.shopify.ApiServices.send#CancelAndCalculateRefundOrderSystemMessage" in-map="[systemMessageId: systemMessageId]" out-map="context"/>
+            <service-call name="mantle.shopify.ApiServices.send#CancelAndCalculateRefundOrderSystemMessage" in-map="[systemMessageId: systemMessageId,authUsername:'Shopify',authPassword:'Test1234!']" out-map="context"/>
             <log message = "Sent Calculate Refund SM for order: ${order.orderId}, with SystemMessageId: ${systemMessageId}"/>
-            <service-call name="mantle.shopify.ApiServices.queue#CancelOrRefundSystemMessage" in-map="context"/>
+            <service-call name="mantle.shopify.ApiServices.queue#CancelOrRefundSystemMessage" in-map="context+[authUsername:'Shopify',authPassword:'Test1234!']"/>
             <log message = "Queued Cancel or Refund SM for order: ${order.orderId}, with SystemMessageId: ${systemMessageId}"/>
         </actions>
     </seca>
