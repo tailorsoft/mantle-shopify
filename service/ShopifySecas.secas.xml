@@ -49,6 +49,7 @@
         <condition><expression>statusChanged &amp;&amp; statusId in ['OrderCancelled','OrderCompleted'] </expression></condition>
         <actions>
             <script>
+                ec.user.loginUser("Shopify", "Test1234!");
                 ec.artifactExecution.disableAuthz();
             </script>
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order"/>
