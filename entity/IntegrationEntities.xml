@@ -27,6 +27,7 @@
     <extend-entity entity-name="Payment" package="mantle.account.payment">
         <field name="shopifyId" type="id"/>
     </extend-entity>
+
     <extend-entity entity-name="PostalAddress" package="mantle.party.contact">
         <field name="shopifyAddressId" type="id"/>
         <field name="shopifyDefaultAddress" type="text-short"/>
