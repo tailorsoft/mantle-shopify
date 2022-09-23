@@ -45,26 +45,6 @@
             </if>
         </actions>
     </seca>
-    <seca id="CancelOrder" service="update#mantle.order.OrderHeader" when="tx-commit" run-on-error="false">
-        <condition><expression>statusChanged &amp;&amp; statusId in ['OrderCancelled','OrderCompleted'] </expression></condition>
-        <actions>
-            <script>
-                ec.user.loginUser("Shopify", "Test1234!");
-                ec.artifactExecution.disableAuthz();
-            </script>
-            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order"/>
-            <service-call name="mantle.shopify.ApiServices.queue#CancelAndCalculateRefundOrderSystemMessage" in-map="[orderId:order.orderId]" out-map="context"/>
-            <if condition="!systemMessageId">
-                    <log message="No Cancel and calculate message created for order ${order.orderId}"/>
-                    <return error="false"/>
-            </if>
-            <log message = "Created Calculate Refund SM for order: ${order.orderId}, with SystemMessageId: ${systemMessageId}"/>
-            <service-call name="mantle.shopify.ApiServices.send#CancelAndCalculateRefundOrderSystemMessage" in-map="[systemMessageId: systemMessageId]" out-map="context"/>
-            <log message = "Sent Calculate Refund SM for order: ${order.orderId}, with SystemMessageId: ${systemMessageId}"/>
-            <service-call name="mantle.shopify.ApiServices.queue#CancelOrRefundSystemMessage" in-map="context+[]"/>
-            <log message = "Queued Cancel or Refund SM for order: ${order.orderId}, with SystemMessageId: ${systemMessageId}"/>
-        </actions>
-    </seca>
     <seca id="CreateFulfillment" service="update#mantle.shipment.Shipment" when="post-service" run-on-error="false">
         <condition><expression>statusChanged &amp;&amp; statusId in ['ShipShipped','ShipDelivered'] </expression></condition>
         <actions>
@@ -74,6 +54,13 @@
                 <return error="false"/>
             </if>
             <service-call name="mantle.shopify.ApiServices.queue#CreateFulfillmentSystemMessage" in-map="[shipmentId:shipment.shipmentId]" out-map="context"/>
+        </actions>
+    </seca>
+    <seca id="CancelOrder" service="update#mantle.order.OrderHeader" when="post-service" run-on-error="false">
+        <condition><expression>statusChanged &amp;&amp; statusId in ['OrderCancelled','OrderCompleted'] </expression></condition>
+        <actions>
+            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order"/>
+            <service-call name="mantle.shopify.ApiServices.queue#CancelAndCalculateRefundOrderSystemMessage" in-map="[orderId:order.orderId]" out-map="context"/>
         </actions>
     </seca>
 </secas>
