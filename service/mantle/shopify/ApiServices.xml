@@ -1663,21 +1663,13 @@
         <in-parameters>
             <parameter name="systemMessageId" required="true"/>
         </in-parameters>
-        <out-parameters>
-            <parameter name="currency"/>
-            <parameter name="transactions" type="List"/>
-            <parameter name="refund_line_items" type="List"/>
-            <parameter name="shipping" type="Map"/>
-            <parameter name="externalId"/>
-            <parameter name="moquiOrderId"/>
-        </out-parameters>
         <actions>
-            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
                           in-map="[systemMessageId: systemMessageId]"
                           out-map="context" />
 
             <script>
-                import groovy.json.JsonSlurper 
+                import groovy.json.JsonSlurper
                 def jsonSlurper = new JsonSlurper()
                 def order = jsonSlurper.parseText(systemMessage.messageText)
             </script>
@@ -1712,91 +1704,41 @@
             </iterate>
 
             <set field="shipping.full_refund" value="true"/>
-<!--            <set field="refund.currency" from="response.refund.currency"/>-->
-<!--            <set field="refund.shipping" from="shipping"/>-->
-<!--            <set field="refund.refund_line_items" from="refund_line_items"/>-->
-<!--            <set field="refund.transactions" from="transactions"/>-->
-<!--            <set field="externalId" from="orderId" />-->
-<!--            <service-call name="mantle.shopify.ApiServices.queue#CancelOrRefundSystemMessage"-->
-<!--                      in-map="context+[currency:response.refund.currency,externalId:orderId, moquiOrderId: systemMessage.orderId]"/>-->
-            <set field="moquiOrderId" from="systemMessage.orderId"/>
-            <set field="externalId" from="orderId"/>
-            <set field="currency" from="response.refund.currency"/>
-            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToUpdate" for-update="true">
-                <field-map  field-name="externalId" from="externalId" />
-            </entity-find-one>
-            <set field="orderToUpdate.shopifyOrderStatusId"  value="OrderCancelled"/>
-            <entity-update value-field="orderToUpdate"/>
-        </actions>
-    </service>
-
-    <!-- TODO: Add system messaage building logic for cancel or refund-->
-    <service verb="queue" noun="CancelOrRefundSystemMessage">
-        <in-parameters>
-            <parameter name="currency"/>
-            <parameter name="transactions" type="List"/>
-            <parameter name="refund_line_items" type="List"/>
-            <parameter name="shipping" type="Map"/>
-            <parameter name="externalId"/>
-            <parameter name="moquiOrderId"/>
-            <parameter name="refundReason"/>
-        </in-parameters>
-        <actions>
-            <set field="refund" from="[:]"/>
-
-            <log message="Starting queue of Cancer Refund SM for order: ${moquiOrderId}"/>
-
-            <if condition="refundReason">
-                <set field="refund.note" from="refundReason"/>
-            </if>
-
-<!--            <set field="shipping.full_refund" value="true"/>-->
-            <set field="refund.currency" from="currency"/>
+            <set field="refund.currency" from="response.refund.currency"/>
             <set field="refund.shipping" from="shipping"/>
             <set field="refund.refund_line_items" from="refund_line_items"/>
             <set field="refund.transactions" from="transactions"/>
-            <log message="\n\n\n Refund object : ${refund} \n\n\n"/>
-<!--            <set field="externalId" from="orderId" />-->
+            <set field="externalId" from="orderId" />
 
             <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
-
-            <log message="Message Text set:\n ${messageText}"/>
 
             <if condition="orderStatus == 'OrderCompleted'" >
                 <then>
                     <!--if the order has some fulfilled item, it's necessary to refund the cancel item -->
-                    <log message="Queueing Refund System Message for order ${moquiOrderId}"/>
-
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                                   in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
                              messageText:messageText,
                              docSubControl:'createRefund',
-                             orderId:moquiOrderId,
+                             orderId:systemMessage.orderId,
                              shopifyOrderId:externalId]"/>
-                    <log message="Queued Refund System Message for order ${moquiOrderId}"/>
                 </then>
                 <else>
                     <!-- if the order was cancelled by the user, its necessary to cancel all it's items -->
-                    <log message="Queueing Cancel System Message for order ${moquiOrderId}"/>
                     <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                                   in-map="[systemMessageTypeId:'ShopifyCancelOrderMessage',
                              messageText:messageText,
                              docSubControl:'cancelOrder',
-                             orderId:moquiOrderId,
+                             orderId:systemMessage.orderId,
                              shopifyOrderId:externalId]"/>
-                    <log message="Queued Cancel System Message for order ${moquiOrderId}"/>
                 </else>
             </if>
 
-            <log message="Going for the last order update for shopify status cancelled"/>
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToUpdate" for-update="true">
                 <field-map  field-name="externalId" from="externalId" />
             </entity-find-one>
             <set field="orderToUpdate.shopifyOrderStatusId"  value="OrderCancelled"/>
             <entity-update value-field="orderToUpdate"/>
-            <log message="And I'm done"/>
         </actions>
-
     </service>
 
     <service verb="queue" noun="GatewayRefundSystemMessage">
