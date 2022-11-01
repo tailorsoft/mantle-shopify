@@ -921,6 +921,7 @@
                         <log message="SEARCHING FOR CUSTOMER ${customer.email}"/>
                         <log message="PARTY IDS : ${partyIds}"/>
                         <set field="partyId" from="partyIds.first()"/>
+                        <service-call name="mantle.party.PartyServices.set#PartyClassification" in-map="[partyId: partyId, partyClassificationId: 'CustConsumer']"/>
 
                         <!--Store to make sure that the party identification is created if the user already existed in Moqui -->
                         <service-call name="store#mantle.party.PartyIdentification" in-map="[partyId:partyId, partyIdTypeEnumId:'PtidShopify', idValue:customer.id]" out-map="context"/>
@@ -933,6 +934,7 @@
                         <service-call name="create#mantle.party.PartyIdentification" in-map="[partyId:partyId, partyIdTypeEnumId:'PtidShopify', idValue:customer.id]" out-map="context"/>
                         <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId:partyId, emailAddress:customer.email, emailContactMechPurposeId:'EmailPrimary']"/>
                         <service-call name="create#mantle.party.PartyRole" in-map="[partyId:partyId, roleTypeId:'Customer']"/>
+                        <service-call name="mantle.party.PartyServices.set#PartyClassification" in-map="[partyId: partyId, partyClassificationId: 'CustConsumer']"/>
                         <log message="CUSTOMER CREATED ${partyId}"/>
                     </else>
                 </if>
