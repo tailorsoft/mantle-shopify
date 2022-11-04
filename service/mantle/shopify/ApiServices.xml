@@ -939,14 +939,6 @@
                         <log message="CUSTOMER CREATED ${partyId}"/>
                     </else>
                 </if>
-                <!-- Find or create Postal Address For shipping (PostalPrimary) -->
-                <entity-find entity-name="mantle.party.contact.PartyContactMechPostalAddress" list="postalMechList">
-                    <econdition field-name="partyId" from="partyId"/>
-                    <econdition field-name="contactMechPurposeId" value="PostalPrimary"/>
-                    <econdition field-name="address1" from="shippingAddress?.address1" ignore-case="true"/>
-                    <econdition field-name="address2" from="shippingAddress?.address2" ignore-case="true" ignore-if-empty="true"/>
-                    <date-filter/>
-                </entity-find>
                 <!-- Find or create shipping phone number -->
                 <!-- Phone formatting -->
                 <if condition="shippingAddress.phone">
@@ -983,6 +975,15 @@
                         </else>
                     </if>
                 </if>
+                <!-- SHIPPING ADDRESS -->
+                <!-- Find or create Postal Address For shipping (PostalPrimary) -->
+                <entity-find entity-name="mantle.party.contact.PartyContactMechPostalAddress" list="postalMechList">
+                    <econdition field-name="partyId" from="partyId"/>
+                    <econdition field-name="contactMechPurposeId" value="PostalPrimary"/>
+                    <econdition field-name="address1" from="shippingAddress?.address1" ignore-case="true"/>
+                    <econdition field-name="address2" from="shippingAddress?.address2" ignore-case="true" ignore-if-empty="true"/>
+                    <date-filter/>
+                </entity-find>
                 <if condition="postalMechList.size() &gt; 0">
                     <then>
                         <log message="POSTAL MECH LIST : ${postalMechList}"/>
@@ -1265,6 +1266,7 @@
                                                      effectiveDate:ec.user.nowTimestamp,
                                                     fromPartyId:fromPartyId,
                                                     toPartyId:orderPart.vendorPartyId]"/>
+                        </if>
                             <service-call name="mantle.order.OrderServices.set#OrderBillingShippingInfo" in-map="[orderId: orderHeader.orderId,
                                                                                                           paymentId: paymentId,
                                                                                                           paymentMethodId: paymentMethodId,
@@ -1272,7 +1274,7 @@
                                                                                                           shipmentMethodEnumId: moquiShipmentMethod.shipmentMethodEnumId,
                                                                                                           shippingPostalContactMechId: postalContactMechId,
                                                                                                           shippingTelecomContactMechId: telecomContactMechId]" out-map="updatedPayment"/>
-                        </if>
+
                         <service-call name="mantle.order.OrderServices.update#OrderStatus" out-map="context" in-map="[orderId: orderHeader.orderId,
                                                                                                               placedDate: ec.user.nowTimestamp,
                                                                                                               statusId: 'OrderPlaced']"/>
