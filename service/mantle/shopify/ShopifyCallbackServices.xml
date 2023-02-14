@@ -11,4 +11,18 @@
         </actions>
     </service>
 
+    <service verb="handle" noun="FulfillmentNotification">
+        <in-parameters>
+            <parameter name="request"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="response"/>
+        </out-parameters>
+        <actions>
+            <log message="HANDLING FULFILLMENT NOTIFICATION FROM SHOPIFY\n\n request \n\n"/>
+            <set field="response" value='Nice'/>
+        </actions>
+
+    </service>
+
 </services>
