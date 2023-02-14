@@ -19,7 +19,7 @@
             <parameter name="response"/>
         </out-parameters>
         <actions>
-            <log message="HANDLING FULFILLMENT NOTIFICATION FROM SHOPIFY\n\n request \n\n"/>
+            <log message="HANDLING FULFILLMENT NOTIFICATION FROM SHOPIFY\n\n ${request} \n\n"/>
             <set field="response" value='Nice'/>
         </actions>
     </service>
