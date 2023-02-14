@@ -11,7 +11,7 @@
         </actions>
     </service>
 
-    <service verb="handle" noun="FulfillmentNotification">
+    <service verb="handle" noun="FulfillmentNotification" authenticate="anonymous-all">
         <in-parameters>
             <parameter name="request"/>
         </in-parameters>
@@ -22,7 +22,6 @@
             <log message="HANDLING FULFILLMENT NOTIFICATION FROM SHOPIFY\n\n request \n\n"/>
             <set field="response" value='Nice'/>
         </actions>
-
     </service>
 
 </services>

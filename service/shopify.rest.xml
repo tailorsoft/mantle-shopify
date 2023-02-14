@@ -4,12 +4,15 @@
 <resource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/rest-api-2.1.xsd"
           name="shopify" displayName="Shopify Callback API" version="1">
 
-    <resource name="acceptAlways"  require-authentication="anonymous-all"><method type="get">
-        <service name="mantle.shopify.ShopifyCallbackServices.alwaysAccept#FulfillmentRequest"/></method></resource>
-    <resource name="fulfillment_order_notification"
-              description="Receive and handle shopify callbacks notifying of fulfillment/cancellation requests"
-              require-authentication="anonymous-all">
-        <method type="POST">
+    <resource name="acceptAlways"  require-authentication="anonymous-all">
+        <method type="get">
+            <service name="mantle.shopify.ShopifyCallbackServices.alwaysAccept#FulfillmentRequest"/>
+        </method>
+    </resource>
+
+
+    <resource name="fulfillment_order_notification" require-authentication="anonymous-all">
+        <method type="post">
             <service name="mantle.shopify.ShopifyCallbackServices.handle#FulfillmentNotification"/>
         </method>
     </resource>
