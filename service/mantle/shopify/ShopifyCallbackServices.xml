@@ -13,13 +13,13 @@
 
     <service verb="handle" noun="FulfillmentNotification" authenticate="anonymous-all">
         <in-parameters>
-            <parameter name="request"/>
+            <parameter name="kind"/>
         </in-parameters>
         <out-parameters>
             <parameter name="response"/>
         </out-parameters>
         <actions>
-            <log message="HANDLING FULFILLMENT NOTIFICATION FROM SHOPIFY\n\n context: ${context} \n\n"/>
+            <log message="HANDLING FULFILLMENT NOTIFICATION FROM SHOPIFY\n\n context: ${kind} \n\n"/>
             <set field="response" value='Nice'/>
         </actions>
     </service>
