@@ -20,6 +20,10 @@
     </extend-entity>
     <extend-entity entity-name="OrderHeader" package="mantle.order">
         <field name="shopifyOrderStatusId" type="text-short"/>
+        <field name="shopifyFulfillmentOrderId" type="id"/>
+    </extend-entity>
+    <extend-entity entity-name="OrderItem" package="mantle.order">
+        <field name="shopifyFulfillmentOrderLineItemId" type="id-long"/>
     </extend-entity>
     <extend-entity entity-name="ProductCategoryMember" package="mantle.product.category">
         <field name="shopifyId" type="id"/>
