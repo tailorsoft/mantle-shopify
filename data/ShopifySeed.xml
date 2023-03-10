@@ -59,4 +59,7 @@
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyGetOrderTransactionsMessage"
                                              description="Get a list of the transactions for a shopify order SystemMessage Type"
                                              sendServiceName="mantle.shopify.ApiServices.send#GetOrderTransactionsSystemMessage"/>
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyGetFulfillmentOrderMessage"
+                                             description="Get fulfillment order to fulfill order later"
+                                             sendServiceName="mantle.shopify.ApiServices.send#GetFulfillmentOrderSystemMessage"/>
 </entity-facade-xml>
