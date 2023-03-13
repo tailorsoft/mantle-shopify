@@ -83,7 +83,7 @@
                         urlExpand = urlExpand + systemMessage.shopifyOrderId + "/refunds.json"
                     }    
                     if (systemMessage.docSubControl?.contains('createFulfillment')) {
-                        urlExpand = urlExpand + systemMessage.shopifyOrderId + "/fulfillments.json"
+                        urlExpand = urlExpand
                     }
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.POST).uri(urlExpand)
@@ -1842,7 +1842,7 @@
                     <script>
                         def productTemp = orderItems.find{it.productId == item.productId}
                         def items = [:]
-                        items.id = productTemp.externalItemSeqId
+                        items.id = productTemp.shopifyFulfillmentOrderLineItemId
                         items.quantity = item.quantity
                         line_items.add(items)
                     </script>
@@ -1852,12 +1852,17 @@
                     <field-map field-name="partyId"  from="curCarrierDetail?.partyId"/>
                     <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
                 </entity-find-one>
-            
+
+                <set field="line_items_by_fulfillment_order" from="[[fulfillment_order_id: orderHeader.shopifyFulfillmentOrderId,
+                                                                fulfillment_order_line_items: line_items]]"/>
+                <set field="tracking_info" from="[company: partyIdentification?.idValue,
+                                                  number: packageRouteSegList[0]?.trackingCode]"/>
+
                 <set field="externalId" from="orderHeader.externalId" />
-                <set field="fulfillment.location_id" from="locationId" />
-                <set field="fulfillment.tracking_number" from="packageRouteSegList[0]?.trackingCode" />
-                <set field="fulfillment.tracking_company" from="partyIdentification?.idValue" />
-                <set field="fulfillment.line_items" from="line_items" />
+<!--                <set field="fulfillment.location_id" from="locationId" />-->
+                <set field="fulfillment.tracking_info" from="tracking_info"/>
+                <set field="fulfillment.line_items_by_fulfillment_order" from="line_items_by_fulfillment_order"/>
+<!--                <set field="fulfillment.line_items" from="line_items" />-->
                 <set field="messageText" from="groovy.json.JsonOutput.toJson([fulfillment:fulfillment])"/>
 
                 <!-- The service to create fulfillment is called only if there are shipped items  -->
