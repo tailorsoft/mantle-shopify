@@ -56,6 +56,14 @@
             <service-call name="mantle.shopify.ApiServices.queue#CreateFulfillmentSystemMessage" in-map="[shipmentId:shipment.shipmentId]" out-map="context"/>
         </actions>
     </seca>
+
+    <seca id="GetFulfillmentOrders" service="mantle.shopify.ApiServices.consume#OrdersSystemMessage" when="post-service" run-on-error="false">
+        <actions>
+            <log message="Getting fulfillment_order for shopify Order: ${shopifyOrderId}"/>
+            <service-call name="mantle.shopify.ApiServices.queue#GetFulfillmentOrderSystemMessage" in-map="[shopifyOrderId: shopifyOrderId]"/>
+        </actions>
+    </seca>
+    
     <seca id="CancelOrder" service="update#mantle.order.OrderHeader" when="post-service" run-on-error="false">
         <condition><expression>statusChanged &amp;&amp; statusId in ['OrderCancelled','OrderCompleted'] </expression></condition>
         <actions>

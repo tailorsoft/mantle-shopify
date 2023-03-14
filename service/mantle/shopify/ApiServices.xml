@@ -55,8 +55,9 @@
                         urlExpand = urlExpand + json.shopifyId
                     }else if (systemMessage.docSubType?.contains('getTransactions') ){
                         urlExpand = urlExpand + systemMessage.shopifyOrderId + '/transactions.json'
-                    }
-                    else{
+                    }else if(systemMessage.docSubType?.contains('getFulfillmentOrder')){
+                        urlExpand = urlExpand + systemMessage.shopifyOrderId + '/fulfillment_orders.json'
+                    }else{
                         urlExpand = urlExpand + systemMessage.messageText
                     }
                     logger.info("URL EXPAND ${urlExpand}")
@@ -82,7 +83,7 @@
                         urlExpand = urlExpand + systemMessage.shopifyOrderId + "/refunds.json"
                     }    
                     if (systemMessage.docSubControl?.contains('createFulfillment')) {
-                        urlExpand = urlExpand + systemMessage.shopifyOrderId + "/fulfillments.json"
+                        urlExpand = urlExpand
                     }
                     logger.info("URL EXPAND ${urlExpand}")
                     restClient = ec.service.rest().method(org.moqui.util.RestClient.POST).uri(urlExpand)
@@ -818,6 +819,10 @@
         <in-parameters>
             <parameter name="systemMessageId" required="true"/>
         </in-parameters>
+        <out-parameters>
+            <parameter name="orderId"/>
+            <parameter name="shopifyOrderId"/>
+        </out-parameters>
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage" for-update="true"/>
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemMessageRemote">
@@ -1289,11 +1294,73 @@
                                                                                                               statusId: 'OrderApproved']"/>
                         <service-call name="mantle.shopify.ApiServices.queue#GetCustomerAddressesSystemMessage" out-map="context"
                                       in-map="[postalMechId:postalContactMechId, partyId:partyId]"/>
+                        <set field="shopifyOrderId" from="orderHeader.externalId"/>
                         <service-call name="mantle.shopify.ApiServices.queue#GetOrderTransactionsSystemMessage" out-map="context" in-map="[shopifyOrderId: orderHeader.externalId]"/>
                     </if>
 
             </if>
            
+        </actions>
+    </service>
+
+    <service verb="queue" noun="GetFulfillmentOrderSystemMessage">
+        <in-parameters>
+            <parameter name="shopifyOrderId"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ShopifyServices.validate#AlreadyCreatedSystemMessage" in-map="[shopifyOrderId:shopifyOrderId,
+                                                                                                                      systemMessageTypeId:'ShopifyGetFulfillmentOrderMessage',
+                                                                                                                      statusId:'SmsgProduced']" out-map="context"/>
+            <if condition="systemMessageAlreadyExist">
+                <return error="true" message="ERROR: a System Message already exist to get this order's fulfillment order ${shopifyOrderId}"/>
+            </if>
+    <!-- TODO: WRITE CODE IN SEND SERVICE SO IT GOES TO CORRECT URL -->
+            <!--CREATE SYSTEM MESSAGE -->
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" in-map="[systemMessageTypeId:'ShopifyGetFulfillmentOrderMessage',
+                                                                                                statusId:'SmsgProduced',
+                                                                                                isOutgoing:'Y',
+                                                                                                messageText:'{}',
+                                                                                                docSubType:'getFulfillmentOrders',
+                                                                                                docSubControl:'getFulfillmentOrders',
+                                                                                                shopifyOrderId:shopifyOrderId,
+                                                                                                initDate:ec.user.nowTimestamp
+                                                                                                ]" out-map="context"/>
+        </actions>
+    </service>
+
+    <service verb="send" noun="GetFulfillmentOrderSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId"/>
+        </in-parameters>
+        <actions>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
+                          in-map="[systemMessageId: systemMessageId]"
+                          out-map="context"/>
+            <set field="fulfillment_order" from="response.fulfillment_orders.first()"/>
+            <set field="fulfillment_order_id" from="fulfillment_order.id"/>
+            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order">
+                <field-map field-name="externalId" from="fulfillment_order.order_id"/>
+            </entity-find-one>
+            <service-call name="update#mantle.order.OrderHeader" in-map="[orderId: order.orderId, shopifyFulfillmentOrderId: fulfillment_order_id]"/>
+            
+            <!-- Get Fulfillment order line items Id -->
+            <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
+                <econdition field-name="orderId" from="order.orderId"/>
+                <econdition field-name="externalItemSeqId" operator="is-not-null"/>
+            </entity-find>
+            <set field="fulfillment_order_line_items" from="fulfillment_order.line_items"/>
+            <log message="\nSEND GET FULFILLMENT ORDERS SM:\n\nFULFILLMENT_ORDER: ${fulfillment_order}\n\n
+                                                            fulfillment_order_line_items: ${fulfillment_order_line_items}\n\n
+                                                            ORDER ITEMS: ${orderItems}\n\n
+                                                             externalItemSeqIdType: ${orderItems.first().externalItemSeqId.getClass()}\n\n
+                                                             line_item_idType: ${fulfillment_order_line_items.first().line_item_id.getClass()}\n\n"/>
+            <iterate list="orderItems" entry="orderItem">
+                <set field="shopifyFOLineItemId" from="fulfillment_order_line_items.find{(String)it.line_item_id == orderItem.externalItemSeqId}.id"/>
+                <service-call name="update#mantle.order.OrderItem" in-map="[orderId:orderItem.orderId,
+                                                                            orderItemSeqId: orderItem.orderItemSeqId,
+                                                                            shopifyFulfillmentOrderLineItemId: shopifyFOLineItemId]"/>
+            </iterate>
         </actions>
     </service>
 
@@ -1843,7 +1910,7 @@
                     <script>
                         def productTemp = orderItems.find{it.productId == item.productId}
                         def items = [:]
-                        items.id = productTemp.externalItemSeqId
+                        items.id = productTemp.shopifyFulfillmentOrderLineItemId
                         items.quantity = item.quantity
                         line_items.add(items)
                     </script>
@@ -1853,12 +1920,17 @@
                     <field-map field-name="partyId"  from="curCarrierDetail?.partyId"/>
                     <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
                 </entity-find-one>
-            
+
+                <set field="line_items_by_fulfillment_order" from="[[fulfillment_order_id: orderHeader.shopifyFulfillmentOrderId,
+                                                                fulfillment_order_line_items: line_items]]"/>
+                <set field="tracking_info" from="[company: partyIdentification?.idValue,
+                                                  number: packageRouteSegList[0]?.trackingCode]"/>
+
                 <set field="externalId" from="orderHeader.externalId" />
-                <set field="fulfillment.location_id" from="locationId" />
-                <set field="fulfillment.tracking_number" from="packageRouteSegList[0]?.trackingCode" />
-                <set field="fulfillment.tracking_company" from="partyIdentification?.idValue" />
-                <set field="fulfillment.line_items" from="line_items" />
+<!--                <set field="fulfillment.location_id" from="locationId" />-->
+                <set field="fulfillment.tracking_info" from="tracking_info"/>
+                <set field="fulfillment.line_items_by_fulfillment_order" from="line_items_by_fulfillment_order"/>
+<!--                <set field="fulfillment.line_items" from="line_items" />-->
                 <set field="messageText" from="groovy.json.JsonOutput.toJson([fulfillment:fulfillment])"/>
 
                 <!-- The service to create fulfillment is called only if there are shipped items  -->
