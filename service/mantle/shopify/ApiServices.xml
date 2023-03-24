@@ -1284,7 +1284,6 @@
                                                                                                           shipmentMethodEnumId: moquiShipmentMethod.shipmentMethodEnumId,
                                                                                                           shippingPostalContactMechId: postalContactMechId,
                                                                                                           shippingTelecomContactMechId: telecomContactMechId]" out-map="updatedPayment"/>
-                                                                         shippingTelecomContactMechId: telecomContactMechId]" out-map="updatedPayment"/>
 
                         <service-call name="mantle.order.OrderServices.update#OrderStatus" out-map="context" in-map="[orderId: orderHeader.orderId,
                                                                                                               placedDate: ec.user.nowTimestamp,
