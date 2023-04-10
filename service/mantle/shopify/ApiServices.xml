@@ -1950,6 +1950,7 @@
                         paymentId:payment.paymentId, paymentMethodId:payment.paymentMethodId, amount:payment.amount,
                         amountUomId:payment.amountUomId, referenceNum:'TEST', transactionDate:ec.user.nowTimestamp,
                         resultSuccess:'Y', resultDeclined:'N', resultNsf:'N', resultBadExpire:'N', resultBadCardNumber:'N']"/>
+            <service-call name="update#mantle.account.payment.Payment" in-map="[paymentId:payment.paymentId, statusId:'PmntCancelled']"/>
             <log message="\nPayment Gateway Response: ${createPGR}\n"/>
 <!--            <service-call name="mantle.account.PaymentServices.cancel#PaymentAndInvoices" in-map="[paymentId: payment.paymentId]" out-map="context"/>-->
         </actions>
