@@ -1822,6 +1822,9 @@
             <parameter name="paymentId"/>
             <parameter name="amount"/>
         </in-parameters>
+        <out-parameters>
+            <parameter name="paymentGatewayResponseId"/>
+        </out-parameters>
         <!-- Find Order from payment -->
         <actions>
             <entity-find-one entity-name="mantle.account.payment.Payment" value-field="paymentToRefund">
@@ -1863,13 +1866,16 @@
                              messageText:messageText,
                              docSubControl:'createRefund',
                              orderId:orderToRefund.orderId,
-                             shopifyOrderId:externalId]"/>
+                             shopifyOrderId:externalId,
+                             sendNow:false]"/><!--sendNow:false TO CALL SINGLE SEND SERVICE INSIDE THE SAME QUEUE FOR
+                                                    GATEWAY RESPONSE ID -->
 
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToUpdate" for-update="true">
                 <field-map  field-name="externalId" from="externalId" />
             </entity-find-one>
             <set field="orderToUpdate.shopifyOrderStatusId"  value="OrderCancelled"/>
             <entity-update value-field="orderToUpdate"/>
+            <service-call name="mantle.shopify.ApiServices.send#CreateRefundSystemMessage" in-map="context"/>
         </actions>
     </service>
 
@@ -2001,10 +2007,32 @@
         <in-parameters>
             <parameter name="systemMessageId" required="true"/>
         </in-parameters>
+        <out-parameters>
+            <parameter name="paymentGatewayResponseId"/>
+        </out-parameters>
         <actions>
-            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
+            <entity-find-one value-field="SM" entity-name="moqui.service.message.SystemMessage">
+                <field-map field-name="systemMessageId"/>
+            </entity-find-one>
+<!--            <if condition="SM.statusId.equals('sent')">-->
+<!--                <return/>-->
+<!--            </if>-->
+            <entity-find-one entity-name="mantle.account.payment.Payment" value-field="payment">
+                <field-map field-name="orderId" from="SM.orderId"/>
+            </entity-find-one>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
                           in-map="[systemMessageId: systemMessageId]"
-                          out-map="context" />
+                          out-map="context"/>
+            <log message="\nSent refund message, about to update payment status\n"/>
+            <log message="\nResponse from the refund system message: ${response}\n"/>
+            <!-- Create gateway response to try and fix non updating people -->
+            <service-call name="create#mantle.account.method.PaymentGatewayResponse" out-map="createPGR"
+                          in-map="[paymentGatewayConfigId:'Shopify Payments', paymentOperationEnumId:'PgoRefund',
+                        paymentId:payment.paymentId, paymentMethodId:payment.paymentMethodId, amount:payment.amount,
+                        amountUomId:payment.amountUomId, referenceNum:'TEST', transactionDate:ec.user.nowTimestamp,
+                        resultSuccess:'Y', resultDeclined:'N', resultNsf:'N', resultBadExpire:'N', resultBadCardNumber:'N']"/>
+            <log message="\nPayment Gateway Response: ${createPGR}\n"/>
+            <service-call name="mantle.account.PaymentServices.cancel#PaymentAndInvoices" in-map="[paymentId: payment.paymentId]" out-map="context"/>
         </actions>
     </service>
 
