@@ -4,5 +4,6 @@
 
     <depends-on name="mantle-usl" version="2.1.2"/>
     <depends-on name="PopCommerce" version=""/>
+    <depends-on name="PopRestStore" version=""/>
 </component>
 
