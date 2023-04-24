@@ -1,5 +1,359 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
+
+    <!-- 
+        Endpoint to pull down products from Shopify.
+
+        https://{store_name}.myshopify.com/admin/api/2023-04/products.json?limit={limit}&since_id={product_id}
+    -->
+    <service verb="get" noun="ShopifyProducts">
+        <in-parameters>
+            <parameter name="systemMessageRemoteId" required="true"/>
+            <parameter name="limit" default-value="250"/>
+        </in-parameters>
+        <actions>
+            <script>import groovy.json.JsonSlurper</script>
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemMessageRemote">
+                <field-map field-name="systemMessageTypeId" value="ShopifySystemMessageType"/>
+                <field-map field-name="systemMessageRemoteId"/>
+            </entity-find-one>
+
+            <if condition="!systemMessageRemote"><return error="true" message="No Remote of type 'ShopifySystemMessageType' found for ID ${systemMessageRemoteId}"/></if>
+
+            <!-- see if we have called this before and what was the last order found on previous message -->
+            <entity-find entity-name="moqui.service.message.SystemMessage" limit="1" list="prevMessages">
+                <econdition field-name="systemMessageTypeId" value='ShopifySystemMessageType'/>
+                <econdition field-name="systemMessageRemoteId"/>
+                <econdition field-name="docType" value="productList"/>
+                <order-by field-name="initDate"/>
+            </entity-find>
+            <if condition="prevMessages">
+                <set field="lastProductId" from="prevMessages.first().docControl"/>
+            </if>
+
+            <!-- e.g: https://moquidemo.myshopify.com/admin/api/2022-07/products.json -->
+            <script><![CDATA[
+                String url = ec.resource.expand(systemMessageRemote.sendUrl, "", [resource:"products"]) + "?limit=${limit}";
+
+                if (lastProductId != null) {
+                    url += "&since_id=${lastProductId}";
+                }
+
+                org.moqui.util.RestClient restClient = ec.service.rest().method("GET")
+                    .addHeader("Content-Type", "application/json")
+                    .basicAuth(systemMessageRemote.username, systemMessageRemote.password)
+                    .uri(url);
+
+                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
+
+                if (restResponse.statusCode != 200) {
+                    ec.logger.error("Shopify Productss API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} for url: ${url}")
+                    return
+                }
+
+                Map messageMap = new JsonSlurper().parseText(restResponse.text());
+                String lastProductId = messageMap.products ? messageMap.products.last().id : null;
+            ]]></script>
+
+            <if condition="lastProductId">
+                <service-call name="create#moqui.service.message.SystemMessage" out-map="context"
+                                in-map="[systemMessageTypeId:'ShopifySystemMessageType', systemMessageRemoteId:systemMessageRemoteId,
+                                messageText:restResponse.text(), docType:'json', docType:'productList', docControl:lastProductId,
+                                isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
+            </if>
+        </actions>
+    </service>
+
+    <!-- 
+        Endpoint to pull down products from Shopify.
+
+        https://{store_name}.myshopify.com/admin/api/2023-04/orders.json?limit={limit}&fulfillment_status={status}&since_id={order_id}
+    -->
+    <service verb="get" noun="ShopifyOrders">
+        <in-parameters>
+            <parameter name="systemMessageRemoteId" required="true"/>
+            <parameter name="fulfillmentStatus" required="true"/>
+            <parameter name="limit" default-value="250"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="systemMessageId"/>
+        </out-parameters>
+        <actions>
+            <script>import groovy.json.JsonSlurper</script>
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemMessageRemote">
+                <field-map field-name="systemMessageTypeId" value="ShopifySystemMessageType"/>
+                <field-map field-name="systemMessageRemoteId"/>
+            </entity-find-one>
+
+            <if condition="!systemMessageRemote"><return error="true" message="No Remote of type 'ShopifySystemMessageType' found for ID ${systemMessageRemoteId}"/></if>
+
+            <!-- see if we have called this before and what was the last order found on previous message -->
+            <entity-find entity-name="moqui.service.message.SystemMessage" limit="1" list="prevMessages">
+                <econdition field-name="systemMessageTypeId" value='ShopifySystemMessageType'/>
+                <econdition field-name="systemMessageRemoteId"/>
+                <econdition field-name="docType" value="orderList"/>
+                <order-by field-name="initDate"/>
+            </entity-find>
+            <if condition="prevMessages">
+                <set field="lastOrderId" from="prevMessages.first().docControl"/>
+            </if>
+
+            <!-- https://{hostname}/admin/api/{version}/{resource}.json?limit=250&fulfillment_status=unfulfilled&since_id={last} -->
+            <script><![CDATA[
+                String url = ec.resource.expand(systemMessageRemote.sendUrl, "", [resource:"orders"]) +
+                    "?limit=${limit}&fulfillment_status=${fulfillmentStatus}";
+
+                if (lastOrderId != null) {
+                    url += "&since_id=${lastOrderId}";
+                }
+
+                org.moqui.util.RestClient restClient = ec.service.rest().method("GET")
+                    .addHeader("Content-Type", "application/json")
+                    .basicAuth(systemMessageRemote.username, systemMessageRemote.password)
+                    .uri(url);
+
+                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
+
+                if (restResponse.statusCode != 200) {
+                    ec.logger.error("Shopify Orders API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} for url: ${url}")
+                    return
+                }
+                Map messageMap = new JsonSlurper().parseText(restResponse.text());
+                String lastOrderId = messageMap.orders ? messageMap.orders.last().id : null;
+            ]]></script>
+
+            <if condition="lastOrderId">
+                <service-call name="create#moqui.service.message.SystemMessage" out-map="context" in-map="[
+                    systemMessageTypeId:'ShopifySystemMessageType', systemMessageRemoteId:systemMessageRemoteId,
+                    messageText:restResponse.text(), docType:'orderList', docControl:lastOrderId,
+                    isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
+            </if>
+        </actions>
+    </service>
+
+    <!--
+        Consume method for the ShopifySystemMessage.
+        Splits out the 
+    -->
+    <service verb="consume" noun="ShopifySystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.consume#SystemMessage"/>
+        <actions>
+            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
+            <if condition="systemMessage.docType == 'productList'"><then>
+                <service-call name="mantle.shopify.ShopifyServices.consume#ProductListSystemMessage" in-map="context" out-map="context"/>
+
+            </then><else-if condition="systemMessage.docType == 'product'">
+                <service-call name="mantle.shopify.ShopifyServices.consume#ProductSystemMessage" in-map="context" out-map="context"/>
+
+            </else-if><else-if condition="systemMessage.docType == 'orderList'">
+                <service-call name="mantle.shopify.ShopifyServices.consume#OrderListSystemMessage" in-map="context" out-map="context"/>
+
+            </else-if><else-if condition="systemMessage.docType == 'order'">
+                <service-call name="mantle.shopify.ApiServices.consume#OrderSystemMessage" in-map="context" out-map="context"/>
+
+            </else-if><else>
+                <return error="true" message="No match docType found for systemMessage ID ${systemMessageId}"/>
+            </else></if>
+        </actions>
+    </service>
+
+    <!-- 
+        Takes the list of Products and splits it into a separate child SystemMessage for each product
+        This was necessary for storing the lastOrderId in the docControl of the parent message.
+    -->
+    <service verb="consume" noun="ProductListSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.consume#SystemMessage"/>
+        <actions>
+            <script>
+                import groovy.json.JsonSlurper;
+                import groovy.json.JsonOutput;
+            </script>
+            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
+            <set field="messageMap" from="new JsonSlurper().parseText(systemMessage.messageText)"/>
+            <iterate list="messageMap.products" entry="product">
+                <service-call name="create#moqui.service.message.SystemMessage" out-map="context"
+                                in-map="[systemMessageTypeId:'ShopifySystemMessageType', parentMessageId:systemMessageId,
+                                systemMessageRemoteId: systemMessage.systemMessageRemoteId,
+                                messageText:JsonOutput.toJson(product), docType:'product', 
+                                isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
+
+                <service-call name="org.moqui.impl.SystemMessageServices.consume#ReceivedSystemMessage"
+                    in-map="[systemMessageId:systemMessageId, allowError:false]" async="true"/>
+            </iterate>
+        </actions>
+    </service>
+
+    <!--
+        Consumes the system message for a single product 
+        Creates the basic data for a product and its variants. 
+        Does not handle digital products yet.
+    -->
+    <service verb="consume" noun="ProductSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.consume#SystemMessage"/>
+        <actions>
+            <script>
+                import groovy.json.JsonSlurper;
+                import groovy.json.JsonOutput;
+            </script>
+            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemMessageRemote">
+                <field-map field-name="systemMessageTypeId" value="ShopifySystemMessageType"/>
+                <field-map field-name="systemMessageRemoteId" from="systemMessage.systemMessageRemoteId"/>
+            </entity-find-one>
+            <if condition="!systemMessageRemote"><return error="true" message="No Remote of type 'ShopifySystemMessageType' found for ID ${systemMessage.systemMessageRemoteId}"/></if>
+            <set field="productStoreId" from="systemMessageRemote.productStoreId"/>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore" />
+            <if condition="!productStore"><return error="true" message="No ProductStore found for ID ${productStoreId}"/></if>
+
+            <set field="ownerPartyId" from="productStore.organizationPartyId ?: '_NA_'"/>
+            <set field="shopifyProduct" from="new JsonSlurper().parseText(systemMessage.messageText)"/>
+
+            <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="existingShopifyId">
+                <field-map field-name="idValue" from="shopifyProduct.id" />
+                <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
+            </entity-find-one>
+            <if condition="existingShopifyId"><then>
+                <set field="productId" from="existingShopifyId.productId"/>
+                <service-call name="update#mantle.product.Product" in-map="[
+                    productId:productId, productName:shopifyProduct.title,  description:shopifyProduct.body_html]" out-map="context"/>
+            </then><else>
+                <service-call name="create#mantle.product.Product" in-map="[
+                    productTypeEnumId:'PtVirtual', ownerPartyId:ownerPartyId, productName:shopifyProduct.title,  description:shopifyProduct.body_html]" out-map="context"/>
+                <service-call name="create#mantle.product.ProductIdentification" in-map="[
+                    productId:productId, productIdTypeEnumId:'PidtShopify', idValue:shopifyProduct.id]" out-map="context"/>
+            </else></if>
+
+            <set field="mapOptionToFeature" from="[:]"/>
+            <iterate list="shopifyProduct.options" entry="option">
+                <!-- the value option.id and option.position apply at the 'values' level in moqui -->
+                <entity-find-one entity-name="moqui.basic.Enumeration" value-field="featureType">
+                    <field-map field-name="enumTypeId" value="ProductFeatureType"/>
+                    <field-map field-name="description" from="option.name"/>
+                </entity-find-one>
+                <iterate list="option.values" entry="value">
+                    <!-- create the product features on the virtual product as 'Selectable' -->
+                    <service-call name="mantle.product.ProductServices.create#ProductFeature" in-map="[
+                        productId:productId, productFeatureTypeEnumId:featureType.enumId, applTypeEnumId:'PfatSelectable', ownerPartyId:ownerPartyId, description:value, idCode:option.id]" out-map="context"/>
+
+                    <set field="mapOptionToFeature[value]" from="productFeatureId"/> 
+                </iterate>
+            </iterate>
+
+            <iterate list="shopifyProduct.images" entry="image">
+
+            </iterate>
+
+            <entity-find-one entity-name="mantle.product.Product" value-field="product" />
+            <iterate list="shopifyProduct.variants" entry="variant">
+                <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="existingShopifyId">
+                    <field-map field-name="idValue" from="variant.id" />
+                    <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
+                </entity-find-one>
+                <if condition="existingShopifyId"><then>
+                    <set field="variantProductId" from="existingShopifyId.productId"/>
+                    <service-call name="update#mantle.product.Product" in-map="[productId:variantProductId, productName:variant.title]"/>
+                </then><else>
+                    <service-call name="create#mantle.product.Product" in-map="[
+                        productName:variant.title, productTypeEnumId:'PtAsset', assetTypeEnumId:'AstTpInventory', ownerPartyId:ownerPartyId, ownerPartyId:ownerPartyId]" out-map="variantContext"/>
+                    <set field="variantProductId" from="variantContext.productId"/>
+
+                    <service-call name="create#mantle.product.ProductAssoc" in-map="[
+                        productId:productId, toProductId:variantProductId, productAssocTypeEnumId:'PatVariant', fromDate:ec.user.nowTimestamp]"/>
+
+                    <service-call name="create#mantle.product.ProductIdentification" in-map="[
+                        productId:variantProductId, productIdTypeEnumId:'PidtShopify', idValue:variant.id]"/>
+                </else></if>
+
+                <!-- The variant.option1 needs to have been previously listed/created with the virtual product -->
+                <set field="productFeatureId" from="mapOptionToFeature[variant.option1]"/>
+
+                <service-call name="mantle.product.ProductServices.apply#ProductFeatures"
+                    in-map="[productId:variantProductId, productFeatureIdList:[productFeatureId], applTypeEnumId:'PfatStandard',
+                        fromDate:ec.user.nowTimestamp, sequenceNum:variant.position]"/>
+
+                <if condition="variant.price">
+                    <service-call name="mantle.shopify.ShopifyServices.create#ShopifyPrice" in-map="[
+                        productStoreId:productStoreId, productId:variantProductId, amount:variant.price]"/>
+                </if>
+
+                <!-- optional property on the shopify object -->
+                <iterate list="variant.presentment_prices" entry="price">
+                    <service-call name="mantle.shopify.ShopifyServices.create#ShopifyPrice" in-map="[
+                        productStoreId:productStoreId, productId:variantProductId, currency:price.currency, amount:price.amount]"/>
+                </iterate>
+
+                <!-- create product content -->
+
+                <!-- If inventory is managed by Moqui, we would not process this value from Shopify -->
+                <if condition="variant.inventory_management == 'shopify'">
+                    <service-call name="mantle.product.AssetServices.record#PhysicalInventoryQuantity" out-map="assetOut"
+                            in-map="[productId:variantProductId, facilityId:productStore.inventoryFacilityId, 
+                                ownerPartyId:ownerPartyId, statusId:'AstAvailable', quantity:variant.inventory_quantity]"/>
+                </if>
+            </iterate>
+        </actions>
+    </service>
+
+    <service verb="create" noun="ShopifyPrice">
+        <in-parameters>
+            <parameter name="productStoreId" required="true"/>
+            <parameter name="productId" required="true"/>
+            <parameter name="currency" default-value="USD"/>
+            <parameter name="amount" type="BigDecimal" required="true"/>
+        </in-parameters>
+        <actions>
+            <entity-find-one entity-name="moqui.basic.Uom" value-field="priceUom">
+                <field-map field-name="uomTypeEnumId" value="UT_CURRENCY_MEASURE"/>
+                <field-map field-name="abbreviation" from="currency"/>
+            </entity-find-one>
+
+            <entity-find entity-name="mantle.product.ProductPrice" list="existingPrices" for-update="true">
+                <econdition field-name="priceTypeEnumId" value="PptCurrent"/>
+                <econdition field-name="pricePurposeEnumId" value="PppPurchase"/>
+                <econdition field-name="productStoreId" from="productStoreId"/>
+                <econdition field-name="priceUomId" from="priceUom.uomId"/>
+                <date-filter />
+            </entity-find>
+
+            <if condition="existingPrices">
+                <iterate list="existingPrices" entry="existingPrice">
+                    <if condition="existingPrice.price == amount">
+                        <return /><!-- identical price found, do nothing -->
+                    </if>
+                    <!-- different price found, expire this, create new -->
+                    <set field="existingPrice.thruDate" from="ec.user.nowTimestamp"/>
+                    <entity-update value-field="existingPrice"/>
+                </iterate>
+            </if>
+
+            <service-call name="create#mantle.product.ProductPrice" in-map="[
+                priceTypeEnumId:'PptCurrent', pricePurposeEnumId:'PppPurchase', productStoreId:productStoreId, productId:productId, priceUomId:priceUom.uomId, price:amount, fromDate:ec.user.nowTimestamp]"/>
+        </actions>
+    </service>
+
+    <!-- consume the list of orders and generate individual system messages -->
+    <service verb="consume" noun="OrderListSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.consume#SystemMessage"/>
+        <actions>
+            <script>
+                import groovy.json.JsonSlurper;
+                import groovy.json.JsonOutput;
+            </script>
+            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
+            <set field="messageMap" from="new JsonSlurper().parseText(systemMessage.messageText)"/>
+            <iterate list="messageMap.orders" entry="order">
+                <service-call name="create#moqui.service.message.SystemMessage" out-map="context"
+                                in-map="[systemMessageTypeId:'ShopifySystemMessageType', parentMessageId:systemMessageId,
+                                messageText:JsonOutput.toJson(order), docType:'order', 
+                                isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
+
+                <!-- immediately try to consume the order message -->
+                <service-call name="org.moqui.impl.SystemMessageServices.consume#ReceivedSystemMessage"
+                    in-map="[systemMessageId:systemMessageId, allowError:false]" async="true"/>
+            </iterate>
+        </actions>
+    </service>
+
     <service verb="get" noun="CustomerInfo">
         <out-parameters>
             <parameter name="reportList" type="List">

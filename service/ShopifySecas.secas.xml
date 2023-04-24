@@ -14,6 +14,7 @@
             </else></if>
         </actions>
     </seca>
+    <!-- This seca runs as we download orders from shopify. Any idea why?
     <seca id="UpdateAddressPhoneAndEmailCustomerInfo" service="mantle.party.ContactServices.store#PartyContactInfo" when="post-service">
         <actions>
             <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentification">
@@ -27,6 +28,7 @@
             </else></if>
         </actions>
     </seca>
+    -->
     <seca id="CreateProductInventory" service="create#mantle.product.asset.Asset" when="post-service" run-on-error="false">
         <actions>
             <entity-find-one entity-name="mantle.product.asset.Asset" value-field="asset"/>
@@ -57,13 +59,14 @@
         </actions>
     </seca>
 
-    <seca id="GetFulfillmentOrders" service="mantle.shopify.ApiServices.consume#OrdersSystemMessage" when="post-service" run-on-error="false">
+<!-- commenting out till can figure out a cleaner way to do this 
+    <seca id="GetFulfillmentOrders" service="mantle.shopify.ApiServices.consume#OrderSystemMessage" when="post-service" run-on-error="false">
         <actions>
             <log message="Getting fulfillment_order for shopify Order: ${shopifyOrderId}"/>
             <service-call name="mantle.shopify.ApiServices.queue#GetFulfillmentOrderSystemMessage" in-map="[shopifyOrderId: shopifyOrderId]"/>
         </actions>
     </seca>
-    
+-->
     <seca id="CancelOrder" service="update#mantle.order.OrderHeader" when="post-service" run-on-error="false">
         <condition><expression>statusChanged &amp;&amp; statusId in ['OrderCancelled','OrderCompleted'] </expression></condition>
         <actions>

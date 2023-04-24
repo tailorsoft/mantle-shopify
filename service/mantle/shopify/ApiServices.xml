@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
-
     <service verb="send" noun="SystemMessageRest">
         <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
         <in-parameters>
@@ -814,11 +813,8 @@
     </service>
 
     <!-- consume order-->
-    <service verb="consume" noun="OrdersSystemMessage">
-        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
-        <in-parameters>
-            <parameter name="systemMessageId" required="true"/>
-        </in-parameters>
+    <service verb="consume" noun="OrderSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.consume#SystemMessage"/>
         <out-parameters>
             <parameter name="orderId"/>
             <parameter name="shopifyOrderId"/>
@@ -834,14 +830,14 @@
 
             <set field="messageText" from="systemMessage.messageText.trim()"/>
 
-            <if condition="systemMessage.docType == 'json' &amp;&amp; systemMessage.docSubType == 'order'">
+            <if condition="systemMessage.docType == 'order'">
 
                 <set field="order" from="new groovy.json.JsonSlurper().parseText(messageText ?: '{}')"/>
                 <set field="customer" from="order.customer"/>
                 <set field="shippingAddress" from="order.shipping_address"/>
                 <set field="billingAddress" from="order.billing_address"/>
 
-                <if condition="order.shipping_lines.size() == 0">
+                <if condition="!order.shipping_lines || order.shipping_lines.size() == 0">
                     <return error="true" message="ERROR: NO SHIPPING METHOD FOUND ON SHOPIFY ORDER ${order.name} - ${order.id}"/>
                 </if>
 
@@ -914,7 +910,7 @@
                         <return error="true" message="ERROR: NO CARRIER FOUND ON DB FOR SHOPIFY ORDER ${order.name} - ${order.id}"/>
                     </else>
                 </if>
-                <service-call name="popstore.CustomerServices.find#PartyByEmail" in-map="[emailAddress:customer.email]" out-map="context"/>
+                <service-call name="mantle.party.PartyServices.find#Party" in-map="[emailAddress:customer.email]" out-map="context"/>
                 <entity-find-one entity-name="mantle.order.OrderHeader" value-field="createdOrder">
                     <field-map field-name="externalId" from="order.id"/>
                 </entity-find-one>
@@ -923,12 +919,12 @@
                     <return error="true" message="SHOPIFY ORDER #${order.order_number} ALREADY CREATED, WITH ORDER ID: ${createdOrder.orderId} ON DB"/>
                 </if>
                 
-                <if condition="partyIds.size() &gt; 0">
+                <if condition="partyIdList.size() &gt; 0">
                     <then>
 
                         <log message="SEARCHING FOR CUSTOMER ${customer.email}"/>
-                        <log message="PARTY IDS : ${partyIds}"/>
-                        <set field="partyId" from="partyIds.first()"/>
+                        <log message="PARTY IDS : ${partyIdList}"/>
+                        <set field="partyId" from="partyIdList.first()"/>
                         <service-call name="mantle.party.PartyServices.set#PartyClassification" in-map="[partyId: partyId, partyClassificationId: 'CustConsumer']"/>
 
                         <!--Store to make sure that the party identification is created if the user already existed in Moqui -->
@@ -1160,7 +1156,7 @@
                     <iterate list="orderItems" entry="orderItem">
                         <entity-find entity-name="mantle.product.ProductIdentification" list="productIdList">
                             <econdition field-name="idValue" from="orderItem.variant_id"/>
-                            <econdition field-name="productIdTypeEnumId" value="PidtVariantShopify"/>
+                            <econdition field-name="productIdTypeEnumId" value="PidtShopify"/>
                         </entity-find>
                         <if condition="productIdList.size() == 0">
                             <return error="true" message="ERROR: THE PRODUCT ID ${orderItem.variant_id} ON SHOPIFY ORDER ${order.name} IS NOT REGISTERED ON DB, PLEASE CONTACT ADMIN"/>
@@ -1291,10 +1287,12 @@
                         <service-call name="mantle.order.OrderServices.update#OrderStatus" out-map="context" in-map="[orderId: orderHeader.orderId,
                                                                                                               approvedDate: ec.user.nowTimestamp,
                                                                                                               statusId: 'OrderApproved']"/>
+                        <!-- I have no idea why we are doign this... we have just recieved a customer object, what are we trying to do here
                         <service-call name="mantle.shopify.ApiServices.queue#GetCustomerAddressesSystemMessage" out-map="context"
                                       in-map="[postalMechId:postalContactMechId, partyId:partyId]"/>
                         <set field="shopifyOrderId" from="orderHeader.externalId"/>
                         <service-call name="mantle.shopify.ApiServices.queue#GetOrderTransactionsSystemMessage" out-map="context" in-map="[shopifyOrderId: orderHeader.externalId]"/>
+                    -->
                     </if>
 
             </if>
