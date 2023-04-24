@@ -949,24 +949,38 @@
                 <!-- Find or create shipping phone number -->
                 <!-- Phone formatting -->
                 <if condition="shippingAddress.phone">
-                    <set field="shippingAddress.phone" from='shippingAddress.phone.replace("+","")'/>
-                    <if condition="shippingAddress.phone.size() != 14"><then>
-                        <set field="shippingPhoneNumber" from="shippingAddress.phone"/>
-                        <set field="shippingPhoneCountryCode" value=""/>
-                        <set field="shippingPhoneAreaCode" value=""/>
-                    </then><else>
-                        <set field="shippingPhoneCountryCode" from="shippingAddress.phone.substring(0,1)"/>
-                        <set field="shippingPhoneAreaCode" from="shippingAddress.phone.substring(2,5)"/>
-                        <set field="shippingPhoneNumber" from="shippingAddress.phone.substring(6)"/>
-                        <set field="shippingPhoneNumber" from="shippingPhoneNumber.replace('-','')"/>
-                    </else></if>
+                    <!-- TODO Keep importing code here (maybe add an if for netherlands and other phone numbers lenght ==12 -->
+                    <set field="shippingAddress.phone" from="shippingAddress.phone.replaceAll('[^\\d]', '')"/>
+                    <log message="phone number for shipping is: ${shippingAddress.phone} after removing non digits\n
+                            Length: ${shippingAddress.phone.length()}"/>
+                    <if condition="shippingAddress.phone.length() == 11">
+                        <then>
+                            <set field="shippingPhoneAreaCode" from="shippingAddress.phone[1..3]"/>
+                            <set field="shippingPhoneNumber" from="shippingAddress.phone[4..10]"/>
+                            <set field="shippingPhoneCountryCode" from="shippingAddress.phone[0]"/>
+                        </then>
+                        <else-if condition="shippingAddress.phone.length() == 10">
+                            <set field="shippingPhoneCountryCode" from="null"/>
+                            <set field="shippingPhoneAreaCode" from="shippingAddress.phone[0..2]"/>
+                            <set field="shippingPhoneNumber" from="shippingAddress.phone[3..9]"/>
+                        </else-if>
+                        <else>
+                            <set field="shippingPhoneCountryCode" from="null"/>
+                            <set field="shippingPhoneAreaCode" from="null"/>
+                            <set field="shippingPhoneNumber" from="shippingAddress.phone"/>
+                        </else>
+                    </if>
+
                     <!-- Checking shipping phone existence -->
                     <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber" list="shippingTelecomMechList">
                         <econdition field-name="partyId" from="partyId"/>
                         <econdition field-name="contactMechPurposeId" value="PhonePrimary"/>
                     </entity-find>
                     <if condition="shippingTelecomMechList.size() &gt; 0">
-                        <set field="shippingTelecomMech" from="shippingTelecomMechList.find{it.contactNumber.replace('-','').equals(shippingPhoneNumber.replace('-',''))}"/>
+                        <set field="shippingTelecomMech" from="shippingTelecomMechList.find{
+                                                            it.contactNumber.replace('-','').equals(shippingPhoneNumber.replace('-',''))
+                                                            &amp;&amp; it.countryCode.replace('-','').equals(shippingPhoneCountryCode.replace('-',''))
+                                                            &amp;&amp; it.areaCode.replace('-','').equals(shippingPhoneAreaCode.replace('-',''))}"/>
                     </if>
                     <if condition="shippingTelecomMech">
                         <then>
@@ -978,7 +992,7 @@
                                                                                                       contactNumber: shippingPhoneNumber,
                                                                                                       countryCode: shippingPhoneCountryCode,
                                                                                                       areaCode: shippingPhoneAreaCode,
-                                                                                                      telecomContactMechPurposeId:&apos;PhonePrimary&apos;]" out-map="telecomMechData"/>
+                                                                                                      telecomContactMechPurposeId:'PhonePrimary']" out-map="telecomMechData"/>
                             <set field="shippingTelecomContactMechId" from="telecomMechData.telecomContactMechId"/>
                         </else>
                     </if>
@@ -1053,24 +1067,26 @@
                 <!-- Find or create billing phone number -->
                 <!-- Phone formatting -->
                 <if condition="billingAddress.phone">
-                    <set field="billingAddress.phone" from='billingAddress.phone.replace("+","")'/>
-                    <if condition="billingAddress.phone.size() != 14"><then>
-                        <set field="billingPhoneNumber" from="billingAddress.phone"/>
-                        <set field="billingPhoneCountryCode" value=""/>
-                        <set field="billingPhoneAreaCode" value=""/>
-                    </then><else>
-                        <set field="billingPhoneCountryCode" from="billingAddress.phone.substring(0,1)"/>
-                        <set field="billingPhoneAreaCode" from="billingAddress.phone.substring(2,5)"/>
-                        <set field="billingPhoneNumber" from="billingAddress.phone.substring(6)"/>
-                        <set field="billingPhoneNumber" from="billingPhoneNumber.replace('-','')"/>
-                    </else></if>
+                    <set field="billingAddress.phone" from="billingAddress.phone.replaceAll('[^\\d]', '')"/>
+                    <if condition="billingAddress.phone.length() == 11"><then>
+                        <set field="billingPhoneAreaCode" from="billingAddress.phone[1..3]"/>
+                        <set field="billingPhoneNumber" from="billingAddress.phone[4..10]"/>
+                        <set field="billingPhoneCountryCode" value="billingAddress.phone[0]"/>
+                    </then><else-if condition="billingAddress.phone.length() == 10">
+                        <set field="billingPhoneCountryCode" from="null"/>
+                        <set field="billingPhoneAreaCode" from="billingAddress.phone[0..2]"/>
+                        <set field="billingPhoneNumber" from="billingAddress.phone[3..9]"/>
+                    </else-if></if>
                     <!-- Checking billing phone existence -->
                     <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber" list="billingTelecomMechList">
                         <econdition field-name="partyId" from="partyId"/>
                         <econdition field-name="contactMechPurposeId" value="PhonePayment"/>
                     </entity-find>
                     <if condition="billingTelecomMechList.size() &gt; 0">
-                        <set field="billingTelecomMech" from="billingTelecomMechList.find{it.contactNumber.replace('-','').equals(billingPhoneNumber.replace('-',''))}"/>
+                        <set field="billingTelecomMech" from="billingTelecomMechList.find{
+                                                            it.contactNumber.replace('-','').equals(billingPhoneNumber.replace('-',''))
+                                                            &amp;&amp; it.countryCode.replace('-','').equals(billingPhoneCountryCode.replace('-',''))
+                                                            &amp;&amp; it.areaCode.replace('-','').equals(billingPhoneAreaCode.replace('-',''))}"/>
                     </if>
                     <if condition="billingTelecomMech">
                         <then>
