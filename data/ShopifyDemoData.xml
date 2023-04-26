@@ -10,7 +10,6 @@
     <moqui.service.job.ServiceJob jobName="ShopifyDemo_poll_orders" description="Shopify Demo Poll Orders"
             serviceName="mantle.shopify.ShopifyServices.download#ShopifyOrders" cronExpression="0 0/15 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
-        <parameters parameterName="fulfillmentStatus" parameterValue="unfulfilled"/>
     </moqui.service.job.ServiceJob>
 
     <!-- poll the service to get the demo shopify products once per hour -->

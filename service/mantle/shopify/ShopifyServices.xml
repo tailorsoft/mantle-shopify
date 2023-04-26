@@ -9,7 +9,7 @@
     <service verb="download" noun="ShopifyOrders">
         <in-parameters>
             <parameter name="systemMessageRemoteId" required="true"/>
-            <parameter name="fulfillmentStatus" required="true"/>
+            <parameter name="fulfillmentStatus" default-value="unfulfilled"/>
             <parameter name="limit" default-value="250"/>
         </in-parameters>
         <out-parameters>
