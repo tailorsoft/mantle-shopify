@@ -106,6 +106,7 @@
     <service verb="get" noun="ProductData">
         <in-parameters>
             <parameter name="productId" required="true"/>
+            <parameter name="productStoreId" required="true"/>
         </in-parameters>
         <out-parameters>
             <parameter name="productData"/>
@@ -126,29 +127,16 @@
                 <return/>
             </if>
 
-            <if condition="product.productTypeEnumId != 'PtVirtual' ">
-                <message type="warning">The product ${productId}  is not a virtual product</message>
-                <set field="error" value="true"/>
-                <return/>
-            </if>
-
             <entity-find-one entity-name="mantle.product.ProductContent" value-field="productContent">
                 <field-map field-name="productId"/>
                 <field-map field-name="productContentTypeEnumId" value="PcntImageDetail"/>
             </entity-find-one>
-
-            <if condition="!productContent">
-                 <set field="error" value="true"/>
-                 <message type="warning">The product ${productId}  does not have image associated, add one in Content section</message>
-                 <return/>
-            </if>
 
             <set field="images" from="[]"/>
             <set field="prodVariants" from="[]"/>
             <set field="prodOptions" from="[]"/>
             <set field="prodOptionsMap" from="new HashMap()"/>
 
-            <service-call name="mantle.shopify.ShopifyServices.get#LocationAndStoreId" out-map="context"   in-map="[systemMessageTypeId:'ShopifyProductMessage']"/>
             <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore"/>
             <entity-find entity-name="mantle.product.store.ProductStoreSetting" list="productImageLocationList">
                 <date-filter/>
@@ -167,15 +155,11 @@
                 </else>
             </if>
 
-            <set field="storeDomain" from ="productStore.storeDomain"/>
-            <set field="productContentId" from ="productContent.productContentId"/>
-
-            <set field="imageSettings" from="[storeDomain:storeDomain, productContentId:productContentId, productId:productId]"/>
-            <set field="imageUrl" from="ec.resource.expand(productImageLocation.settingValue, null, imageSettings, false)"/>
 
             <if condition="productContent">
-                <set field="image" from="[src: imageUrl]"/>
-                <script>images.add(image)</script>
+                <set field="imageSettings" from="[storeDomain:productStore.storeDomain, productContentId:productContent.productContentId, productId:productId]"/>
+                <set field="imageUrl" from="ec.resource.expand(productImageLocation.settingValue, null, imageSettings, false)"/>
+                <script>images.add([src: imageUrl])</script>
             </if>
             <if condition="product.productTypeEnumId == 'PtVirtual'">
                 <then>
@@ -186,19 +170,13 @@
                         <econdition field-name="thruDate" operator="is-null"/>
                     </entity-find>
 
-                    <if condition="assocList.size() == 0">
-                        <set field="error" value="true"/>
-                        <message type="warning">The product ${productId} does not have a product associated, add one kind of 'Product Variant' in the Associated section</message>
-                        <return/>
-                    </if>
-
                     <iterate list="assocList" entry="assoc">
                         <!-- Each product associated has at least one feature so we get all possible features /-->
                         <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl" list="featureList">
                             <econdition field-name="productId" from="assoc.toProductId"/>
                             <econdition field-name="fromDate" operator="is-not-null"/>
                             <econdition field-name="thruDate" operator="is-null"/>
-                            <order-by field-name="productFeatureDescription"/>
+                            <order-by field-name="sequenceNum"/>
                         </entity-find>
 
                         <if condition="featureList.size() == 0">
@@ -218,14 +196,10 @@
                             <field-map field-name="productId" from="assoc.toProductId"/>
                         </entity-find-one>
 
-                        <entity-find-one entity-name="moqui.basic.Uom" value-field="uom">
-                            <field-map field-name="uomId" from="productDimension.valueUomId"/>
-                        </entity-find-one>
-
-                        <if condition="!prodUPC">
-                            <set field="error" value="true"/>
-                            <message type="warning">The associated product ${assoc.toProductId} does not have an identification, add one like UPC-A or SKU in the Identification section</message>
-                            <return/>
+                        <if condition="productDimension">
+                            <entity-find-one entity-name="moqui.basic.Uom" value-field="uom">
+                                <field-map field-name="uomId" from="productDimension.valueUomId"/>
+                            </entity-find-one>
                         </if>
 
                         <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="prodSKU">
@@ -233,11 +207,8 @@
                             <field-map field-name="productIdTypeEnumId" value="PidtSku"/>
                         </entity-find-one>
 
-                        <if condition="!prodSKU">
-                            <set field="error" value="true"/>
-                            <message type="warning">The associated product ${assoc.toProductId} does not have a SKU identification, add one in the Identification section</message>
-                            <return/>
-                        </if>
+                        <service-call name="mantle.product.AssetServices.get#AvailableInventory" out-map="assetOut"
+                            in-map="[productId:productId, productStoreId:productStoreId]"/>
                        
                         <script><![CDATA[
                             /**
@@ -250,48 +221,25 @@
                             **/
 
                             variant = [:]
-                            variant.name = featureList[0]?.productFeatureDescription
-                            variant.option1 = variant.name
+                            variant.option1 = featureList[0]?.productFeatureDescription
                             variant.option2 = featureList[1]?.productFeatureDescription
                             variant.option3 = featureList[2]?.productFeatureDescription
+                            variant.name = variant.option1 +
+                                (variant.option2 ? '/' + variant.option2 : '') + 
+                                (variant.option3 ? '/' + variant.option3 : '');
+                            variant.position = assoc.sequenceNum
                             variant.price = priceSet.price
                             variant.inventory_management = 'shopify'
-                            variant.barcode = prodUPC.idValue
-                            variant.weight = productDimension.value
-                            variant.weight_unit = uom.abbreviation
-                            variant.sku = prodSKU.idValue
+                            variant.inventory_quantity = availableToPromiseTotal
+                            variant.barcode = prodUPC?.idValue
+                            variant.weight = productDimension?.value
+                            variant.weight_unit = uom?.abbreviation
+                            variant.sku = prodSKU?.idValue
 
-                            if(featureList.size() == 1){
-                                prodVariants.add(new HashMap([name:variant.name,
-                                                              option1:variant.option1,
-                                                              price:variant.price,
-                                                              inventory_management:variant.inventory_management,
-                                                              barcode:variant.barcode,
-                                                              weight:variant.weight,
-                                                              weight_unit:variant.weight_unit,
-                                                              sku:variant.sku]))
-                            }else if(featureList.size() == 2){
-                                prodVariants.add(new HashMap([name:variant.name + "/" + variant.option2,
-                                                              option1:variant.option1,
-                                                              option2:variant.option2,
-                                                              price:variant.price,
-                                                              inventory_management:variant.inventory_management,
-                                                              barcode:variant.barcode,
-                                                              weight:variant.weight,
-                                                              weight_unit:variant.weight_unit,
-                                                              sku:variant.sku]))
-                            }else if(featureList.size() == 3){
-                                prodVariants.add(new HashMap([name:variant.name + "/" + variant.option2 + "/" + variant.option3,
-                                                              option1:variant.option1,
-                                                              option2:variant.option2,
-                                                              option3:variant.option3,
-                                                              price:variant.price,
-                                                              inventory_management:variant.inventory_management,
-                                                              barcode: variant.barcode,
-                                                              weight:variant.weight,
-                                                              weight_unit:variant.weight_unit,
-                                                              sku:variant.sku]))
-                            }
+                            // we do this so we can identify the variant in the
+                            variant.moquiProductId = assoc.toProductId
+
+                            prodVariants.add(variant)
                         ]]>
                         </script>
                         <iterate list="featureList" entry="feature">
@@ -331,12 +279,20 @@
                     <log message="OPTIONS ${prodOptions}"/>
                 </then>
             </if>
-            <set field="productData" from="[title: product.productName,
-                                        body_html: '',
-                                        vendor: '',
-                                        images: images,
-                                        variants: prodVariants,
-                                        options: prodOptions]"/>
+
+            <service-call name="mantle.product.AssetServices.get#AvailableInventory" out-map="assetOut"
+                            in-map="[productId:productId, productStoreId:productStoreId]"/>
+
+            <set field="productData" from="[
+                title: product.productName,
+                body_html: product.description,
+                vendor: '',
+                inventory_management: 'shopify',
+                inventory_quantity: availableToPromiseTotal,
+                images: images,
+                variants: prodVariants,
+                options: prodOptions
+            ]"/>
         </actions>
     </service>
 
@@ -345,6 +301,8 @@
             <parameter name="productId" required="true"/>
         </in-parameters>
         <actions>
+            <service-call name="mantle.shopify.ShopifyServices.get#LocationAndStoreId" out-map="context" in-map="[systemMessageTypeId:'ShopifyProductMessage']"/>
+
             <service-call name="mantle.shopify.ApiServices.get#ProductData" 
                           in-map="[productId: productId, productStoreId: productStoreId]"
                           out-map="context" />
