@@ -8,14 +8,20 @@
 
     <!-- poll the service to get the demo shopify orders once per 15 minutes -->
     <moqui.service.job.ServiceJob jobName="ShopifyDemo_poll_orders" description="Shopify Demo Poll Orders"
-            serviceName="mantle.shopify.ShopifyServices.get#ShopifyOrders" cronExpression="0 0/15 * * * ?" paused="Y">
+            serviceName="mantle.shopify.ShopifyServices.download#ShopifyOrders" cronExpression="0 0/15 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
         <parameters parameterName="fulfillmentStatus" parameterValue="unfulfilled"/>
     </moqui.service.job.ServiceJob>
 
     <!-- poll the service to get the demo shopify products once per hour -->
-    <moqui.service.job.ServiceJob jobName="ShopifyDemo_poll_products" description="Shopify Demo Poll Products"
-            serviceName="mantle.shopify.ShopifyServices.get#ShopifyProducts" cronExpression="0 0 * * * ?" paused="Y">
+    <moqui.service.job.ServiceJob jobName="poll_download_shopify_products" description="Poll download Shopify Products Demo"
+            serviceName="mantle.shopify.ShopifyProductServices.download#ShopifyProductList" cronExpression="0 0 * * * ?" paused="Y">
+        <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
+    </moqui.service.job.ServiceJob>
+
+    <!-- poll the service to get the demo shopify products once per hour -->
+    <moqui.service.job.ServiceJob jobName="poll_upload_shopify_products" description="Poll upload Shopify Products Demo"
+            serviceName="mantle.shopify.ShopifyProductServices.upload#MoquiProductList" cronExpression="0 0 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
     </moqui.service.job.ServiceJob>
 </entity-facade-xml>

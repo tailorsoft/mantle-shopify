@@ -6,7 +6,7 @@
 
         https://{store_name}.myshopify.com/admin/api/2023-04/orders.json?limit={limit}&fulfillment_status={status}&since_id={order_id}
     -->
-    <service verb="get" noun="ShopifyOrders">
+    <service verb="download" noun="ShopifyOrders">
         <in-parameters>
             <parameter name="systemMessageRemoteId" required="true"/>
             <parameter name="fulfillmentStatus" required="true"/>
@@ -77,10 +77,10 @@
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
             <if condition="systemMessage.docType == 'productList'"><then>
-                <service-call name="mantle.shopify.ShopifyServices.consume#ProductListSystemMessage" in-map="context" out-map="context"/>
+                <service-call name="mantle.shopify.ShopifyProductServices.consume#ProductListSystemMessage" in-map="context" out-map="context"/>
 
             </then><else-if condition="systemMessage.docType == 'product'">
-                <service-call name="mantle.shopify.ShopifyServices.consume#ProductSystemMessage" in-map="context" out-map="context"/>
+                <service-call name="mantle.shopify.ShopifyProductServices.consume#ProductSystemMessage" in-map="context" out-map="context"/>
 
             </else-if><else-if condition="systemMessage.docType == 'orderList'">
                 <service-call name="mantle.shopify.ShopifyServices.consume#OrderListSystemMessage" in-map="context" out-map="context"/>
