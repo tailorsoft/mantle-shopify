@@ -79,9 +79,10 @@
             <set field="messageMap" from="new JsonSlurper().parseText(systemMessage.messageText)"/>
             <iterate list="messageMap.products" entry="product">
                 <service-call name="create#moqui.service.message.SystemMessage" out-map="context"
-                                in-map="[systemMessageTypeId:'ShopifySystemMessageType', parentMessageId:systemMessageId,
+                                in-map="[systemMessageTypeId:'ShopifySystemMessageType', 
                                 systemMessageRemoteId: systemMessage.systemMessageRemoteId,
-                                messageText:JsonOutput.toJson(product), docType:'product', 
+                                parentMessageId: systemMessage.systemMessageId,
+                                messageText: JsonOutput.toJson(product), docType:'product', 
                                 isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
 
                 <service-call name="org.moqui.impl.SystemMessageServices.consume#ReceivedSystemMessage"
@@ -314,16 +315,16 @@
             <if condition="apiError">
                 <return error="Shopify Products API Error ${apiError}"/>
             </if>
-            <set field="shopifyVariants" from="response.product.variants"/>
+            <set field="shopifyVariants" from="apiResponse.product.variants"/>
 
             <if condition="!shopifyIdentification">
                 <service-call name="create#mantle.product.ProductIdentification" out-map="context" 
-                    in-map="[productId:productId, productIdTypeEnumId:'PidtShopify', idValue: response.product.id]"/>
+                    in-map="[productId:productId, productIdTypeEnumId:'PidtShopify', idValue: apiResponse.product.id]"/>
 
                 <!-- if the moqui product had no variants, then we use the inventory item from the auto-created shopify variant -->
                 <if condition="!productData.variants &amp;&amp; shopifyVariants">
                     <service-call name="create#mantle.product.ProductIdentification" out-map="context" 
-                        in-map="[productId:moquiProductId, productIdTypeEnumId:'PidtInventoryItemShopify', idValue:shopifyVariants[0].inventory_item_id]"/>
+                        in-map="[productId:productId, productIdTypeEnumId:'PidtInventoryItemShopify', idValue:shopifyVariants[0].inventory_item_id]"/>
                 </if>
             </if>
 
