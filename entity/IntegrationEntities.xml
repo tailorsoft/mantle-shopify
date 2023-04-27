@@ -22,9 +22,21 @@
         <field name="shopifyOrderStatusId" type="text-short"/>
         <field name="shopifyFulfillmentOrderId" type="id"/>
     </extend-entity>
+
+    <!-- Shopify API returns a list of Fulfillment Orders per customer order -->
+    <entity entity-name="ShopifyFulfillmentOrder" package="mantle.shopify">
+        <field name="fulfillmentOrderId" type="id" is-pk="true"/>
+        <field name="orderId" type="id"/>
+        <field name="status" type="text-medium"/>
+    </entity>
+
     <extend-entity entity-name="OrderItem" package="mantle.order">
-        <field name="shopifyFulfillmentOrderLineItemId" type="id-long"/>
+        <field name="fulfillmentOrderId" type="id"/>
+        <field name="fulfillmentOrderLineItemId" type="id"/>
+        <relationship type="one" title="BillTo" related="mantle.shopify.ShopifyFulfillmentOrder">
+            <key-map field-name="fulfillmentOrderId"/></relationship>
     </extend-entity>
+
     <extend-entity entity-name="ProductCategoryMember" package="mantle.product.category">
         <field name="shopifyId" type="id"/>
     </extend-entity>

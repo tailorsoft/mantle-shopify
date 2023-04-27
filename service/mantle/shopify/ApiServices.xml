@@ -771,26 +771,18 @@
     </service>
 
     <!-- consume order-->
-    <service verb="consume" noun="OrderSystemMessage">
-        <implements service="org.moqui.impl.SystemMessageServices.consume#SystemMessage"/>
+    <service verb="consume" noun="ShopifyOrderMap">
+        <in-parameters>
+            <parameter name="order" type="Map"/>
+            <parameter name="productStoreId" required="true"/>
+        </in-parameters>
         <out-parameters>
             <parameter name="orderId"/>
             <parameter name="shopifyOrderId"/>
         </out-parameters>
         <actions>
-            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage" for-update="true"/>
-            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemMessageRemote">
-                <field-map field-name="systemMessageTypeId" from="systemMessage.systemMessageTypeId"/>
-            </entity-find-one>
-            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
-                <field-map field-name="productStoreId" from="systemMessageRemote.productStoreId"/>
-            </entity-find-one>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore"/>
 
-            <set field="messageText" from="systemMessage.messageText.trim()"/>
-
-            <if condition="systemMessage.docType == 'order'">
-
-                <set field="order" from="new groovy.json.JsonSlurper().parseText(messageText ?: '{}')"/>
                 <set field="customer" from="order.customer"/>
                 <set field="shippingAddress" from="order.shipping_address"/>
                 <set field="billingAddress" from="order.billing_address"/>
@@ -1101,7 +1093,6 @@
                                                                                   disableShippingCalc:'Y',
                                                                                   disableTaxCalc:'Y',
                                                                                   salesChannelEnumId: 'ScShopify',
-                                                                                  systemMessageRemoteId: systemMessageRemote.systemMessageRemoteId,
                                                                                   customerPartyId: partyId]" out-map="context"/>
                     <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader"/>
                     <entity-find-one entity-name="mantle.order.OrderPart" value-field="orderPart"/>
@@ -1124,7 +1115,7 @@
                             <service-call name="mantle.order.OrderServices.create#OrderItem" in-map="[orderId: orderHeader.orderId,
                                                                                             productId: productId,
                                                                                             orderPartSeqId: orderPart.orderPartSeqId,
-                                                                                            externalItemSeqId: orderItem.id,
+                                                                                            sourceReferenceId: orderItem.id,
                                                                                             itemTypeEnumId: 'ItemProduct',
                                                                                             productStoreId: productStore.productStoreId,
                                                                                             quantity: orderItem.quantity,
@@ -1159,7 +1150,7 @@
                                 <econdition field-name="productId" from="productId"/>
                             </entity-find>
                             <if condition="orderItemList">
-                                <service-call name="update#mantle.order.OrderItem" out-map="context" in-map="orderItemList.first() + [externalItemSeqId:orderItem.id]"/>
+                                <service-call name="update#mantle.order.OrderItem" out-map="context" in-map="orderItemList.first() + [sourceReferenceId:orderItem.id]"/>
                             </if>
                         </if>
                     </iterate>
@@ -1252,9 +1243,6 @@
                         <service-call name="mantle.shopify.ApiServices.queue#GetOrderTransactionsSystemMessage" out-map="context" in-map="[shopifyOrderId: orderHeader.externalId]"/>
                     -->
                     </if>
-
-            </if>
-           
         </actions>
     </service>
 
@@ -1283,38 +1271,31 @@
         </actions>
     </service>
 
-    <service verb="send" noun="GetFulfillmentOrderSystemMessage">
-        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+    <service verb="consume" noun="ShopifyFulfillmentsMap">
         <in-parameters>
-            <parameter name="systemMessageId"/>
+            <parameter name="orderId" required="true"/>
+            <parameter name="fulfillments" type="Map"/>
         </in-parameters>
         <actions>
-            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
-                          in-map="[systemMessageId: systemMessageId]"
-                          out-map="context"/>
-            <set field="fulfillment_order" from="response.fulfillment_orders.first()"/>
-            <set field="fulfillment_order_id" from="fulfillment_order.id"/>
-            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order">
-                <field-map field-name="externalId" from="fulfillment_order.order_id"/>
-            </entity-find-one>
-            <service-call name="update#mantle.order.OrderHeader" in-map="[orderId: order.orderId, shopifyFulfillmentOrderId: fulfillment_order_id]"/>
-            
-            <!-- Get Fulfillment order line items Id -->
-            <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
-                <econdition field-name="orderId" from="order.orderId"/>
-                <econdition field-name="externalItemSeqId" operator="is-not-null"/>
-            </entity-find>
-            <set field="fulfillment_order_line_items" from="fulfillment_order.line_items"/>
-            <log message="\nSEND GET FULFILLMENT ORDERS SM:\n\nFULFILLMENT_ORDER: ${fulfillment_order}\n\n
-                                                            fulfillment_order_line_items: ${fulfillment_order_line_items}\n\n
-                                                            ORDER ITEMS: ${orderItems}\n\n
-                                                             externalItemSeqIdType: ${orderItems.first().externalItemSeqId.getClass()}\n\n
-                                                             line_item_idType: ${fulfillment_order_line_items.first().line_item_id.getClass()}\n\n"/>
-            <iterate list="orderItems" entry="orderItem">
-                <set field="shopifyFOLineItemId" from="fulfillment_order_line_items.find{(String)it.line_item_id == orderItem.externalItemSeqId}.id"/>
-                <service-call name="update#mantle.order.OrderItem" in-map="[orderId:orderItem.orderId,
-                                                                            orderItemSeqId: orderItem.orderItemSeqId,
-                                                                            shopifyFulfillmentOrderLineItemId: shopifyFOLineItemId]"/>
+            <iterate list="fulfillments.fulfillment_orders" entry="fulfillment_order">
+                <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order">
+                    <field-map field-name="externalId" from="fulfillment_order.order_id"/>
+                </entity-find-one>
+
+                <service-call name="create#mantle.shopify.ShopifyFulfillmentOrder" out-map="context" 
+                    in-map="[fulfillmentOrderId:fulfillment_order.id, orderId:orderId, status:fulfillment_order.status]"/>
+                
+                <!-- Get Fulfillment order line items Id -->
+                <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
+                    <econdition field-name="orderId" from="order.orderId"/>
+                    <econdition field-name="sourceReferenceId" operator="is-not-null"/>
+                </entity-find>
+                <iterate list="orderItems" entry="orderItem">
+                    <set field="lineItem" from="fulfillment_order.line_items.find{(String)it.line_item_id == orderItem.sourceReferenceId}"/>
+                    <service-call name="update#mantle.order.OrderItem" in-map="[orderId:orderItem.orderId,
+                                                                                orderItemSeqId:orderItem.orderItemSeqId,
+                                                                                fulfillmentOrderLineItemId:lineItem.id]"/>
+                </iterate>
             </iterate>
         </actions>
     </service>
@@ -1647,7 +1628,7 @@
                 <iterate list="orderItems" entry="item">
                     <script>
                         def items = [:]
-                        items.line_item_id = item.externalItemSeqId
+                        items.line_item_id = item.sourceReferenceId
                         items.quantity = item.quantityCancelled
                         items.restock_type = 'cancel'
                         refund_line_items.add(items)
@@ -1865,7 +1846,7 @@
                     <script>
                         def productTemp = orderItems.find{it.productId == item.productId}
                         def items = [:]
-                        items.id = productTemp.shopifyFulfillmentOrderLineItemId
+                        items.id = productTemp.fulfillmentOrderLineItemId
                         items.quantity = item.quantity
                         line_items.add(items)
                     </script>
@@ -1876,6 +1857,7 @@
                     <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
                 </entity-find-one>
 
+                <!-- todo move to mantle.shopify.ShopifyFulfillmentOrder -->
                 <set field="line_items_by_fulfillment_order" from="[[fulfillment_order_id: orderHeader.shopifyFulfillmentOrderId,
                                                                 fulfillment_order_line_items: line_items]]"/>
                 <set field="tracking_info" from="[company: partyIdentification?.idValue,
@@ -1989,10 +1971,9 @@
         </actions>
     </service>
 
-    <service verb="send" noun="GetOrderTransactionsSystemMessage">
-        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+    <service verb="consume" noun="ShopifyTransactionMap">
         <in-parameters>
-            <parameter name="systemMessageId" required="true"/>
+            <parameter name="transactions" required="true"/>
         </in-parameters>
         <actions>
             <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"

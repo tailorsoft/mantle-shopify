@@ -255,11 +255,11 @@
             <service-call name="mantle.shopify.ShopifyProductServices.get#ProductStoreCategories"
                     in-map="[productStoreId:remote.productStoreId]" out-map="context"/>
 
-            <log message="storeCategories: ${storeCategories.productCategoryId}" />
+            <log message="productCategoryIdList: ${productCategoryIdList}" />
 
             <!-- get all the memberships to the categories -->
             <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="pcmList"><date-filter />
-                <econdition field-name="productCategoryId" operator="in" from="storeCategories.productCategoryId"/></entity-find>
+                <econdition field-name="productCategoryId" operator="in" from="productCategoryIdList"/></entity-find>
 
             <!-- get a unique list of productIds based on those memberships -->
             <set field="productIdList" from="pcmList.productId.unique( false )"/>
@@ -355,22 +355,114 @@
         </actions>
     </service>
 
+    <service verb="upload" noun="MoquiStoreCategories">
+        <in-parameters>
+            <parameter name="systemMessageRemoteId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="productCategoryIdList"/>
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote" />
+            <if condition="!remote"><return error="true" message="No Remote found for ID ${systemMessageRemoteId}"/></if>
+
+            <!-- get the browse root for this store -->
+            <entity-find entity-name="mantle.product.store.ProductStoreCategory" list="pscList">
+                <econdition field-name="storeCategoryTypeEnumId" value="PsctBrowseRoot"/>
+                <econdition field-name="productStoreId" from="remote.productStoreId"/><date-filter /></entity-find>
+            <if condition="!pscList"><return error="true" message="No Browse Root Category found for Store ID ${productStoreId}"/></if>
+
+
+            <set field="productCategoryIdList" from="[]"/>
+
+            <!-- We get all the categories under the browse root recursively -->
+            <service-call name="mantle.shopify.ShopifyProductServices.populate#CategoriesRecursive" out-map="context"
+                in-map="[productCategoryId:pscList.first().productCategoryId, productCategoryIdList:productCategoryIdList]"/>
+
+            <iterate list="productCategoryIdList" entry="productCategoryId">
+                <service-call name="mantle.shopify.ShopifyProductServices.upload#MoquiCategory"
+                    in-map="[systemMessageRemoteId:systemMessageRemoteId, productCategoryId:productCategoryId]"/>
+            </iterate>
+        </actions>
+    </service>
+
+    <service verb="upload" noun="MoquiCategory">
+        <in-parameters>
+            <parameter name="systemMessageRemoteId" required="true"/>
+            <parameter name="productCategoryId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="productCategoryIdList"/>
+        </out-parameters>
+        <actions>
+            <!-- get all the products assigned to these categories -->
+            <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="pcmList">
+                <econdition field-name="productCategoryId"/><date-filter /></entity-find>
+
+            <!-- get the shopiify ids of those products -->
+            <entity-find entity-name="mantle.product.ProductIdentification" list="pidList">
+                <econdition field-name="productId" operator="in" from="pcmList.productId"/>
+                <econdition field-name="productIdTypeEnumId" value="PidtShopify"/>
+            </entity-find>
+
+            <set field="collects" from="[]"/>
+            <iterate list="pidList" entry="pid">
+                <set field="collects" from="collects.plus([product_id:pid.idValue])"/>
+            </iterate>
+
+            <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="category" for-update="true"/>
+            <set field="custom_collection" from="[:]"/>
+            <set field="custom_collection.title" from="category.categoryName"/>
+            <set field="custom_collection.collects" from="collects"/>
+
+            <log message="method: ${category.pseudoId == category.productCategoryId ? 'POST' : 'PUT'} json: ${groovy.json.JsonOutput.toJson([custom_collection: custom_collection])}"/>
+
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
+
+            <set field="apiError" value=""/>
+            <set field="apiResponse" value="[:]"/>
+            <script><![CDATA[
+                String method = category.pseudoId == category.productCategoryId ? 'POST' : 'PUT';
+                org.moqui.util.RestClient restClient = ec.service.rest().method(method)
+                    .addHeader("Content-Type", "application/json")
+                    .jsonObject(groovy.json.JsonOutput.toJson([custom_collection: custom_collection]))
+                    .basicAuth(remote.username, remote.password)
+                    .uri(ec.resource.expand(remote.sendUrl, "", [resource:"custom_collections"]));
+
+                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
+
+                if (restResponse.statusCode != 201) {
+                    apiError = "${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}"
+                } else {
+                    apiResponse = new groovy.json.JsonSlurper().parseText(restResponse.text());
+                }
+            ]]></script>
+
+            <if condition="apiError">
+                <return error="Shopify Products API Error ${apiError}"/>
+            </if>
+
+            <set field="category.pseudoId" from="apiResponse.custom_collection.id"/>
+            <entity-update value-field="category"/>
+        </actions>
+    </service>
+
     <service verb="get" noun="ProductStoreCategories">
         <in-parameters>
             <parameter name="productStoreId" required="true"/>
         </in-parameters>
         <out-parameters>
-            <parameter name="storeCategories"/>
+            <parameter name="productCategoryIdList"/>
         </out-parameters>
         <actions>
             <!-- get all the categories for the store -->
             <entity-find entity-name="mantle.product.store.ProductStoreCategory" list="pscList">
                 <econdition field-name="productStoreId"/><date-filter /></entity-find>
 
-            <set field="storeCategories" from="[]"/>
+            <set field="productCategoryIdList" from="[]"/>
             <iterate list="pscList" entry="psc">
                 <service-call name="mantle.shopify.ShopifyProductServices.populate#CategoriesRecursive" out-map="context"
-                    in-map="[productCategoryId:psc.productCategoryId, storeCategories:storeCategories]"/>
+                    in-map="[productCategoryId:psc.productCategoryId, productCategoryIdList:productCategoryIdList]"/>
             </iterate>
         </actions>
     </service>
@@ -378,26 +470,24 @@
     <service verb="populate" noun="CategoriesRecursive">
         <in-parameters>
             <parameter name="productCategoryId" required="true"/>
-            <parameter name="storeCategories" type="List"/>
+            <parameter name="productCategoryIdList" type="List"/>
         </in-parameters>
         <out-parameters>
-            <parameter name="storeCategories"/>
+            <parameter name="productCategoryIdList"/>
         </out-parameters>
         <actions>
-            <!-- check if this category has already been included in the storeCategories List -->
-            <if condition="childCategories.find({it.productCategoryId == rollup.productCategoryId})">
-                <log message="Category ID ${rollup.productCategoryId} prebiously added, skipping"/>
-            </if>
-
-            <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="category" />
-
-            <set field="storeCategories" from="storeCategories ? storeCategories.plus(category) : [category]"/>
+            <set field="productCategoryIdList" from="productCategoryIdList ? productCategoryIdList.plus(productCategoryId) : [productCategoryId]"/>
 
             <!-- get all the child category rollups -->
             <entity-find entity-name="mantle.product.category.ProductCategoryRollup" list="rollupList">
                 <econdition field-name="parentProductCategoryId" from="productCategoryId"/><date-filter /></entity-find>
 
             <iterate list="rollupList" entry="rollup">
+                <!-- check if this category has already been included in the productCategoryIdList List -->
+                <if condition="productCategoryIdList.find({it == rollup.productCategoryId})">
+                     <log message="Category ID ${rollup.productCategoryId} prebiously added, skipping"/>
+                     <continue/>
+                </if>
                 <service-call name="mantle.shopify.ShopifyProductServices.populate#CategoriesRecursive" out-map="context"
                     in-map="[productCategoryId:rollup.productCategoryId, childCategories:childCategories]"/>
             </iterate>

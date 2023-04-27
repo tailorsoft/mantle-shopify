@@ -1,73 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
 
-    <!-- 
-        Endpoint to pull down orders from Shopify.
-
-        https://{store_name}.myshopify.com/admin/api/2023-04/orders.json?limit={limit}&fulfillment_status={status}&since_id={order_id}
-    -->
-    <service verb="download" noun="ShopifyOrders">
-        <in-parameters>
-            <parameter name="systemMessageRemoteId" required="true"/>
-            <parameter name="fulfillmentStatus" default-value="unfulfilled"/>
-            <parameter name="limit" default-value="250"/>
-        </in-parameters>
-        <out-parameters>
-            <parameter name="systemMessageId"/>
-        </out-parameters>
-        <actions>
-            <script>import groovy.json.JsonSlurper</script>
-            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemMessageRemote">
-                <field-map field-name="systemMessageTypeId" value="ShopifySystemMessageType"/>
-                <field-map field-name="systemMessageRemoteId"/>
-            </entity-find-one>
-
-            <if condition="!systemMessageRemote"><return error="true" message="No Remote of type 'ShopifySystemMessageType' found for ID ${systemMessageRemoteId}"/></if>
-
-            <!-- see if we have called this before and what was the last order found on previous message -->
-            <entity-find entity-name="moqui.service.message.SystemMessage" limit="1" list="prevMessages">
-                <econdition field-name="systemMessageTypeId" value='ShopifySystemMessageType'/>
-                <econdition field-name="systemMessageRemoteId"/>
-                <econdition field-name="docType" value="orderList"/>
-                <order-by field-name="initDate"/>
-            </entity-find>
-            <if condition="prevMessages">
-                <set field="lastOrderId" from="prevMessages.first().docControl"/>
-            </if>
-
-            <!-- https://{hostname}/admin/api/{version}/{resource}.json?limit=250&fulfillment_status=unfulfilled&since_id={last} -->
-            <script><![CDATA[
-                String url = ec.resource.expand(systemMessageRemote.sendUrl, "", [resource:"orders"]) +
-                    "?limit=${limit}&fulfillment_status=${fulfillmentStatus}";
-
-                if (lastOrderId != null) {
-                    url += "&since_id=${lastOrderId}";
-                }
-
-                org.moqui.util.RestClient restClient = ec.service.rest().method("GET")
-                    .addHeader("Content-Type", "application/json")
-                    .basicAuth(systemMessageRemote.username, systemMessageRemote.password)
-                    .uri(url);
-
-                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
-
-                if (restResponse.statusCode != 200) {
-                    ec.logger.error("Shopify Orders API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} for url: ${url}")
-                    return
-                }
-                Map messageMap = new JsonSlurper().parseText(restResponse.text());
-                String lastOrderId = messageMap.orders ? messageMap.orders.last().id : null;
-            ]]></script>
-
-            <if condition="lastOrderId">
-                <service-call name="create#moqui.service.message.SystemMessage" out-map="context" in-map="[
-                    systemMessageTypeId:'ShopifySystemMessageType', systemMessageRemoteId:systemMessageRemoteId,
-                    messageText:restResponse.text(), docType:'orderList', docControl:lastOrderId,
-                    isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
-            </if>
-        </actions>
-    </service>
-
     <!--
         Consume method for the ShopifySystemMessage.
         Splits out the 
@@ -83,37 +16,14 @@
                 <service-call name="mantle.shopify.ShopifyProductServices.consume#ProductSystemMessage" in-map="context" out-map="context"/>
 
             </else-if><else-if condition="systemMessage.docType == 'orderList'">
-                <service-call name="mantle.shopify.ShopifyServices.consume#OrderListSystemMessage" in-map="context" out-map="context"/>
+                <service-call name="mantle.shopify.ShopifyOrderServices.consume#OrderListSystemMessage" in-map="context" out-map="context"/>
 
             </else-if><else-if condition="systemMessage.docType == 'order'">
-                <service-call name="mantle.shopify.ApiServices.consume#OrderSystemMessage" in-map="context" out-map="context"/>
+                <service-call name="mantle.shopify.ShopifyOrderServices.consume#OrderSystemMessage" in-map="context" out-map="context"/>
 
             </else-if><else>
                 <return error="true" message="No match docType found for systemMessage ID ${systemMessageId}"/>
             </else></if>
-        </actions>
-    </service>
-
-    <!-- consume the list of orders and generate individual system messages -->
-    <service verb="consume" noun="OrderListSystemMessage">
-        <implements service="org.moqui.impl.SystemMessageServices.consume#SystemMessage"/>
-        <actions>
-            <script>
-                import groovy.json.JsonSlurper;
-                import groovy.json.JsonOutput;
-            </script>
-            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
-            <set field="messageMap" from="new JsonSlurper().parseText(systemMessage.messageText)"/>
-            <iterate list="messageMap.orders" entry="order">
-                <service-call name="create#moqui.service.message.SystemMessage" out-map="context"
-                                in-map="[systemMessageTypeId:'ShopifySystemMessageType', parentMessageId:systemMessageId,
-                                messageText:JsonOutput.toJson(order), docType:'order', 
-                                isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
-
-                <!-- immediately try to consume the order message -->
-                <service-call name="org.moqui.impl.SystemMessageServices.consume#ReceivedSystemMessage"
-                    in-map="[systemMessageId:systemMessageId, allowError:false]" async="true"/>
-            </iterate>
         </actions>
     </service>
 
