@@ -6,7 +6,7 @@
 
         https://{store_name}.myshopify.com/admin/api/2023-04/products.json?limit={limit}&since_id={product_id}
     -->
-    <service verb="download" noun="ShopifyProductList">
+    <service verb="download" noun="ShopifyProducts">
         <in-parameters>
             <parameter name="systemMessageRemoteId" required="true"/>
             <parameter name="limit" default-value="250"/>
@@ -103,7 +103,7 @@
                 import groovy.json.JsonSlurper;
                 import groovy.json.JsonOutput;
             </script>
-            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
+            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage" for-update="true"/>
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemMessageRemote">
                 <field-map field-name="systemMessageTypeId" value="ShopifySystemMessageType"/>
                 <field-map field-name="systemMessageRemoteId" from="systemMessage.systemMessageRemoteId"/>
@@ -138,6 +138,9 @@
                     <field-map field-name="enumTypeId" value="ProductFeatureType"/>
                     <field-map field-name="description" from="option.name"/>
                 </entity-find-one>
+                <if condition="!featureType">
+                    <return error="true" message="No featureType found with description: ${option.name}"/>
+                </if>
                 <iterate list="option.values" entry="value">
                     <!-- create the product features on the virtual product as 'Selectable' -->
                     <service-call name="mantle.product.ProductServices.create#ProductFeature" in-map="[
@@ -147,61 +150,137 @@
                 </iterate>
             </iterate>
 
-            <iterate list="shopifyProduct.images" entry="image">
 
+
+            <entity-find entity-name="mantle.product.ProductContent" list="contentList">
+                <econdition field-name="productContentTypeEnumId" value="PcntImageUrlDetail"/>
+                <econdition field-name="productId" from="productId" /><date-filter/>
+            </entity-find>
+            <iterate list="shopifyProduct.images" entry="image">
+                <!-- we look for content with the same url on the product, and if not, create -->
+                <set field="content" from="contentList.find({it.contentLocation == image.src})" />
+                <if condition="!content">
+                    <service-call name="create#mantle.product.ProductContent" in-map="[
+                        productId:productId, productContentTypeEnumId:'PcntImageUrlDetail', contentLocation:image.src]"/>
+                </if>
             </iterate>
 
             <entity-find-one entity-name="mantle.product.Product" value-field="product" />
             <iterate list="shopifyProduct.variants" entry="variant">
-                <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="existingShopifyId">
-                    <field-map field-name="idValue" from="variant.id" />
-                    <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
-                </entity-find-one>
-                <if condition="existingShopifyId"><then>
-                    <set field="variantProductId" from="existingShopifyId.productId"/>
-                    <service-call name="update#mantle.product.Product" in-map="[productId:variantProductId, productName:variant.title]"/>
-                </then><else>
-                    <service-call name="create#mantle.product.Product" in-map="[
-                        productName:variant.title, productTypeEnumId:'PtAsset', assetTypeEnumId:'AstTpInventory', ownerPartyId:ownerPartyId, ownerPartyId:ownerPartyId]" out-map="variantContext"/>
-                    <set field="variantProductId" from="variantContext.productId"/>
+                <!-- the variants from shopify come with ambiguous names -->
+                <set field="variant.title" from="shopifyProduct.title + ' - ' + variant.title"/>
 
-                    <service-call name="create#mantle.product.ProductAssoc" in-map="[
-                        productId:productId, toProductId:variantProductId, productAssocTypeEnumId:'PatVariant', fromDate:ec.user.nowTimestamp]"/>
+                <service-call name="mantle.shopify.ShopifyProductServices.store#ShopifyVariant" 
+                    in-map="[productStoreId:productStoreId, ownerPartyId:ownerPartyId, inventoryFacilityId:productStore.inventoryFacilityId, productId:productId, mapOptionToFeature:mapOptionToFeature, variant:variant]"/>
+            </iterate>
+            <!--set field="systemMessage.productId" from="productId"/-->
+            <entity-update value-field="systemMessage"/>
+        </actions>
+    </service>
+ 
+    <service verb="store" noun="ShopifyVariant">
+        <in-parameters>
+            <parameter name="productStoreId" />
+            <parameter name="ownerPartyId"/>
+            <parameter name="inventoryFacilityId"/>
+            <parameter name="productId" />
+            <parameter name="mapOptionToFeature" type="Map"/>
+            <parameter name="variant" type="Map"/>
+        </in-parameters>
+        <actions>
+            <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="existingShopifyId">
+                <field-map field-name="idValue" from="variant.id" />
+                <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
+            </entity-find-one>
+            <if condition="existingShopifyId"><then>
+                <set field="variantProductId" from="existingShopifyId.productId"/>
+                <service-call name="update#mantle.product.Product" in-map="[productId:variantProductId, productName:variant.title]"/>
+            </then><else>
+                <service-call name="create#mantle.product.Product" in-map="[
+                    productName:variant.title, productTypeEnumId:'PtAsset', assetTypeEnumId:'AstTpInventory', ownerPartyId:ownerPartyId, ownerPartyId:ownerPartyId]" out-map="variantContext"/>
+                <set field="variantProductId" from="variantContext.productId"/>
 
-                    <service-call name="create#mantle.product.ProductIdentification" in-map="[
-                        productId:variantProductId, productIdTypeEnumId:'PidtShopify', idValue:variant.id]"/>
-                </else></if>
+                <service-call name="create#mantle.product.ProductAssoc" in-map="[
+                    productId:productId, toProductId:variantProductId, productAssocTypeEnumId:'PatVariant', fromDate:ec.user.nowTimestamp]"/>
 
-                <!-- The variant.option1 needs to have been previously listed/created with the virtual product -->
-                <set field="productFeatureId" from="mapOptionToFeature[variant.option1]"/>
+                <service-call name="create#mantle.product.ProductIdentification" in-map="[
+                    productId:variantProductId, productIdTypeEnumId:'PidtShopify', idValue:variant.id]"/>
+            </else></if>
 
+            <!-- The variant.option1 needs to have been previously listed/created with the virtual product -->
+            <set field="productFeatureId" from="mapOptionToFeature[variant.option1]"/>
+
+            <service-call name="mantle.product.ProductServices.apply#ProductFeatures"
+                in-map="[productId:variantProductId, productFeatureIdList:[productFeatureId], applTypeEnumId:'PfatStandard',
+                    fromDate:ec.user.nowTimestamp, sequenceNum:variant.position]"/>
+
+            <if condition="variant.option2">
+                <set field="productFeatureId" from="mapOptionToFeature[variant.option2]"/>
                 <service-call name="mantle.product.ProductServices.apply#ProductFeatures"
                     in-map="[productId:variantProductId, productFeatureIdList:[productFeatureId], applTypeEnumId:'PfatStandard',
-                        fromDate:ec.user.nowTimestamp, sequenceNum:variant.position]"/>
+                    fromDate:ec.user.nowTimestamp, sequenceNum:variant.position]"/>
+            </if>
 
-                <if condition="variant.price">
-                    <service-call name="mantle.shopify.ShopifyProductServices.create#ShopifyPrice" in-map="[
-                        productStoreId:productStoreId, productId:variantProductId, amount:variant.price]"/>
-                </if>
+            <if condition="variant.option3">
+                <set field="productFeatureId" from="mapOptionToFeature[variant.option3]"/>
+                <service-call name="mantle.product.ProductServices.apply#ProductFeatures"
+                    in-map="[productId:variantProductId, productFeatureIdList:[productFeatureId], applTypeEnumId:'PfatStandard',
+                    fromDate:ec.user.nowTimestamp, sequenceNum:variant.position]"/>
+            </if>
 
-                <!-- optional property on the shopify object -->
-                <iterate list="variant.presentment_prices" entry="price">
-                    <service-call name="mantle.shopify.ShopifyProductServices.create#ShopifyPrice" in-map="[
-                        productStoreId:productStoreId, productId:variantProductId, currency:price.currency, amount:price.amount]"/>
-                </iterate>
+            <if condition="variant.weight &amp;&amp; variant.weight_unit">
+                <service-call name="mantle.shopify.ShopifyProductServices.create#ShopifyWeight" in-map="[
+                    productId:variantProductId, weight:variant.weight, unit:variant.weight_unit]"/>
+            </if>
 
-                <!-- create product content -->
+            <if condition="variant.price">
+                <service-call name="mantle.shopify.ShopifyProductServices.create#ShopifyPrice" in-map="[
+                    productStoreId:productStoreId, productId:variantProductId, amount:variant.price]"/>
+            </if>
 
-                <!-- If inventory is managed by Moqui, we would not process this value from Shopify -->
-                <if condition="variant.inventory_management == 'shopify'">
-                    <service-call name="mantle.product.AssetServices.record#PhysicalInventoryQuantity" out-map="assetOut"
-                            in-map="[productId:variantProductId, facilityId:productStore.inventoryFacilityId, 
-                                ownerPartyId:ownerPartyId, statusId:'AstAvailable', quantity:variant.inventory_quantity]"/>
-                </if>
+            <!-- optional property on the shopify object -->
+            <iterate list="variant.presentment_prices" entry="price">
+                <service-call name="mantle.shopify.ShopifyProductServices.create#ShopifyPrice" in-map="[
+                    productStoreId:productStoreId, productId:variantProductId, currency:price.currency, amount:price.amount]"/>
             </iterate>
+
+            <!-- create product content -->
+
+            <!-- If inventory is managed by Moqui, we would not process this value from Shopify -->
+            <if condition="variant.inventory_management == 'shopify'">
+                <service-call name="mantle.product.AssetServices.record#PhysicalInventoryQuantity" out-map="assetOut"
+                        in-map="[productId:variantProductId, facilityId:inventoryFacilityId, 
+                            ownerPartyId:ownerPartyId, statusId:'AstAvailable', quantity:variant.inventory_quantity]"/>
+            </if>
         </actions>
     </service>
 
+
+    <service verb="create" noun="ShopifyWeight">
+        <in-parameters>
+            <parameter name="productId" required="true"/>
+            <parameter name="weight" required="true"/>
+            <parameter name="unit" required="true"/>
+        </in-parameters>
+        <actions>
+            <entity-find-one entity-name="moqui.basic.Uom" value-field="weightUom">
+                <field-map field-name="uomTypeEnumId" value="UT_WEIGHT_MEASURE"/>
+                <field-map field-name="abbreviation" from="unit"/>
+            </entity-find-one>
+
+            <entity-find-one entity-name="mantle.product.ProductDimension" value-field="dimension">
+                <field-map field-name="dimensionTypeId" value="ShippingWeight"/>
+                <field-map field-name="valueUomId" from="weightUom.uomId"/>
+            </entity-find-one>
+
+            <if condition="dimension">
+                <return /><!-- weight found, do nothing -->
+            </if>
+
+            <service-call name="create#mantle.product.ProductDimension" in-map="[
+                productId:productId, dimensionTypeId:'ShippingWeight', valueUomId:weightUom.uomId, value:weight]"/>
+        </actions>
+    </service>
 
     <service verb="create" noun="ShopifyPrice">
         <in-parameters>
@@ -255,15 +334,12 @@
             <service-call name="mantle.shopify.ShopifyProductServices.get#ProductStoreCategories"
                     in-map="[productStoreId:remote.productStoreId]" out-map="context"/>
 
-            <log message="productCategoryIdList: ${productCategoryIdList}" />
-
             <!-- get all the memberships to the categories -->
             <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="pcmList"><date-filter />
                 <econdition field-name="productCategoryId" operator="in" from="productCategoryIdList"/></entity-find>
 
             <!-- get a unique list of productIds based on those memberships -->
             <set field="productIdList" from="pcmList.productId.unique( false )"/>
-            <log message="productIdList: ${productIdList}" />
 
             <iterate list="productIdList" entry="productId">
                 <service-call name="mantle.shopify.ShopifyProductServices.upload#MoquiProduct"
@@ -292,9 +368,6 @@
                 <set field="productData.id" from="shopifyIdentification.idValue"/>
             </if>
 
-            <log message="productData: ${groovy.json.JsonOutput.toJson([product: productData])}"/>
-
-            <set field="apiError" value=""/>
             <set field="apiResponse" value="[:]"/>
             <script><![CDATA[
                 String method = shopifyIdentification ? 'PUT' : 'POST';
@@ -355,6 +428,113 @@
         </actions>
     </service>
 
+    <!-- 
+        Endpoint to pull down products from Shopify.
+
+        https://{store_name}.myshopify.com/admin/api/2023-04/custom_collections.json?limit={limit}
+    -->
+    <service verb="download" noun="ShopifyCollections">
+        <in-parameters>
+            <parameter name="systemMessageRemoteId" required="true"/>
+            <parameter name="limit" default-value="250"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="productCategoryIdList"/>
+        </out-parameters>
+        <actions>
+            <script>import groovy.json.JsonSlurper</script>
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote" />
+            <if condition="!remote"><return error="true" message="No Remote of type 'ShopifySystemMessageType' found for ID ${systemMessageRemoteId}"/></if>
+            <entity-find-related-one relationship-name="mantle.product.store.ProductStore" value-field="remote" to-value-field="productStore"/>
+            <if condition="!productStore"><return error="true" message="No ProductStore configured for remote ID ${systemMessageRemoteId}"/></if>
+
+            <!-- get the browse root for this store, this is needed to store the new categories under -->
+            <entity-find entity-name="mantle.product.store.ProductStoreCategory" list="pscList">
+                <econdition field-name="storeCategoryTypeEnumId" value="PsctBrowseRoot"/>
+                <econdition field-name="productStoreId" from="remote.productStoreId"/><date-filter /></entity-find>
+            <if condition="!pscList"><return error="true" message="No Browse Root Category found for Store ID ${productStoreId}"/></if>
+            <set field="browseRootCategoryid" from="pscList.first().productCategoryId"/>
+
+            <set field="apiResponse" from="[:]"/>
+            <script><![CDATA[
+                String collectionsUrl = ec.resource.expand(remote.sendUrl, "", [resource:"custom_collections"]) + "?limit=${limit}";
+
+                org.moqui.util.RestClient collectionsRestClient = ec.service.rest().method("GET")
+                    .addHeader("Content-Type", "application/json")
+                    .basicAuth(remote.username, remote.password)
+                    .uri(collectionsUrl);
+
+                org.moqui.util.RestClient.RestResponse collectionsRestResponse = collectionsRestClient.call()
+
+                if (collectionsRestResponse.statusCode != 200) {
+                    String apiError = "${collectionsRestResponse.statusCode} ${collectionsRestResponse.reasonPhrase}: ${collectionsRestResponse.text()}"
+                } else {
+                    apiResponse = new groovy.json.JsonSlurper().parseText(collectionsRestResponse.text());
+                }
+            ]]></script>
+            <if condition="apiError">
+                <return error="true" message="Shopify Collections API Error ${apiError}"/>
+            </if>
+            <set field="productCategoryIdList" from="[]"/>
+            <iterate list="apiResponse.custom_collections" entry="collection">
+                <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="category">
+                    <field-map field-name="pseudoId" from="collection.id"/></entity-find-one>
+
+                <if condition="category"><then>
+                    <set field="productCategoryId" from="category.productCategoryId"/>
+                    <set field="category.categoryName" from="collection.title"/>
+                    <set field="category.description" from="collection.body_html"/>
+                    <entity-update value-field="category"/>
+                </then><else>
+                    <service-call name="create#mantle.product.category.ProductCategory" out-map="context"
+                        in-map="[productCategoryTypeEnumId:'PctCatalog', pseudoId:collection.id, categoryName:collection.title, description:collection.body_html, ownerPartyId:productStore.organizationPartyId]"/>
+
+                    <service-call name="create#mantle.product.category.ProductCategoryRollup" out-map="context"
+                        in-map="[productCategoryId:productCategoryId, parentProductCategoryId:browseRootCategoryid, fromDate:collection.published_at]"/>
+                </else></if>
+
+                <set field="apiResponse" value="[:]"/>
+                <script><![CDATA[
+                    String collectsUrl = ec.resource.expand(remote.sendUrl, "", [resource:"collects"]) + "?collection_id=${collection.id}";
+
+                    org.moqui.util.RestClient collectsRestClient = ec.service.rest().method("GET")
+                        .addHeader("Content-Type", "application/json").basicAuth(remote.username, remote.password).uri(collectsUrl);
+
+                    org.moqui.util.RestClient.RestResponse collectsRestResponse = collectsRestClient.call()
+                    if (collectsRestResponse.statusCode != 200) {
+                        apiError = "${collectsRestResponse.statusCode} ${collectsRestResponse.reasonPhrase}: ${collectsRestResponse.text()}"
+                    } else {
+                        apiResponse = new groovy.json.JsonSlurper().parseText(collectsRestResponse.text());
+                    }
+                ]]></script>
+                <if condition="apiError">
+                    <return error="Shopify Collecs API Error ${apiError}"/>
+                </if>
+
+                <iterate list="apiResponse.collects" entry="collect">
+                    <!-- get the moquiId id of this shopifyId -->
+                    <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="shopifyId">
+                        <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
+                        <field-map field-name="idValue" from="collect.product_id"/></entity-find-one>
+
+                    <if condition="!shopifyId">
+                        <return error="true" message="The Shopify product_id: ${collect.product_id} is not linked with a moqui product, please download the products first calling download#ShopifyProducts" />
+                    </if>
+                    <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="pcmList">
+                        <econdition field-name="productId" from="shopifyId.productId"/>
+                        <econdition field-name="productCategoryId"/><date-filter/></entity-find>
+
+                    <if condition="!pcmList">
+                        <service-call name="create#mantle.product.category.ProductCategoryMember" out-map="context"
+                            in-map="[productCategoryId:productCategoryId, productId:shopifyId.productId, 
+                            fromDate:collection.created_at ?: ec.user.nowTimestamp]"/>
+                    </if>
+                </iterate>
+                <set field="productCategoryIdList" from="productCategoryIdList.plus(productCategoryId)"/>
+            </iterate>
+        </actions>
+    </service>
+
     <service verb="upload" noun="MoquiStoreCategories">
         <in-parameters>
             <parameter name="systemMessageRemoteId" required="true"/>
@@ -372,12 +552,9 @@
                 <econdition field-name="productStoreId" from="remote.productStoreId"/><date-filter /></entity-find>
             <if condition="!pscList"><return error="true" message="No Browse Root Category found for Store ID ${productStoreId}"/></if>
 
-
-            <set field="productCategoryIdList" from="[]"/>
-
             <!-- We get all the categories under the browse root recursively -->
             <service-call name="mantle.shopify.ShopifyProductServices.populate#CategoriesRecursive" out-map="context"
-                in-map="[productCategoryId:pscList.first().productCategoryId, productCategoryIdList:productCategoryIdList]"/>
+                in-map="[parentProductCategoryId:pscList.first().productCategoryId]"/>
 
             <iterate list="productCategoryIdList" entry="productCategoryId">
                 <service-call name="mantle.shopify.ShopifyProductServices.upload#MoquiCategory"
@@ -391,9 +568,6 @@
             <parameter name="systemMessageRemoteId" required="true"/>
             <parameter name="productCategoryId" required="true"/>
         </in-parameters>
-        <out-parameters>
-            <parameter name="productCategoryIdList"/>
-        </out-parameters>
         <actions>
             <!-- get all the products assigned to these categories -->
             <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="pcmList">
@@ -414,8 +588,6 @@
             <set field="custom_collection" from="[:]"/>
             <set field="custom_collection.title" from="category.categoryName"/>
             <set field="custom_collection.collects" from="collects"/>
-
-            <log message="method: ${category.pseudoId == category.productCategoryId ? 'POST' : 'PUT'} json: ${groovy.json.JsonOutput.toJson([custom_collection: custom_collection])}"/>
 
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
 
@@ -439,7 +611,7 @@
             ]]></script>
 
             <if condition="apiError">
-                <return error="Shopify Products API Error ${apiError}"/>
+                <return error="Shopify custom_collection API Error ${apiError}"/>
             </if>
 
             <set field="category.pseudoId" from="apiResponse.custom_collection.id"/>
@@ -455,11 +627,11 @@
             <parameter name="productCategoryIdList"/>
         </out-parameters>
         <actions>
-            <!-- get all the categories for the store -->
+            <!-- Get just the browse root for this store -->
             <entity-find entity-name="mantle.product.store.ProductStoreCategory" list="pscList">
+                <econdition field-name="storeCategoryTypeEnumId" value="PsctBrowseRoot"/>
                 <econdition field-name="productStoreId"/><date-filter /></entity-find>
 
-            <set field="productCategoryIdList" from="[]"/>
             <iterate list="pscList" entry="psc">
                 <service-call name="mantle.shopify.ShopifyProductServices.populate#CategoriesRecursive" out-map="context"
                     in-map="[productCategoryId:psc.productCategoryId, productCategoryIdList:productCategoryIdList]"/>
@@ -469,27 +641,28 @@
 
     <service verb="populate" noun="CategoriesRecursive">
         <in-parameters>
-            <parameter name="productCategoryId" required="true"/>
+            <parameter name="parentProductCategoryId" required="true"/>
             <parameter name="productCategoryIdList" type="List"/>
         </in-parameters>
         <out-parameters>
             <parameter name="productCategoryIdList"/>
         </out-parameters>
         <actions>
-            <set field="productCategoryIdList" from="productCategoryIdList ? productCategoryIdList.plus(productCategoryId) : [productCategoryId]"/>
 
             <!-- get all the child category rollups -->
             <entity-find entity-name="mantle.product.category.ProductCategoryRollup" list="rollupList">
-                <econdition field-name="parentProductCategoryId" from="productCategoryId"/><date-filter /></entity-find>
+                <econdition field-name="parentProductCategoryId"/><date-filter /></entity-find>
 
             <iterate list="rollupList" entry="rollup">
                 <!-- check if this category has already been included in the productCategoryIdList List -->
                 <if condition="productCategoryIdList.find({it == rollup.productCategoryId})">
-                     <log message="Category ID ${rollup.productCategoryId} prebiously added, skipping"/>
+                     <log message="Category ID ${rollup.productCategoryId} previously added, skipping"/>
                      <continue/>
                 </if>
+                <set field="productCategoryIdList" from="productCategoryIdList ? productCategoryIdList.plus(rollup.productCategoryId) : [rollup.productCategoryId]"/>
+
                 <service-call name="mantle.shopify.ShopifyProductServices.populate#CategoriesRecursive" out-map="context"
-                    in-map="[productCategoryId:rollup.productCategoryId, childCategories:childCategories]"/>
+                    in-map="[parentProductCategoryId:rollup.productCategoryId, productCategoryIdList:productCategoryIdList]"/>
             </iterate>
         </actions>
     </service>

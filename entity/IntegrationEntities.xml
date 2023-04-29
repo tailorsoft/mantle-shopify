@@ -7,13 +7,7 @@
         <field name="initDate" type="date-time"/>
     </entity>
     <extend-entity entity-name="SystemMessage" package="moqui.service.message">
-        <field name="sentProductId" type="text-medium"/>
-        <field name="sentProductCategoryId" type="text-medium"/>
-        <field name="sentPartyId" type="text-medium"/>
-        <field name="sentContactMechId" type="text-medium"/>
-        <field name="shopifyOrderId" type="text-medium"/>
-        <field name="shopifyDisplayOrderId" type="text-medium"/>
-        <field name="sentShipmentId" type="text-medium"/>
+        <field name="productId" type="text-medium"/>
     </extend-entity>
     <extend-entity entity-name="Shipment" package="mantle.shipment">
         <field name="shopifyShipmentStatusId" type="text-short"/>

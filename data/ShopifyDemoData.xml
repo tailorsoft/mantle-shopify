@@ -7,25 +7,25 @@
         username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
 
     <!-- poll the service to get the demo shopify orders once per 15 minutes -->
-    <moqui.service.job.ServiceJob jobName="ShopifyDemo_poll_orders" description="Shopify Demo Poll Orders"
+    <moqui.service.job.ServiceJob jobName="poll_shopify_orders_download" description="Shopify Demo Poll Orders"
             serviceName="mantle.shopify.ShopifyServices.download#ShopifyOrders" cronExpression="0 0/15 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
     </moqui.service.job.ServiceJob>
 
     <!-- poll the service to get the demo shopify products once per hour -->
-    <moqui.service.job.ServiceJob jobName="poll_download_shopify_products" description="Poll download Shopify Products Demo"
+    <moqui.service.job.ServiceJob jobName="poll_shopify_products_download" description="Poll download Shopify Products Demo"
             serviceName="mantle.shopify.ShopifyProductServices.download#ShopifyProductList" cronExpression="0 0 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
     </moqui.service.job.ServiceJob>
 
     <!-- poll the service to get the demo shopify products once per hour -->
-    <moqui.service.job.ServiceJob jobName="poll_upload_shopify_products" description="Poll upload Shopify Products Demo"
+    <moqui.service.job.ServiceJob jobName="poll_shopify_products_upload" description="Poll upload Shopify Products Demo"
             serviceName="mantle.shopify.ShopifyProductServices.upload#MoquiProductList" cronExpression="0 0 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
     </moqui.service.job.ServiceJob>
 
     <!-- poll the service to upload the demo categories to shopify once per hour -->
-    <moqui.service.job.ServiceJob jobName="poll_upload_shopify_categories" description="Poll upload Shopify Store Categories Demo"
+    <moqui.service.job.ServiceJob jobName="poll_shopify_categories_upload" description="Poll upload Shopify Store Categories Demo"
             serviceName="mantle.shopify.ShopifyProductServices.upload#MoquiStoreCategories" cronExpression="0 0 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
     </moqui.service.job.ServiceJob>
