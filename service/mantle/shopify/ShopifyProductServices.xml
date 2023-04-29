@@ -58,7 +58,7 @@
             <if condition="lastProductId">
                 <service-call name="create#moqui.service.message.SystemMessage" out-map="context"
                                 in-map="[systemMessageTypeId:'ShopifySystemMessageType', systemMessageRemoteId:systemMessageRemoteId,
-                                messageText:restResponse.text(), docType:'json', docType:'productList', docControl:lastProductId,
+                                messageText:restResponse.text(), docType:'json', docType:'products', docControl:lastProductId,
                                 isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
             </if>
         </actions>

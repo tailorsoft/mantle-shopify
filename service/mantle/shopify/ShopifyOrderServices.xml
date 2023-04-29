@@ -61,7 +61,7 @@
             <if condition="lastOrderId">
                 <service-call name="create#moqui.service.message.SystemMessage" out-map="context" in-map="[
                     systemMessageTypeId:'ShopifySystemMessageType', systemMessageRemoteId:systemMessageRemoteId,
-                    messageText:restResponse.text(), docType:'orderList', docControl:lastOrderId,
+                    messageText:restResponse.text(), docType:'orders', docControl:lastOrderId,
                     isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
             </if>
         </actions>
@@ -140,13 +140,76 @@
         </actions>
     </service>
 
+    <!-- fulfill order -->
+    <service verb="queue" noun="ShopifyFulfillmentSystemMessage" authenticate="anonymous-all">
+        <description>Creates a system message for sending to shopify that decribes orders fulfilled in a shipment</description>
+        <in-parameters>
+            <parameter name="shipmentId" required="true" />
+        </in-parameters>
+        <actions>
+            <entity-find-one entity-name="mantle.shipment.Shipment" value-field="shipment" />
+            <if condition="!shipment"><return error="true" message="No shipment found with ID ${shipmentId}"/></if>
+            <if condition="!shipment.statusId in ['ShipShipped','ShipDelivered']">
+                <return error="true" message="ERROR:The shipment ${shipment.shipmentId} must be in status Shipped or Delivered for registering a fulfillment "/>
+            </if>
+
+            <set field="tracking_info" from="[:]"/>
+            <entity-find entity-name="mantle.shipment.ShipmentPackageRouteSeg" list="packageRouteSegList">
+                <econdition field-name="shipmentId"/><order-by field-name="shipmentRouteSegmentSeqId,shipmentPackageSeqId"/></entity-find>
+            <if condition="packageRouteSegList">
+                <set field="tracking_info.number" from="packageRouteSegList.first().trackingCode"/>
+            </if>
+
+            <!-- get the carrierPartyId from the first ShipmentRouteSegment -->
+            <entity-find entity-name="mantle.shipment.ShipmentRouteSegment" list="shipmentRouteSegmentList">
+                <econdition field-name="shipmentId"/><order-by field-name="shipmentRouteSegmentSeqId"/></entity-find>
+            <set field="carrierPartyId" from="shipmentRouteSegmentList ? shipmentRouteSegmentList.first().carrierPartyId : null"/>
+
+            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="carrierShopifyId">
+                <field-map field-name="partyId" from="carrierPartyId"/><field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
+            </entity-find-one>
+            <if condition="carrierShopifyId">
+                <set field="tracking_info.company" from="carrierShopifyId.idValue"/>
+            </if>
+
+            <!-- get all the shopify fulfillment orders from this shipment -->
+            <set field="orderIdList" from="shipmentItemSourceList.orderId.unique( false )"/>
+            <entity-find entity-name="mantle.shopify.ShopifyFulfillmentOrder" list="fulfillmentOrders">
+                <econdition field-name="orderId" operator="in" from="orderIdList"/></entity-find>
+
+            <entity-find entity-name="mantle.shipment.ShipmentItemSourceOrderItem" list="shipmentOrderItemList">
+                <econdition field-name="shipmentId"/></entity-find>
+            <set field="line_items_by_fulfillment_order" from="[]"/>
+            <iterate list="fulfillmentOrders" entry="fulfillmentOrder">
+
+                <!-- get all the shipped line items from this fulfillment order -->
+                <set field="fulfillmentOrderLineItems" from="shipmentOrderItemList.findAll({it.orderId == fulfillmentOrder.orderId})"/>
+                <set field="line_items" from="[]"/>
+                <iterate list="shipmentOrderItemList" entry="shipmentOrderItems">
+                    <set field="item" from="[:]"/>
+                    <set field="item.id" from="shipmentOrderItems.fulfillmentOrderLineItemId"/>
+                    <set field="item.quantity" from="shipmentOrderItems.quantityPicked"/>
+                    <set field="line_items" from="line_items.plus(item)"/>
+                </iterate>
+                <set field="fulfillment_order" from="[:]"/>
+                <set field="fulfillment_order.fulfillment_order_id" from="fulfillmentOrder.fulfillmentOrderId"/>
+                <set field="fulfillment_order.fulfillment_order_line_items" from="line_items"/>
+
+                <set field="line_items_by_fulfillment_order" from="line_items_by_fulfillment_order.plus(fulfillment_order)"/>
+            </iterate>
+
+            <set field="fulfillment" from="[:]"/>
+            <set field="fulfillment.message" from="shipment.handlingInstructions"/>
+            <set field="fulfillment.notify_customer" from="false"/>
+            <set field="fulfillment.tracking_info" from="tracking_info"/>
+            <set field="fulfillment.line_items_by_fulfillment_order" from="line_items_by_fulfillment_order"/>
+
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                in-map="[systemMessageTypeId:'ShopifySystemMessageType', messageText:JsonOutput.toJson(fulfillment), docType:'fulfillments']"/>
+        </actions>
+    </service>
+
+
     <!-- cancelOrder -->
 
-
-
-
-    <!-- -->
-
-
-    <!-- cancelOrder -->
 </services>

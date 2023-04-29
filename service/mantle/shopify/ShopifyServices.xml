@@ -9,13 +9,13 @@
         <implements service="org.moqui.impl.SystemMessageServices.consume#SystemMessage"/>
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
-            <if condition="systemMessage.docType == 'productList'"><then>
+            <if condition="systemMessage.docType == 'products'"><then>
                 <service-call name="mantle.shopify.ShopifyProductServices.consume#ProductListSystemMessage" in-map="context" out-map="context"/>
 
             </then><else-if condition="systemMessage.docType == 'product'">
                 <service-call name="mantle.shopify.ShopifyProductServices.consume#ProductSystemMessage" in-map="context" out-map="context"/>
 
-            </else-if><else-if condition="systemMessage.docType == 'orderList'">
+            </else-if><else-if condition="systemMessage.docType == 'orders'">
                 <service-call name="mantle.shopify.ShopifyOrderServices.consume#OrderListSystemMessage" in-map="context" out-map="context"/>
 
             </else-if><else-if condition="systemMessage.docType == 'order'">
@@ -24,6 +24,27 @@
             </else-if><else>
                 <return error="true" message="No match docType found for systemMessage ID ${systemMessageId}"/>
             </else></if>
+        </actions>
+    </service>
+
+    <service verb="send" noun="ShopifySystemMessage" authenticate="anonymous-all">
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <actions>
+            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote">
+                <field-map field-name="systemMessageTypeId" value="ShopifySystemMessageType"/>
+                <field-map field-name="systemMessageRemoteId" from="systemMessage.systemMessageRemoteId"/>
+            </entity-find-one>
+            <if condition="!remote"><return error="true" message="No Remote of type 'ShopifySystemMessageType' found for ID ${systemMessageId}"/></if>
+            <script><![CDATA[
+                String url = ec.resource.expand(remote.sendUrl, "", [resource: systemMessage.docType]);
+                org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
+                    .addHeader("Content-Type", "application/json").basicAuth(remote.username, remote.password).uri(url).call();
+
+                if (restResponse.statusCode != 200) {
+                    ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${restResponse.text()}")
+                }
+            ]]></script>
         </actions>
     </service>
 

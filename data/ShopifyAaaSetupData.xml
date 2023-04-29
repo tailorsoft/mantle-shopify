@@ -20,7 +20,8 @@
     <!-- TODO: ADD ENDPOINT TO VERIFY LOCATIONS IN SHOPIFY. OR CREATE A LOCATION FOR THE STORE FACILITY -->
 
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifySystemMessageType" description="Shopify System Message Type"
-            consumeServiceName="mantle.shopify.ShopifyServices.consume#ShopifySystemMessage" />
+            consumeServiceName="mantle.shopify.ShopifyServices.consume#ShopifySystemMessage" 
+            sendServiceName="mantle.shopify.ShopifyServices.send#ShopifySystemMessage"/>
     
     <mantle.party.PartyIdentification partyId="USPS" partyIdTypeEnumId="PtidShopify" idValue="USPS" />
     <mantle.party.PartyIdentification partyId="UPS" partyIdTypeEnumId="PtidShopify" idValue="UPS" />
