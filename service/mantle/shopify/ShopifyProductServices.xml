@@ -66,7 +66,7 @@
 
     <!-- 
         Takes the list of Products and splits it into a separate child SystemMessage for each product
-        This was necessary for storing the lastOrderId in the docControl of the parent message.
+        This was necessary for storing the lastProductId in the docControl of the parent message.
     -->
     <service verb="consume" noun="ProductListSystemMessage">
         <implements service="org.moqui.impl.SystemMessageServices.consume#SystemMessage"/>
@@ -149,8 +149,6 @@
                     <set field="mapOptionToFeature[value]" from="productFeatureId"/> 
                 </iterate>
             </iterate>
-
-
 
             <entity-find entity-name="mantle.product.ProductContent" list="contentList">
                 <econdition field-name="productContentTypeEnumId" value="PcntImageUrlDetail"/>
@@ -244,8 +242,6 @@
                     productStoreId:productStoreId, productId:variantProductId, currency:price.currency, amount:price.amount]"/>
             </iterate>
 
-            <!-- create product content -->
-
             <!-- If inventory is managed by Moqui, we would not process this value from Shopify -->
             <if condition="variant.inventory_management == 'shopify'">
                 <service-call name="mantle.product.AssetServices.record#PhysicalInventoryQuantity" out-map="assetOut"
@@ -254,7 +250,6 @@
             </if>
         </actions>
     </service>
-
 
     <service verb="create" noun="ShopifyWeight">
         <in-parameters>
@@ -319,7 +314,7 @@
         </actions>
     </service>
 
-    <service verb="upload" noun="MoquiProductList">
+    <service verb="upload" noun="MoquiStoreProducts">
         <in-parameters>
             <parameter name="systemMessageRemoteId" required="true"/>
         </in-parameters>
@@ -648,7 +643,6 @@
             <parameter name="productCategoryIdList"/>
         </out-parameters>
         <actions>
-
             <!-- get all the child category rollups -->
             <entity-find entity-name="mantle.product.category.ProductCategoryRollup" list="rollupList">
                 <econdition field-name="parentProductCategoryId"/><date-filter /></entity-find>

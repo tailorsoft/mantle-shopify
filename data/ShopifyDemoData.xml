@@ -20,7 +20,7 @@
 
     <!-- poll the service to get the demo shopify products once per hour -->
     <moqui.service.job.ServiceJob jobName="poll_shopify_products_upload" description="Poll upload Shopify Products Demo"
-            serviceName="mantle.shopify.ShopifyProductServices.upload#MoquiProductList" cronExpression="0 0 * * * ?" paused="Y">
+            serviceName="mantle.shopify.ShopifyProductServices.upload#MoquiStoreProducts" cronExpression="0 0 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
     </moqui.service.job.ServiceJob>
 
