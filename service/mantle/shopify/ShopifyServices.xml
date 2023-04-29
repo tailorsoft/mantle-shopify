@@ -38,7 +38,7 @@
             <if condition="!remote"><return error="true" message="No Remote of type 'ShopifySystemMessageType' found for ID ${systemMessageId}"/></if>
             <script><![CDATA[
                 String url = ec.resource.expand(remote.sendUrl, "", [resource: systemMessage.docType]);
-                org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
+                org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("POST")
                     .addHeader("Content-Type", "application/json").basicAuth(remote.username, remote.password).uri(url).call();
 
                 if (restResponse.statusCode != 200) {
