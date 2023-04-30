@@ -30,9 +30,7 @@
                 <econdition field-name="docType" value="orderList"/>
                 <order-by field-name="initDate"/>
             </entity-find>
-            <if condition="prevMessages">
-                <set field="lastOrderId" from="prevMessages.first().docControl"/>
-            </if>
+            <set field="lastOrderId" from="prevMessages ? prevMessages.first().docControl : null"/>
 
             <!-- https://{hostname}/admin/api/{version}/{resource}.json?limit=250&fulfillment_status=unfulfilled&since_id={last} -->
             <script><![CDATA[
@@ -55,7 +53,7 @@
                     return
                 }
                 Map messageMap = new JsonSlurper().parseText(restResponse.text());
-                String lastOrderId = messageMap.orders ? messageMap.orders.last().id : null;
+                lastOrderId = messageMap.orders ? messageMap.orders.last().id : null;
             ]]></script>
 
             <if condition="lastOrderId">
@@ -85,17 +83,13 @@
             </entity-find-one>
 
             <iterate list="messageMap.orders" entry="order">
-				<script><![CDATA[
+                <script><![CDATA[
                     String url = ec.resource.expand(remote.sendUrl, "", [resource: "${order.id}/fulfillment_orders"]);
-                    org.moqui.util.RestClient restClient = ec.service.rest().method("GET")
-                        .addHeader("Content-Type", "application/json")
-                        .basicAuth(remote.username, remote.password)
-                        .uri(url);
-
-                    org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
+                    org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
+                        .addHeader("Content-Type", "application/json").basicAuth(remote.username, remote.password).uri(url).call();
 
                     if (restResponse.statusCode != 200) {
-                        ec.logger.error("Shopify Orders API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} for url: ${url}")
+                        ec.message.addError("Shopify Orders API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}")
                     } else {
                     	Map responseMap = new JsonSlurper().parseText(restResponse.text());
                     }

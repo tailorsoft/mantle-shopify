@@ -27,9 +27,7 @@
                 <econdition field-name="docType" value="productList"/>
                 <order-by field-name="initDate"/>
             </entity-find>
-            <if condition="prevMessages">
-                <set field="lastProductId" from="prevMessages.first().docControl"/>
-            </if>
+            <set field="lastProductId" from="prevMessages ? prevMessages.first().docControl : null"/>
 
             <!-- e.g: https://moquidemo.myshopify.com/admin/api/2022-07/products.json -->
             <script><![CDATA[
@@ -52,7 +50,7 @@
                 }
 
                 Map messageMap = new JsonSlurper().parseText(restResponse.text());
-                String lastProductId = messageMap.products ? messageMap.products.last().id : null;
+                lastProductId = messageMap.products ? messageMap.products.last().id : null;
             ]]></script>
 
             <if condition="lastProductId">
