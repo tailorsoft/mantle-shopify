@@ -1,12 +1,27 @@
-# Shopify Integration.
+# Moqui/Shopify Integration.
 
 <img src="https://cdn.shopify.com/shopifycloud/help/assets/sharing/share-image-generic-bd3ce342a910c2489b672b00e45c74b1b1548662c41448e456547fa5b6e0f585.png" width="248">
 
-## Generate Shopify API credentials
-Prerequesits.
- - Shopify Store
- - custom App with REST API credentials
+## Introduction
+Moqui Framework and Artifacts is is a fully fledged ERP solution with Fulfilment capabilities. 
+Shopify is a very popular Storefront used by many Ecommerce companies. 
+This integration allows products, collections, orders, inventory, payments and refunds to be synced between Shopify and Moqui. 
+It requires that you have a store set up in Shopify, and a basic knowledge of the Moqui Framework, and entities such as:
 
+- mantle.product.Product
+- mantle.product.store.ProductStore
+- mantle.product.category.ProductCategory
+- mantle.order.OrderHeader
+- mantle.order.OrderItem
+- mantle.facility.Facility
+- mantle.product.asset.Asset
+- moqui.service.job.ServiceJob
+- moqui.service.message.SystemMessage
+
+For more detailed information on the Moqui Framework, please read the documentation available here:
+https://www.moqui.org/docs/framework
+
+## Generate Shopify API credentials
 
 To allow moqui to communicate with the Shopify API for your store, you need to create a 'Custom App' in the shopify admin:
  1. From your Shopify admin, click Settings > Apps and sales channels.
@@ -26,27 +41,29 @@ https://help.shopify.com/en/manual/apps/app-types/custom-apps?shpxid=d49fae40-17
 
 Go to the "API Credentials" tab and take note of the API key and secret key.
 
+### Create a default 'Location' in Shopify
+ 1. From your Shopify admin, click Settings > Locations
+ 2. Click on the name of the default location
+ 3. Modify the 'Location name' to match the name of your 'Facility' in Moqui. 
+
+ In the example, we call the location 'Ziziwork Retail Warehouse'
+
 
 ## Configure Moqui to read/write Orders and Fulfillments
 The first step is to configure a SystemMessageRemote that will allow calls to the Shopify REST API:
 ```
 <moqui.service.message.SystemMessageRemote systemMessageTypeId="ShopifySystemMessageType" 
         systemMessageRemoteId="" productStoreId="" username="" password=""
-        sendUrl="https://moquidemo.myshopify.com/admin/api/2023-01/${resource}.json"/>
+        sendUrl="https://{store_name}.myshopify.com/admin/api/2023-01/${resource}.json"/>
 ```
-Give your remote a name, the productStoreId that it will be interacting with, and the API credentials that were noted from Shopify. The 'API Key' should be configured in the 'username' field of the SystemMessageRemote and the password in the same name field.
+Give your remote a name, the productStoreId that it will be interacting with, and the API credentials that were noted from Shopify. The 'API Key' should be configured in the 'username' field of the SystemMessageRemote and the password in the same name field. Replace '{store_name}' with the subdomain of your store, and the sendUrl should look something like: https://moquidemo.myshopify.com/admin/api/2023-01/${resource}.json
 
-There are 2 services that need to be called initially to configure moqui for handling shopify orders, and doing fulfilment.
-A fulfilment center is described as a 'Location' in Shopify and 'Facility' in Moqui. If you would like Moqui to act as your fulfilment center, ensure that a 'Location' is created in your shopify store, and that its 'name' matches the name of the Facility configured in your Moqui store.
+Run the following service to configure the Facility in Moqui with the previously created Location in Shopify:
+```
 
+mantle.shopify.ShopifyServices.configure#FacilityFromShopifyLocation
 ```
-mantle.shopify.ShopifyServices.configure#FacilityWithShopifyLocation
-```
-The second service simply tells Shopify that Moqui should be able to read fulfilment orders and push shipment notifications.
 
-```
-mantle.shopify.ShopifyServices.configure#MoquiAsFulfillmentService
-```
 
 ## Services to Sync Products and Categories
 There are 2 services that can be called to download products and collections from Shopify down to Moqui.

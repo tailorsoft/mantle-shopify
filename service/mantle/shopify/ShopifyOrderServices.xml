@@ -83,22 +83,13 @@
             </entity-find-one>
 
             <iterate list="messageMap.orders" entry="order">
-                <script><![CDATA[
-                    String url = ec.resource.expand(remote.sendUrl, "", [resource: "${order.id}/fulfillment_orders"]);
-                    org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
-                        .addHeader("Content-Type", "application/json").basicAuth(remote.username, remote.password).uri(url).call();
-
-                    if (restResponse.statusCode != 200) {
-                        ec.message.addError("Shopify Orders API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}")
-                    } else {
-                    	Map responseMap = new JsonSlurper().parseText(restResponse.text());
-                    }
-                ]]></script>
+                <service-call name="mantle.shopify.ShopifyOrderServices.download#ShopifyFulfillmentOrders" out-map="context"
+                                in-map="[systemMessageRemoteId:systemMessageRemoteId, shopifyOrderId:order.id]"/>
 
                 <service-call name="create#moqui.service.message.SystemMessage" out-map="context"
                                 in-map="[systemMessageTypeId:'ShopifySystemMessageType', 
                                 parentMessageId: systemMessage.systemMessageId,
-                                messageText:JsonOutput.toJson([order:order, fulfillments:responseMap]), docType:'order', 
+                                messageText:JsonOutput.toJson([order:order, fulfillment_orders:fulfillmentOrders]), docType:'order',
                                 isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
 
                 <!-- immediately try to consume the order message -->
@@ -107,6 +98,34 @@
             </iterate>
         </actions>
     </service>
+
+
+    <service verb="download" noun="ShopifyFulfillmentOrders">
+        <in-parameters>
+            <parameter name="systemMessageRemoteId" required="true"/>
+            <parameter name="shopifyOrderId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="fulfillmentOrders" type="List" />
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
+            <set field="fulfillmentOrders" from="[]"/>
+            <script><![CDATA[
+                String url = ec.resource.expand(remote.sendUrl, "", [resource: "${shopifyOrderId}/fulfillment_orders"]);
+                org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
+                    .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
+
+                if (restResponse.statusCode != 200) {
+                    ec.message.addError("Shopify Orders API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}")
+                    return;
+                }
+                Map responseMap = new groovy.json.JsonSlurper().parseText(restResponse.text());
+                fulfillmentOrders = responseMap.fulfillment_orders;
+            ]]></script>
+        </actions>
+    </service>
+
 
     <!-- consume order-->
     <service verb="consume" noun="OrderSystemMessage">
@@ -124,13 +143,45 @@
                     in-map="[order:messageMap.order, productStoreId:systemMessageRemote.productStoreId]" out-map="context"/>
 
             <!-- not sure what to do with orders that are missing the fulfillment message -->
-            <if condition="messageMap.fulfillments">
-            	<service-call name="mantle.shopify.ApiServices.consume#ShopifyFulfillmentsMap"
-                    in-map="[fulfillments:messageMap.fulfillments, orderId:orderId]"/>
+            <if condition="messageMap.fulfillment_orders">
+                <service-call name="mantle.shopify.ShopifyOrderServices.create#ShopifyFulfillmentOrders"
+                    in-map="[fulfillments:messageMap.fulfillment_orders, orderId:orderId]"/>
             </if>
 
             <set field="systemMessage.orderId" from="orderId"/>
             <entity-update value-field="systemMessage"/>
+        </actions>
+    </service>
+
+    <service verb="create" noun="ShopifyFulfillmentOrders">
+        <in-parameters>
+            <parameter name="orderId" required="true"/>
+            <parameter name="fulfillmentOrders" type="List"/>
+        </in-parameters>
+        <actions>
+            <iterate list="fulfillmentOrders" entry="fulfillment_order">
+                <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order">
+                    <field-map field-name="externalId" from="fulfillment_order.order_id"/>
+                </entity-find-one>
+
+                <service-call name="create#mantle.shopify.ShopifyFulfillmentOrder" out-map="context"
+                    in-map="[fulfillmentOrderId:fulfillment_order.id, orderId:orderId, status:fulfillment_order.status, locationId:assigned_location_id]"/>
+
+                <!-- Get Fulfillment order line items Id -->
+                <entity-find entity-name="mantle.order.OrderItem" list="orderItems" for-update="true">
+                    <econdition field-name="orderId" from="order.orderId"/>
+                    <econdition field-name="sourceReferenceId" operator="is-not-null"/>
+                </entity-find>
+                <iterate list="orderItems" entry="orderItem">
+                    <set field="lineItem" from="fulfillment_order.line_items.find{(String)it.line_item_id == orderItem.sourceReferenceId}"/>
+                    <if condition="!lineItem">
+                        <log warn="No fulfillment order line item found for OrderItem: ${orderItem.orderItemSeqId}"/>
+                        <continue/>
+                    </if>
+                    <set field="orderItem.fulfillmentOrderLineItemId" from="lineItem.id"/>
+                    <entity-update value-field="orderItem"/>
+                </iterate>
+            </iterate>
         </actions>
     </service>
 

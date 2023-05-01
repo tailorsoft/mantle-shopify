@@ -48,7 +48,7 @@
         </actions>
     </service>
 
-    <service verb="configure" noun="FacilityWithShopifyLocation">
+    <service verb="configure" noun="FacilityFromShopifyLocation">
         <in-parameters>
             <parameter name="systemMessageRemoteId" required="true"/>
         </in-parameters>
@@ -92,10 +92,15 @@
         </actions>
     </service>
 
-    <service verb="configure" noun="MoquiAsFulfillmentService">
+    <!-- 
+        I think its preferable to use the manually created Locations in Shopify and run the service configure#FacilityFromShopifyLocation
+        This is because a default location is a requirement in Shopify, to have a default address, so the location created here becomes secondary
+        The 'fulfillment service' created by this service cannot be inspected in the shopify admin, and cannot be set as default.
+    -->
+    <service verb="create" noun="ShopifyFulfilmentService">
         <in-parameters>
             <parameter name="systemMessageRemoteId" required="true"/>
-            <parameter name="facilityId" required="true"/>
+            <parameter name="facilityId">If not passed, the Facility from the store configured on the SystemMessageRemote will be used</parameter>
         </in-parameters>
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
@@ -107,19 +112,19 @@
                 </entity-find>
                 <if condition="!storeFacilityList"><return error="true" message="No Facilities configured for Store ID ${remote.productStoreId}"/></if>
 
-                <if condition="storeFacilityList.size() &gt; 1"><return error="true" message="Too many facilities configured in Moqui for Store ID ${remote.productStoreId}, Please manually configure the externalId on mantle.facility.Facility"/></if>
+                <if condition="storeFacilityList.size() &gt; 1"><return error="true" message="Too many facilities configured in Moqui, please specify the facilityId as a parameter"/></if>
                 <set field="facilityId" from="storeFacilityList.first().facilityId"/>
             </if>
 
             <entity-find-one entity-name="mantle.facility.Facility" value-field="facility" for-update="true" />
 
             <set field="fulfillment_service" from="[
-                'format': 'JSON',
+                'format': 'json',
                 'name' : facility.facilityName,
-                'callback_url': 'moqui.com',
-                'inventory_management': false,
-                'tracking_support': false,
-                'requires_shipping_method': false,
+                'callback_url': 'https://moqui.org',
+                'inventory_management': true,
+                'tracking_support': true,
+                'requires_shipping_method': true,
                 'permits_sku_sharing': true,
                 'fulfillment_orders_opt_in': true
             ]"/>
@@ -127,17 +132,26 @@
             <set field="responseMap" from="[:]"/>
             <script><![CDATA[
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("POST")
-                    .addHeader("Content-Type", "application/json").basicAuth(remote.username, remote.password)
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("X-Shopify-Access-Token", remote.password)
                     .jsonObject(groovy.json.JsonOutput.toJson([fulfillment_service: fulfillment_service]))
                     .uri(ec.resource.expand(remote.sendUrl, "", [resource: "fulfillment_services"])).call();
 
-                if (restResponse.statusCode != 200) {
+                if (restResponse.statusCode == 422) {
+                    responseMap = new groovy.json.JsonSlurper().parseText(restResponse.text());
+                    ec.message.addError("Cannot POST to fulfillment_services.json, '${responseMap.errors.base[0]}'")
+                    return;
+                }
+
+                if (restResponse.statusCode != 201) {
                     ec.message.addError("Shopify Fulillment Services API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}")
                     return;
                 }
                 responseMap = new groovy.json.JsonSlurper().parseText(restResponse.text());
             ]]></script>
-            <log message="restResponse: ${restResponse.text()} responseMap:${responseMap}"/>
+
+            <set field="facility.externalId" from="responseMap.fulfillment_service.location_id"/>
+            <entity-update value-field="facility"/>
         </actions>
     </service>
 

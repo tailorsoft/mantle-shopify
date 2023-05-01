@@ -21,6 +21,7 @@
     <entity entity-name="ShopifyFulfillmentOrder" package="mantle.shopify">
         <field name="fulfillmentOrderId" type="id" is-pk="true"/>
         <field name="orderId" type="id"/>
+        <field name="locationId" type="id">Shopify LocationId stored on Facility.externalId</field>
         <field name="status" type="text-medium"/>
     </entity>
 
