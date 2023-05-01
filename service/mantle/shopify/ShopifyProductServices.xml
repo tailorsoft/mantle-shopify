@@ -361,6 +361,8 @@
                 <set field="productData.id" from="shopifyIdentification.idValue"/>
             </if>
 
+            <log message="username:${remote.username}, password:${remote.password} url: ${ec.resource.expand(remote.sendUrl, '', [resource:'products'])}"/>
+
             <set field="apiResponse" value="[:]"/>
             <script><![CDATA[
                 String method = shopifyIdentification ? 'PUT' : 'POST';
@@ -373,14 +375,12 @@
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
 
                 if (restResponse.statusCode != 201) {
-                    apiError = "${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}"
-                } else {
-                    apiResponse = new groovy.json.JsonSlurper().parseText(restResponse.text());
+                    ec.message.addError("Shopify Products API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}")
+                    return;
                 }
+                apiResponse = new groovy.json.JsonSlurper().parseText(restResponse.text());
             ]]></script>
-            <if condition="apiError">
-                <return error="Shopify Products API Error ${apiError}"/>
-            </if>
+            <log message="apiResponse: ${apiResponse}"/>
             <set field="shopifyVariants" from="apiResponse.product.variants"/>
 
             <if condition="!shopifyIdentification">
@@ -562,6 +562,11 @@
             <parameter name="productCategoryId" required="true"/>
         </in-parameters>
         <actions>
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
+            <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="category" for-update="true"/>
+
+            <set field="apiResponse" value="[:]"/>
+
             <!-- get all the products assigned to these categories -->
             <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="pcmList">
                 <econdition field-name="productCategoryId"/><date-filter /></entity-find>
@@ -572,41 +577,55 @@
                 <econdition field-name="productIdTypeEnumId" value="PidtShopify"/>
             </entity-find>
 
+            <set field="existingCollects" from="[]"/>
+
+            <!-- if the pseudoId is not the same as productCategoryId, we think it was populated with custom_collection.id from Shopify -->
+            <if condition="category.pseudoId != category.productCategoryId">
+                <script><![CDATA[
+                    String url = ec.resource.expand(remote.sendUrl, '', [resource:'collects']) + '?collection_id=' + category.pseudoId;
+                    org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method('GET')
+                        .basicAuth(remote.username, remote.password).uri(url).call();
+
+                    if (restResponse.statusCode != 200) {
+                        ec.message.addError("Shopify custom_collection API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}, possibly the pseudoId for Product Category ${productCategoryId} was not Shopify custom_collection.id");
+                        return;
+                    }
+                    apiResponse = new groovy.json.JsonSlurper().parseText(restResponse.text());
+                ]]></script>
+                <set field="existingCollects" from="apiResponse.collects.product_id"/>
+            </if>
+
             <set field="collects" from="[]"/>
             <iterate list="pidList" entry="pid">
+                <if condition="existingCollects.find({it.toString() == pid.idValue})">
+                    <log message="product_id: ${pid.idValue} already exists on collection, skipping"/>
+                    <continue/>
+                </if>
                 <set field="collects" from="collects.plus([product_id:pid.idValue])"/>
             </iterate>
-
-            <entity-find-one entity-name="mantle.product.category.ProductCategory" value-field="category" for-update="true"/>
+            
             <set field="custom_collection" from="[:]"/>
             <set field="custom_collection.title" from="category.categoryName"/>
             <set field="custom_collection.collects" from="collects"/>
-
-            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
-
-            <set field="apiError" value=""/>
-            <set field="apiResponse" value="[:]"/>
+            
             <script><![CDATA[
                 String method = category.pseudoId == category.productCategoryId ? 'POST' : 'PUT';
-                org.moqui.util.RestClient restClient = ec.service.rest().method(method)
-                    .addHeader("Content-Type", "application/json")
+                String resource = category.pseudoId == category.productCategoryId ? 'custom_collections' : 'custom_collections/'+category.pseudoId;
+
+                org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method(method)
+                    .addHeader("Content-Type", "application/json").basicAuth(remote.username, remote.password)
                     .jsonObject(groovy.json.JsonOutput.toJson([custom_collection: custom_collection]))
-                    .basicAuth(remote.username, remote.password)
-                    .uri(ec.resource.expand(remote.sendUrl, "", [resource:"custom_collections"]));
+                    .uri(ec.resource.expand(remote.sendUrl, "", [resource:resource])).call();
 
-                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
-
-                if (restResponse.statusCode != 201) {
-                    apiError = "${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}"
-                } else {
-                    apiResponse = new groovy.json.JsonSlurper().parseText(restResponse.text());
+                if (restResponse.statusCode != 200) {
+                    ec.message.addError("Shopify custom_collection API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}");
+                    return;
                 }
+                apiResponse = new groovy.json.JsonSlurper().parseText(restResponse.text());
             ]]></script>
-
-            <if condition="apiError">
-                <return error="Shopify custom_collection API Error ${apiError}"/>
+            <if condition="!apiResponse.custom_collection.id">
+                <return error="No custom_collection ID on API Response ${restResponse.text()}"/>
             </if>
-
             <set field="category.pseudoId" from="apiResponse.custom_collection.id"/>
             <entity-update value-field="category"/>
         </actions>

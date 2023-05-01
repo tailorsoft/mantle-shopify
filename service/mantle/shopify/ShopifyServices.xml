@@ -48,6 +48,99 @@
         </actions>
     </service>
 
+    <service verb="configure" noun="FacilityWithShopifyLocation">
+        <in-parameters>
+            <parameter name="systemMessageRemoteId" required="true"/>
+        </in-parameters>
+        <actions>
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
+
+            <entity-find entity-name="mantle.product.store.ProductStoreFacility" list="storeFacilityList">
+                <econdition field-name="productStoreId" from="remote.productStoreId"/>
+                <date-filter/>
+            </entity-find>
+            <if condition="!storeFacilityList"><return error="true" message="No Facilities configured for Store ID ${remote.productStoreId}"/></if>
+            <if condition="storeFacilityList.size() &gt; 1"><return error="true" message="Too many facilities configured in Moqui for Store ID ${remote.productStoreId}, Please manually configure the externalId on mantle.facility.Facility"/></if>
+
+
+            <set field="responseMap" from="[:]"/>
+            <script><![CDATA[
+                org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
+                    .addHeader("Content-Type", "application/json").basicAuth(remote.username, remote.password)
+                    .uri(ec.resource.expand(remote.sendUrl, "", [resource: "locations"])).call();
+
+                if (restResponse.statusCode != 200) {
+                    ec.message.addError("Shopify Orders API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}")
+                    return;
+                }
+                responseMap = new groovy.json.JsonSlurper().parseText(restResponse.text());
+            ]]></script>
+            <log message="restResponse: ${restResponse.text()} responseMap:${responseMap}"/>
+            <if condition="!responseMap.locations"><return error="true" message="No Locations configured in Shopify, please add a location"/></if>
+
+            <!-- TODO, find out why extra location appears on shopify if condition="responseMap.locations.size() &gt; 1"><return error="true" message="Too many locations configured in Shopify, Please manually configure the externalId on mantle.facility.Facility"/></if-->
+
+            <entity-find-one entity-name="mantle.facility.Facility" value-field="facility" for-update="true">
+                <field-map field-name="facilityId" from="storeFacilityList.first().facilityId"/>
+            </entity-find-one>
+            <set field="location" from="responseMap.locations.find({it.name == facility.facilityName})"/>
+
+            <if condition="!location"><return error="true" message="No Location named ${facility.facilityName}} found in Shopify, aborting"/></if>
+
+            <set field="facility.externalId" from="location.id"/>
+            <entity-update value-field="facility"/>
+        </actions>
+    </service>
+
+    <service verb="configure" noun="MoquiAsFulfillmentService">
+        <in-parameters>
+            <parameter name="systemMessageRemoteId" required="true"/>
+            <parameter name="facilityId" required="true"/>
+        </in-parameters>
+        <actions>
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
+
+            <if condition="!facilityId">
+                <entity-find entity-name="mantle.product.store.ProductStoreFacility" list="storeFacilityList">
+                    <econdition field-name="productStoreId" from="remote.productStoreId"/>
+                    <date-filter/>
+                </entity-find>
+                <if condition="!storeFacilityList"><return error="true" message="No Facilities configured for Store ID ${remote.productStoreId}"/></if>
+
+                <if condition="storeFacilityList.size() &gt; 1"><return error="true" message="Too many facilities configured in Moqui for Store ID ${remote.productStoreId}, Please manually configure the externalId on mantle.facility.Facility"/></if>
+                <set field="facilityId" from="storeFacilityList.first().facilityId"/>
+            </if>
+
+            <entity-find-one entity-name="mantle.facility.Facility" value-field="facility" for-update="true" />
+
+            <set field="fulfillment_service" from="[
+                'format': 'JSON',
+                'name' : facility.facilityName,
+                'callback_url': 'moqui.com',
+                'inventory_management': false,
+                'tracking_support': false,
+                'requires_shipping_method': false,
+                'permits_sku_sharing': true,
+                'fulfillment_orders_opt_in': true
+            ]"/>
+
+            <set field="responseMap" from="[:]"/>
+            <script><![CDATA[
+                org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("POST")
+                    .addHeader("Content-Type", "application/json").basicAuth(remote.username, remote.password)
+                    .jsonObject(groovy.json.JsonOutput.toJson([fulfillment_service: fulfillment_service]))
+                    .uri(ec.resource.expand(remote.sendUrl, "", [resource: "fulfillment_services"])).call();
+
+                if (restResponse.statusCode != 200) {
+                    ec.message.addError("Shopify Fulillment Services API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}")
+                    return;
+                }
+                responseMap = new groovy.json.JsonSlurper().parseText(restResponse.text());
+            ]]></script>
+            <log message="restResponse: ${restResponse.text()} responseMap:${responseMap}"/>
+        </actions>
+    </service>
+
     <service verb="get" noun="CustomerInfo">
         <out-parameters>
             <parameter name="reportList" type="List">
