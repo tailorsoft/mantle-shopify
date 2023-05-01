@@ -60,7 +60,6 @@ Give your remote a name, the productStoreId that it will be interacting with, an
 
 Run the following service to configure the Facility in Moqui with the previously created Location in Shopify:
 ```
-
 mantle.shopify.ShopifyServices.configure#FacilityFromShopifyLocation
 ```
 

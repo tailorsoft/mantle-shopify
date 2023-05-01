@@ -39,10 +39,11 @@
             <script><![CDATA[
                 String url = ec.resource.expand(remote.sendUrl, "", [resource: systemMessage.docType]);
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("POST")
-                    .addHeader("Content-Type", "application/json").basicAuth(remote.username, remote.password).uri(url).call();
+                    .jsonObject(systemMessage.messageText).addHeader("Content-Type", "application/json")
+                    .basicAuth(remote.username, remote.password).uri(url).call();
 
                 if (restResponse.statusCode != 200) {
-                    ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${restResponse.text()}")
+                    ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${restResponse.text()} for url: ${url}")
                 }
             ]]></script>
         </actions>
@@ -85,7 +86,7 @@
             </entity-find-one>
             <set field="location" from="responseMap.locations.find({it.name == facility.facilityName})"/>
 
-            <if condition="!location"><return error="true" message="No Location named ${facility.facilityName}} found in Shopify, aborting"/></if>
+            <if condition="!location"><return error="true" message="No Location named ${facility.facilityName} found in Shopify, aborting"/></if>
 
             <set field="facility.externalId" from="location.id"/>
             <entity-update value-field="facility"/>

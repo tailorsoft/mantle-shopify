@@ -83,6 +83,7 @@
                                 messageText: JsonOutput.toJson(product), docType:'product', 
                                 isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
 
+                <!-- todo, this only consumes the last system message -->
                 <service-call name="org.moqui.impl.SystemMessageServices.consume#ReceivedSystemMessage"
                     in-map="[systemMessageId:systemMessageId, allowError:false]" async="true"/>
             </iterate>

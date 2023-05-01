@@ -10,7 +10,7 @@
 
     <!-- Service jobs to download Product and Collection data from Shopify -->
     <moqui.service.job.ServiceJob jobName="poll_shopify_products_download" description="Poll download Shopify Products Demo"
-            serviceName="mantle.shopify.ShopifyProductServices.download#ShopifyProductList" cronExpression="0 0 * * * ?" paused="Y">
+            serviceName="mantle.shopify.ShopifyProductServices.download#ShopifyProducts" cronExpression="0 0 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
     </moqui.service.job.ServiceJob>
     <moqui.service.job.ServiceJob jobName="poll_shopify_collections_download" description="Poll download Shopify Products Demo"
@@ -30,7 +30,7 @@
 
     <!-- poll the service to get the demo shopify orders once per 15 minutes -->
     <moqui.service.job.ServiceJob jobName="poll_shopify_orders_download" description="Shopify Demo Poll Orders"
-            serviceName="mantle.shopify.ShopifyServices.download#ShopifyOrders" cronExpression="0 0/15 * * * ?" paused="Y">
+            serviceName="mantle.shopify.ShopifyOrderServices.download#ShopifyOrders" cronExpression="0 0/15 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
     </moqui.service.job.ServiceJob>
 </entity-facade-xml>
