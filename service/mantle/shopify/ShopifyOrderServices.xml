@@ -30,7 +30,7 @@
                 <econdition field-name="docType" value="orderList"/>
                 <order-by field-name="initDate"/>
             </entity-find>
-            <set field="lastOrderId" from="prevMessages ? prevMessages.first().docControl : null"/>
+            <set field="lastOrderId" from="prevMessages ? prevMessages.first().docVersion : null"/>
 
             <!-- https://{hostname}/admin/api/{version}/{resource}.json?limit=250&fulfillment_status=unfulfilled&since_id={last} -->
             <script><![CDATA[
@@ -59,7 +59,7 @@
             <if condition="lastOrderId">
                 <service-call name="create#moqui.service.message.SystemMessage" out-map="context" in-map="[
                     systemMessageTypeId:'ShopifySystemMessageType', systemMessageRemoteId:systemMessageRemoteId,
-                    messageText:restResponse.text(), docType:'orders', docControl:lastOrderId,
+                    messageText:restResponse.text(), docType:'orders', docVersion:lastOrderId,
                     isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
             </if>
         </actions>
