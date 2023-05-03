@@ -86,6 +86,10 @@
                 <service-call name="mantle.shopify.ShopifyOrderServices.download#ShopifyFulfillmentOrders" out-map="context"
                                 in-map="[systemMessageRemoteId:systemMessage.systemMessageRemoteId, shopifyOrderId:order.id]"/>
 
+                <if condition="!fulfillmentOrders">
+                    <return error="true" message="No fulfillment orders downloaded for shopifyOrderId:${order.id}"/>
+                </if>
+
                 <service-call name="create#moqui.service.message.SystemMessage" out-map="context"
                                 in-map="[systemMessageTypeId:'ShopifySystemMessageType', 
                                 parentMessageId: systemMessage.systemMessageId,
@@ -112,7 +116,6 @@
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
             <set field="fulfillmentOrders" from="[]"/>
             <script><![CDATA[
-                // https://your-development-store.myshopify.com/admin/api/2023-04/orders/450789469/fulfillment_orders.json
                 String url = ec.resource.expand(remote.sendUrl, "", [resource: "/orders/${shopifyOrderId}/fulfillment_orders"]);
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
                     .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
@@ -121,6 +124,7 @@
                     ec.message.addError("Shopify Orders API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} url:${url}")
                     return;
                 }
+
                 Map responseMap = new groovy.json.JsonSlurper().parseText(restResponse.text());
                 fulfillmentOrders = responseMap.fulfillment_orders;
             ]]></script>
@@ -237,14 +241,10 @@
             
             <set field="line_items_by_fulfillment_order" from="[]"/>
             <iterate list="fulfillmentOrders" entry="fulfillmentOrder">
-
-                
-
                 <!-- get all the shipped line items from this fulfillment order -->
                 <set field="shipmentItemListForOrder" from="shipmentItemList.findAll({it.orderId == fulfillmentOrder.orderId})"/>
                 <set field="line_items" from="[]"/>
                 <iterate list="shipmentItemListForOrder" entry="shipmentItem">
-
                     <entity-find-one entity-name="mantle.order.OrderItem" value-field="od">
                         <field-map field-name="orderId" from="shipmentItem.orderId"/>
                         <field-map field-name="orderItemSeqId" from="shipmentItem.orderItemSeqId"/>

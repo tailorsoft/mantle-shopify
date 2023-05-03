@@ -24,39 +24,44 @@
             <entity-find entity-name="moqui.service.message.SystemMessage" limit="1" list="prevMessages">
                 <econdition field-name="systemMessageTypeId" value='ShopifySystemMessageType'/>
                 <econdition field-name="systemMessageRemoteId"/>
-                <econdition field-name="docType" value="productList"/>
-                <order-by field-name="initDate"/>
+                <econdition field-name="docType" value="products"/>
+                <select-field field-name="systemMessageTypeId,systemMessageRemoteId,initDate,docVersion"/>
+                <order-by field-name="-initDate"/>
             </entity-find>
-            <set field="lastProductId" from="prevMessages ? prevMessages.first().docControl : null"/>
+            <set field="updated_at_min" from="prevMessages ? prevMessages.first().docVersion : null"/>
 
-            <!-- e.g: https://moquidemo.myshopify.com/admin/api/2022-07/products.json -->
+            <log message="prevMessages: ${prevMessages}" />
+
+            <!-- The natural ordering of the 'products' on the Shopify endpoint appear to be 'created_at'
+            This is problematic, because if you update a previously imported product in shopify, it wont re-appear in the list.
+            the query string param order=updated_at is undocumented but works, we want the oldest products first -->
             <script><![CDATA[
-                String url = ec.resource.expand(systemMessageRemote.sendUrl, "", [resource:"products"]) + "?limit=${limit}";
-
-                if (lastProductId != null) {
-                    url += "&since_id=${lastProductId}";
+                String url = ec.resource.expand(systemMessageRemote.sendUrl, "", [resource:"products"]) + "?limit=${limit}&order=updated_at+asc";
+                if (updated_at_min != null) {
+                    url += "&updated_at_min=${updated_at_min}";
                 }
 
-                org.moqui.util.RestClient restClient = ec.service.rest().method("GET")
-                    .addHeader("Content-Type", "application/json")
-                    .basicAuth(systemMessageRemote.username, systemMessageRemote.password)
-                    .uri(url);
-
-                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
+                org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
+                    .basicAuth(systemMessageRemote.username, systemMessageRemote.password).uri(url).call();
 
                 if (restResponse.statusCode != 200) {
-                    ec.logger.error("Shopify Productss API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} for url: ${url}")
+                    ec.message.addError("Shopify Productss API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} for url: ${url}")
                     return
                 }
 
+                ec.logger.info("url: ${url}")
+
                 Map messageMap = new JsonSlurper().parseText(restResponse.text());
-                lastProductId = messageMap.products ? messageMap.products.last().id : null;
             ]]></script>
 
-            <if condition="lastProductId">
+            <if condition="messageMap.products">
+                <log message="products found"/>
+                <set field="dateFormat" from="java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME"/>
+                <set field="updatedAt" from="java.time.OffsetDateTime.parse(messageMap.products.last().updated_at, dateFormat)"/>
+                <set field="updatedAtStr" from="updatedAt.plusSeconds(1).format(dateFormat)"/>
                 <service-call name="create#moqui.service.message.SystemMessage" out-map="context"
                                 in-map="[systemMessageTypeId:'ShopifySystemMessageType', systemMessageRemoteId:systemMessageRemoteId,
-                                messageText:restResponse.text(), docType:'json', docType:'products', docControl:lastProductId,
+                                messageText:restResponse.text(), docType:'json', docType:'products', docVersion:updatedAtStr,
                                 isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
             </if>
         </actions>
@@ -361,8 +366,6 @@
             <if condition="shopifyIdentification">
                 <set field="productData.id" from="shopifyIdentification.idValue"/>
             </if>
-
-            <log message="username:${remote.username}, password:${remote.password} url: ${ec.resource.expand(remote.sendUrl, '', [resource:'products'])}"/>
 
             <set field="apiResponse" value="[:]"/>
             <script><![CDATA[
