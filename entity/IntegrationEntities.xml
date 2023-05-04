@@ -9,7 +9,7 @@
         <relationship type="one" title="Product" related="mantle.product.Product">
             <key-map field-name="productId"/></relationship>
         <relationship type="one" title="Facility" related="mantle.facility.Facility">
-            <key-map field-name="productId"/></relationship>
+            <key-map field-name="facilityId"/></relationship>
     </entity>
 
     <extend-entity entity-name="SystemMessage" package="moqui.service.message">
