@@ -93,12 +93,14 @@
 
             <set field="order" from="new groovy.json.JsonSlurper().parseText(systemMessage.messageText)"/>
 
+            <log message="remote: ${remote}"/>
+
             <!-- we first attempt to download the related order data -->
             <service-call name="mantle.shopify.ShopifyOrderServices.download#ShopifyFulfillmentOrders" out-map="context"
-                in-map="[systemMessageRemoteId:systemMessage.systemMessageRemoteId, shopifyOrderId:order.id]"/>
+                in-map="[systemMessageRemoteId:remote.systemMessageRemoteId, shopifyOrderId:order.id]"/>
 
             <service-call name="mantle.shopify.ShopifyOrderServices.download#ShopifyTransactions" out-map="context"
-                in-map="[systemMessageRemoteId:systemMessage.systemMessageRemoteId, shopifyOrderId:order.id]"/>
+                in-map="[systemMessageRemoteId:remote.systemMessageRemoteId, shopifyOrderId:order.id]"/>
 
             <!-- Then we attempt to process the order the related order data -->
             <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyOrderMap" out-map="context"
@@ -108,7 +110,7 @@
                 in-map="[fulfillments:fulfillmentOrders, orderId:orderId]"/>
             
             <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyTransactions"
-                in-map="[fulfillments:transactions, orderId:orderId]"/>
+                in-map="[transactions:transactions, orderId:orderId]"/>
 
             <set field="systemMessage.orderId" from="orderId"/>
             <entity-update value-field="systemMessage"/>
@@ -216,7 +218,7 @@
 
             <!-- store all the customer data and return a partyId -->
             <service-call name="mantle.shopify.ShopifyPartyServices.store#ShopifyCustomer" 
-                in-map="[customer:order.customer, shippingAddress:order.shipping_address, billingAddress:order.billing_address, ownerPartyId:productStore.organizationPartyId]" out-map="context"/>
+                in-map="[customer:order.customer, shippingAddress:order.shipping_address, billingAddress:order.billing_address, ownerPartyId:productStore.organizationPartyId, orderEmail:order.email]" out-map="context"/>
 
             <service-call name="mantle.shopify.ShopifyPartyServices.store#ShopifyPaymentMethod" 
                 in-map="[partyId:partyId, paymentDetails:order.payment_details, billingPostalContactMechId:billingPostalContactMechId, firstName:order.billing_address.first_name, lastName:order.billing_address.last_name]"/>
@@ -359,7 +361,7 @@
             <set field="authTransaction" from="transactions.find{['sale', 'authorization'].contains(it.kind) &amp;&amp; it.status.equals('success')}"/>
             <if condition="!authTransaction"><return error="true" message="No auth/sale transaction found on ${orderId}"/></if>
 
-            <entity-find-one relationship-name="mantle.account.payment.Payment" value-field="payment" for-update="true">
+            <entity-find-one entity-name="mantle.account.payment.Payment" value-field="payment" for-update="true">
                 <field-map field-name="orderId"/></entity-find-one>
 
             <if condition="!payment"><return error="true" message="The order ${orderId} does not have an associated payment"/></if>

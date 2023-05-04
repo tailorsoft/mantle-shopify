@@ -921,6 +921,7 @@
                             ec.message.addError("Shopify inventory_levels/set API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} url:${url}");
                         }
                     ]]></script>
+                    <entity-delete value-field="productInventory"/>
                 </iterate>
             </iterate>
         </actions>

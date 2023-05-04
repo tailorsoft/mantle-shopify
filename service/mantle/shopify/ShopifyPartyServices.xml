@@ -164,6 +164,7 @@
             <parameter name="shippingAddress" type="Map"/>
             <parameter name="billingAddress" type="Map"/>
             <parameter name="ownerPartyId" required="true"/>
+            <parameter name="orderEmail"/>
         </in-parameters>
         <out-parameters>
             <parameter name="partyId"/>
@@ -191,7 +192,7 @@
             <service-call name="store#mantle.party.PartyIdentification" out-map="context"
                 in-map="[partyId:partyId, partyIdTypeEnumId:'PtidShopify', idValue:customer.id]" />
             <service-call name="mantle.party.ContactServices.findOrCreate#PartyEmailAddress" 
-                in-map="[partyId:partyId, emailAddress:customer.email, contactMechPurposeId:'EmailPrimary']"/>
+                in-map="[partyId:partyId, emailAddress:customer.email?:orderEmail, contactMechPurposeId:'EmailPrimary']"/>
 
             <!-- store all the Address and Phone from the shipping address -->
             <service-call name="mantle.shopify.ShopifyPartyServices.store#ShopifyAddress" out-map="postalOut"
