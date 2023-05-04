@@ -37,10 +37,10 @@
             </entity-find-one>
             <if condition="!remote"><return error="true" message="No Remote of type 'ShopifySystemMessageType' found for ID ${systemMessageId}"/></if>
             <script><![CDATA[
-                String url = ec.resource.expand(remote.sendUrl, "", [resource: systemMessage.docType]);
+                String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:systemMessage.docType]);
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method(systemMessage.docSubType)
                     .jsonObject(systemMessage.messageText).addHeader("Content-Type", "application/json")
-                    .basicAuth(remote.username, remote.password).uri(url).call();
+                    .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
                 if (restResponse.statusCode != 200) {
                     ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${restResponse.text()} for url: ${url}")
@@ -66,9 +66,9 @@
 
             <set field="responseMap" from="[:]"/>
             <script><![CDATA[
+                String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"locations"])
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
-                    .addHeader("Content-Type", "application/json").basicAuth(remote.username, remote.password)
-                    .uri(ec.resource.expand(remote.sendUrl, "", [resource: "locations"])).call();
+                    .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
                 if (restResponse.statusCode != 200) {
                     ec.message.addError("Shopify Orders API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}")
@@ -76,7 +76,6 @@
                 }
                 responseMap = new groovy.json.JsonSlurper().parseText(restResponse.text());
             ]]></script>
-            <log message="restResponse: ${restResponse.text()} responseMap:${responseMap}"/>
             <if condition="!responseMap.locations"><return error="true" message="No Locations configured in Shopify, please add a location"/></if>
 
             <!-- TODO, find out why extra location appears on shopify if condition="responseMap.locations.size() &gt; 1"><return error="true" message="Too many locations configured in Shopify, Please manually configure the externalId on mantle.facility.Facility"/></if-->
@@ -133,10 +132,9 @@
             <set field="responseMap" from="[:]"/>
             <script><![CDATA[
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("POST")
-                    .addHeader("Content-Type", "application/json")
-                    .addHeader("X-Shopify-Access-Token", remote.password)
+                    .addHeader("Content-Type", "application/json").addHeader("X-Shopify-Access-Token", remote.password)
                     .jsonObject(groovy.json.JsonOutput.toJson([fulfillment_service: fulfillment_service]))
-                    .uri(ec.resource.expand(remote.sendUrl, "", [resource: "fulfillment_services"])).call();
+                    .uri(ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"fulfillment_services"])).call();
 
                 if (restResponse.statusCode == 422) {
                     responseMap = new groovy.json.JsonSlurper().parseText(restResponse.text());
@@ -153,237 +151,6 @@
 
             <set field="facility.externalId" from="responseMap.fulfillment_service.location_id"/>
             <entity-update value-field="facility"/>
-        </actions>
-    </service>
-
-    <service verb="get" noun="CustomerInfo">
-        <out-parameters>
-            <parameter name="reportList" type="List">
-                <parameter name="customerMap" type="Map" />
-            </parameter>
-        </out-parameters>
-        <actions>
-            <set field="reportList" from="[]" />
-            <entity-find entity-name="brokerageengine.party.customer.CustomerInfoView" list="customerList" />
-            <iterate list="customerList" entry="customer">
-                <script>
-                    def customerTemp = reportList.find{it.partyId == customer.partyId}
-                    // if the customer info exist this is updated
-                    if (customerTemp) {
-                        // update the field only if its has value
-                        tmpMap = [:]
-                        tmpMap['partyId'] = customerTemp.partyId ?: customer.partyId 
-                        tmpMap['First Name'] = customerTemp.firstName ?: customer.firstName 
-                        tmpMap['Last Name'] = customerTemp.lastName ?: customer.lastName 
-                        tmpMap['Email'] = customerTemp.email ?: customer.email 
-                        tmpMap['Company'] = null
-                        tmpMap['Address1'] = customerTemp.address1 ?: customer.address1 
-                        tmpMap['Address2'] = customerTemp.address2 ?: customer.address2 
-                        tmpMap['City'] = customerTemp.city ?: customer.city 
-                        tmpMap['Province'] = null
-                        tmpMap['Province Code'] = null
-                        tmpMap['Country'] = customerTemp.country ?: customer.country 
-                        tmpMap['Country Code'] = customerTemp.countryCode ?: customer.countryCode 
-                        tmpMap['Zip'] = customerTemp.zip ?: customer.zip 
-                        tmpMap['Phone'] = customerTemp.phone ?: customer.phone 
-                        tmpMap['Accepts Marketing'] = 'yes'
-                        tmpMap['Total Spent'] = 0
-                        tmpMap['Total Orders'] = 0
-                        tmpMap['Tags'] = null
-                        tmpMap['Note'] = null
-                        tmpMap['Tax Exempt'] = null
-                        reportList.remove(customerTemp)
-                        reportList.add(tmpMap)
-                    } else {
-                        // create customerInfo
-                        tmpMap = [:]
-                        tmpMap['partyId'] = customer.partyId
-                        tmpMap['First Name'] = customer.firstName 
-                        tmpMap['Last Name'] = customer.lastName 
-                        tmpMap['Email'] = customer.email 
-                        tmpMap['Company'] = null
-                        tmpMap['Address1'] = customer.address1 
-                        tmpMap['Address2'] = customer.address2 
-                        tmpMap['City'] = customer.city 
-                        tmpMap['Province'] = null
-                        tmpMap['Province Code'] = null
-                        tmpMap['Country'] = customer.country 
-                        tmpMap['Country Code'] = customer.countryCode 
-                        tmpMap['Zip'] = customer.zip 
-                        tmpMap['Phone'] = customer.phone 
-                        tmpMap['Accepts Marketing'] = 'yes'
-                        tmpMap['Total Spent'] = 0
-                        tmpMap['Total Orders'] = 0
-                        tmpMap['Tags'] = null
-                        tmpMap['Note'] = null
-                        tmpMap['Tax Exempt'] = null
-                        reportList.add(tmpMap)
-                    }
-                </script>
-            </iterate>
-        </actions>
-    </service>
-
-    <service verb="get" noun="CustomerInfoCsv">
-        <out-parameters>
-            <parameter name="csvFormat" type="String" />
-        </out-parameters>
-        <actions>
-            <service-call name="mantle.shopify.ShopifyServices.get#CustomerInfo" out-map="context" />
-            <script>
-                def headers = []
-                def entries = reportList[0].entrySet()
-                final StringBuffer sb = new StringBuffer()
-                entries.each { entry -&gt; headers.add(entry.key)}
-
-                // header titles
-                def headersSize = headers.size()
-                for (int i = 1; i &lt; headersSize; i++) {
-                    sb.append(headers.get(i));
-                    sb.append(i == headersSize-1 ? "\n" : ",");
-                }
-
-                // rows info
-                for ( map in reportList) {
-                    for (int i = 1; i &lt; headersSize; i++) {
-                        sb.append(map.get(headers.get(i))?:'');
-                        sb.append(i == headersSize-1 ? "\n" : ",");
-                    }
-                }
-                csvFormat = sb.toString()
-            </script>
-        </actions>
-    </service>
-
-    <service verb="get" noun="LocationAndStoreId">
-        <description>
-            This service gets the location Id for a shop given the systemMessageTypeId
-        </description>
-        <in-parameters>
-            <parameter name="systemMessageTypeId" required="true" />
-        </in-parameters>
-        <out-parameters>
-            <parameter name="locationId" />
-            <parameter name="productStoreId" />
-        </out-parameters>
-        <actions>
-            <!-- the producStoreId needs to be find for getting the locationId-->
-            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemRemoteIdentification">
-                <field-map field-name="systemMessageTypeId" />
-            </entity-find-one>
-
-            <set field="productStoreId" from="systemRemoteIdentification.productStoreId" />
-
-            <entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productLocation">
-                <field-map field-name="productStoreId" from="productStoreId" />
-                <field-map field-name="settingTypeEnumId" value="ShopifyStoreId" />
-            </entity-find-one>
-
-            <if condition="!productLocation">
-                <message type="warning">The Shopify Store Id and locationId have not been configured for this product, please contact the administrator to add one in ProductStoreSetting</message>
-                <return/>
-            </if>
-
-            <set field="locationId" from="productLocation.settingValue" />
-        </actions>
-    </service>
-    
-    <service verb="validate" noun="ProductData">
-        <description>
-            Checks if the product data is valid for the shopify request
-        </description>
-        <in-parameters>
-            <parameter name="productId" required="true" />
-        </in-parameters>
-        <out-parameters>
-            <parameter name="error"/>
-            <parameter name="product" />
-            <parameter name="productIdentification" />
-        </out-parameters>
-        <actions>
-            <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productIdentification">
-                <field-map field-name="productId" />
-                <field-map field-name="productIdTypeEnumId"  value="PidtShopify"/>
-            </entity-find-one>
-
-            <entity-find-one entity-name="mantle.product.Product" value-field="product">
-                <field-map field-name="productId" />
-                <field-map field-name="productTypeEnumId"  value="PtVirtual"/>
-            </entity-find-one>
-
-            <if condition="!product">
-                <message type="warning">The product ${productId} does not exist</message>
-                <set field="error" value="true"/>
-                <return/>
-            </if>
-            <if condition="product?.productTypeEnumId != 'PtVirtual' ">
-                <message type="warning">The product ${productId}  is not a virtual product</message>
-                <set field="error" value="true"/>
-                <return/>
-            </if>
-            <if condition="!productIdentification">
-                <message type="warning">The product ${productId}  does not  have shopifyId</message>
-                <set field="error" value="true"/>
-                <return/>
-            </if>
-        </actions>
-    </service>
-
-    <service verb="validate" noun="AlreadyCreatedSystemMessage">
-        <in-parameters>
-            <parameter name="shopifyOrderId" required="true" />
-            <parameter name="systemMessageTypeId" required="true" />
-            <parameter name="statusId" required="true" />
-        </in-parameters>
-        <out-parameters>
-            <parameter name="systemMessageAlreadyExist"/>
-        </out-parameters>
-        <actions>
-            <set field="systemMessageAlreadyExist" from="false"/>
-            <entity-find entity-name="moqui.service.message.SystemMessage" list="systemMessageAlreadyCreated">
-                <econdition field-name="shopifyOrderId"/>
-                <econdition field-name="systemMessageTypeId"/>
-                <econditions combine="or">
-                    <econdition field-name="statusId" value="SmsgConsumed"/>
-                    <econdition field-name="statusId" value="SmsgConsuming"/>
-                    <econdition field-name="statusId" value="SmsgSent"/>
-                    <econdition field-name="statusId" value="SmsgSending"/>
-                    <econdition field-name="statusId" value="SmsgError"/>
-                    <econdition field-name="statusId"/>
-                </econditions>
-            </entity-find>
-            <if condition="systemMessageAlreadyCreated.size() > 0 ">
-                <set field="systemMessageAlreadyExist" from="true"/>
-            </if>
-        </actions>
-    </service>
-
-    <service verb="validate" noun="AlreadyCreatedShipmentSystemMessage">
-        <in-parameters>
-            <parameter name="shipmentId" required="true" />
-            <parameter name="systemMessageTypeId" required="true" />
-            <parameter name="statusId" required="true" />
-        </in-parameters>
-        <out-parameters>
-            <parameter name="systemMessageAlreadyExist"/>
-        </out-parameters>
-        <actions>
-            <set field="systemMessageAlreadyExist" from="false"/>
-            <entity-find entity-name="moqui.service.message.SystemMessage" list="systemMessageAlreadyCreated">
-                <econdition field-name="sentShipmentId" from="shipmentId"/>
-                <econdition field-name="systemMessageTypeId"/>
-                <econditions combine="or">
-                    <econdition field-name="statusId" value="SmsgConsumed"/>
-                    <econdition field-name="statusId" value="SmsgConsuming"/>
-                    <econdition field-name="statusId" value="SmsgSent"/>
-                    <econdition field-name="statusId" value="SmsgSending"/>
-                    <econdition field-name="statusId" value="SmsgError"/>
-                    <econdition field-name="statusId"/>
-                </econditions>
-            </entity-find>
-            <if condition="systemMessageAlreadyCreated.size() > 0 ">
-                <set field="systemMessageAlreadyExist" from="true"/>
-            </if>
         </actions>
     </service>
 </services>

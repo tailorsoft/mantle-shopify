@@ -32,14 +32,10 @@
                 <econdition field-name="salesChannelEnumId" value="ScShopify"/>
                 <econdition field-name="customerPartyId" from="partyId"/></entity-find>
 
-            <log message="productStoreIds: ${shopifyOrderList.productStoreId}"/>
-
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote">
                 <field-map field-name="systemMessageTypeId" value="ShopifySystemMessageType"/>
                 <field-map field-name="productStoreId" operator="in" from="shopifyOrderList.productStoreId"/>
             </entity-find-one>
-
-            <log message="remote: ${remote}"/>
 
             <entity-find-one entity-name="mantle.party.Person" value-field="person"/>
             <entity-find-one entity-name="mantle.party.Party" value-field="party"/>
@@ -55,9 +51,6 @@
                 first_name: person.firstName,
                 last_name: person.lastName,
             ]"/>
-
-            <!-- removed phone: getPhoneFormat(telecomList?.first()) -->
-
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                 in-map="[systemMessageTypeId:'ShopifySystemMessageType', systemMessageRemoteId:remote.systemMessageRemoteId, messageText:groovy.json.JsonOutput.toJson([customer:customer]), 
                 docType:'customers/'+partyIdentification.idValue, docSubType:'PUT']"/>
@@ -134,8 +127,6 @@
                 <set field="addressMap.first_name" from="person.firstName" />
                 <set field="addressMap.last_name" value="person.lastName" />
             </else></if>
-
-            <log message="addressMap: ${addressMap}"/>
 
             <!-- POST /admin/api/2023-04/customers/207119551/addresses.json -->
             <!-- {"address":{"id":207119551,"zip":"90210"}} -->

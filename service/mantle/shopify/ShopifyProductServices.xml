@@ -13,12 +13,11 @@
         </in-parameters>
         <actions>
             <script>import groovy.json.JsonSlurper</script>
-            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemMessageRemote">
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote">
                 <field-map field-name="systemMessageTypeId" value="ShopifySystemMessageType"/>
-                <field-map field-name="systemMessageRemoteId"/>
-            </entity-find-one>
+                <field-map field-name="systemMessageRemoteId"/></entity-find-one>
 
-            <if condition="!systemMessageRemote"><return error="true" message="No Remote of type 'ShopifySystemMessageType' found for ID ${systemMessageRemoteId}"/></if>
+            <if condition="!remote"><return error="true" message="No Remote of type 'ShopifySystemMessageType' found for ID ${systemMessageRemoteId}"/></if>
 
             <!-- see if we have called this before and what was the last order found on previous message -->
             <entity-find entity-name="moqui.service.message.SystemMessage" limit="1" list="prevMessages">
@@ -30,19 +29,17 @@
             </entity-find>
             <set field="updated_at_min" from="prevMessages ? prevMessages.first().docVersion : null"/>
 
-            <log message="prevMessages: ${prevMessages}" />
-
             <!-- The natural ordering of the 'products' on the Shopify endpoint appear to be 'created_at'
             This is problematic, because if you update a previously imported product in shopify, it wont re-appear in the list.
             the query string param order=updated_at is undocumented but works, we want the oldest products first -->
             <script><![CDATA[
-                String url = ec.resource.expand(systemMessageRemote.sendUrl, "", [resource:"products"]) + "?limit=${limit}&order=updated_at+asc";
+                String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"products"]) + "?limit=${limit}&order=updated_at+asc";
                 if (updated_at_min != null) {
                     url += "&updated_at_min=${updated_at_min}";
                 }
 
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
-                    .basicAuth(systemMessageRemote.username, systemMessageRemote.password).uri(url).call();
+                    .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
                 if (restResponse.statusCode != 200) {
                     ec.message.addError("Shopify Productss API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} for url: ${url}")
@@ -55,7 +52,6 @@
             ]]></script>
 
             <if condition="messageMap.products">
-                <log message="products found"/>
                 <set field="dateFormat" from="java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME"/>
                 <set field="updatedAt" from="java.time.OffsetDateTime.parse(messageMap.products.last().updated_at, dateFormat)"/>
                 <set field="updatedAtStr" from="updatedAt.plusSeconds(1).format(dateFormat)"/>
@@ -108,7 +104,7 @@
             <set field="ownerPartyId" from="productStore.organizationPartyId ?: '_NA_'"/>
 
             <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="existingShopifyId">
-                <field-map field-name="idValue" from="product.id" />
+                <field-map field-name="idValue" from="product.id"/>
                 <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
             </entity-find-one>
             <if condition="existingShopifyId"><then>
@@ -176,7 +172,7 @@
         </in-parameters>
         <actions>
             <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="existingShopifyId">
-                <field-map field-name="idValue" from="variant.id" />
+                <field-map field-name="idValue" from="variant.id"/>
                 <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
             </entity-find-one>
             <if condition="existingShopifyId"><then>
@@ -306,6 +302,7 @@
         </actions>
     </service>
 
+    <!-- TODO perhaps check the modified date accross key entities and only upload if this is newer than previous execution -->
     <service verb="upload" noun="MoquiStoreProducts">
         <in-parameters>
             <parameter name="systemMessageRemoteId" required="true"/>
@@ -314,7 +311,7 @@
             <parameter name="productIdList"/>
         </out-parameters>
         <actions>
-            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote" />
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
             <if condition="!remote"><return error="true" message="No Remote found for ID ${systemMessageRemoteId}"/></if>
 
             <!-- get all the categories for this store -->
@@ -341,15 +338,14 @@
             <parameter name="productId" required="true"/>
         </in-parameters>
         <actions>
-            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote" />
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
 
             <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="shopifyIdentification">
                 <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
                 <field-map field-name="productId"/></entity-find-one>
 
-            <service-call name="mantle.shopify.ApiServices.get#ProductData" 
-                      in-map="[productId:productId, productStoreId:remote.productStoreId]"
-                      out-map="context" />
+            <service-call name="mantle.shopify.ShopifyProductServices.get#ProductData" out-map="context"
+                in-map="[productId:productId, productStoreId:remote.productStoreId]"/>
 
             <if condition="shopifyIdentification">
                 <set field="productData.id" from="shopifyIdentification.idValue"/>
@@ -358,13 +354,11 @@
             <set field="apiResponse" value="[:]"/>
             <script><![CDATA[
                 String method = shopifyIdentification ? 'PUT' : 'POST';
-                org.moqui.util.RestClient restClient = ec.service.rest().method(method)
-                    .addHeader("Content-Type", "application/json")
-                    .jsonObject(groovy.json.JsonOutput.toJson([product: productData]))
-                    .basicAuth(remote.username, remote.password)
-                    .uri(ec.resource.expand(remote.sendUrl, "", [resource:"products"]));
+                String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"products"]);
 
-                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
+                org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method(method)
+                    .addHeader("Content-Type", "application/json").jsonObject(groovy.json.JsonOutput.toJson([product: productData]))
+                    .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
                 if (restResponse.statusCode != 201) {
                     ec.message.addError("Shopify Products API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}")
@@ -372,7 +366,6 @@
                 }
                 apiResponse = new groovy.json.JsonSlurper().parseText(restResponse.text());
             ]]></script>
-            <log message="apiResponse: ${apiResponse}"/>
             <set field="shopifyVariants" from="apiResponse.product.variants"/>
 
             <if condition="!shopifyIdentification">
@@ -393,7 +386,7 @@
                                                                       &amp;&amp; it.option2 == variant.option2 
                                                                       &amp;&amp; it.option3 == variant.option3})?.moquiProductId"/>
                     <if condition="!moquiProductId">
-                        <continue/>
+                        <continue/><!-- this should never happen, the moquiProductId is set inside get#ProductData -->
                     </if>
 
                     <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="variantIdentification">
@@ -410,6 +403,174 @@
                         in-map="[productId:moquiProductId, productIdTypeEnumId:'PidtInventoryItemShopify', idValue:variant.inventory_item_id]"/>
                 </iterate>
             </if>
+        </actions>
+    </service>
+
+    <service verb="get" noun="ProductData">
+        <in-parameters>
+            <parameter name="productId" required="true"/>
+            <parameter name="productStoreId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="productData"/>
+            <parameter name="product"/>
+            <parameter name="error"/>
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="mantle.product.Product" value-field="product"/>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore"/>
+            <entity-find entity-name="mantle.product.store.ProductStoreSetting" list="imageUrlSettingList">
+                <econdition field-name="settingTypeEnumId" value="PsstProductImageUrl"/>
+                <econdition field-name="productStoreId"/><date-filter/></entity-find>
+
+            <if condition="!imageUrlSettingList">
+                <return error="true" message="Product Store ${productStoreId} has no PsstProductImageUrl configured, cannot upload images"/>
+            </if>
+
+            <entity-find entity-name="mantle.product.ProductContent" list="imageContentList">
+                <econdition field-name="productContentTypeEnumId" operator="in" value="PcntImageDetail,PcntImageLarge,PcntImageMedium,PcntImageOriginal"/>
+                <econdition field-name="productId"/><date-filter/></entity-find>
+
+            <set field="images" from="[]"/>
+            <iterate list="imageContentList" entry="content">
+                <set field="settings" from="[storeDomain:productStore.storeDomain, productContentId:content.productContentId, productId:productId]"/>
+                <set field="imageUrl" from="ec.resource.expand(imageUrlSettingList.first().settingValue, null, settings, false)"/>
+                <set field="images" from="images.plus([src: imageUrl])"/>
+            </iterate>
+
+            <set field="prodVariants" from="[]"/>
+            <set field="prodOptions" from="[]"/>
+            <set field="prodOptionsMap" from="new HashMap()"/>
+            <if condition="product.productTypeEnumId == 'PtVirtual'">
+                <!-- Get all the products associated to the parent product /-->
+                <entity-find entity-name="mantle.product.ProductAssoc" list="assocList">
+                    <econdition field-name="productId"/>
+                    <econdition field-name="fromDate" operator="is-not-null"/>
+                    <econdition field-name="thruDate" operator="is-null"/>
+                </entity-find>
+
+
+                <iterate list="assocList" entry="assoc">
+                    <!-- Each product associated has at least one feature so we get all possible features /-->
+                    <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl" list="featureList">
+                        <econdition field-name="productId" from="assoc.toProductId"/>
+                        <econdition field-name="fromDate" operator="is-not-null"/>
+                        <econdition field-name="thruDate" operator="is-null"/>
+                        <order-by field-name="sequenceNum"/>
+                    </entity-find>
+
+                    <if condition="featureList.size() == 0">
+                        <set field="error" value="true"/>
+                        <message type="warning">The associated product ${assoc.toProductId}  must have at least one Features, add one in Features section </message>
+                        <return/>
+                    </if>
+
+                    <service-call name="mantle.product.PriceServices.get#ProductPrice" out-map="priceSet" in-map="[productId:assoc.toProductId]"/>
+
+                    <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="prodUPC">
+                        <field-map field-name="productId" from="assoc.toProductId"/>
+                        <field-map field-name="productIdTypeEnumId" value="PidtUpca"/>
+                    </entity-find-one>
+
+                    <entity-find-one entity-name="mantle.product.ProductDimension" value-field="productDimension">
+                        <field-map field-name="productId" from="assoc.toProductId"/>
+                    </entity-find-one>
+
+                    <if condition="productDimension">
+                        <entity-find-one entity-name="moqui.basic.Uom" value-field="uom">
+                            <field-map field-name="uomId" from="productDimension.valueUomId"/>
+                        </entity-find-one>
+                    </if>
+
+                    <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="prodSKU">
+                        <field-map field-name="productId" from="assoc.toProductId"/>
+                        <field-map field-name="productIdTypeEnumId" value="PidtSku"/>
+                    </entity-find-one>
+
+                    <service-call name="mantle.product.AssetServices.get#AvailableInventory" out-map="assetOut"
+                        in-map="[productId:productId, productStoreId:productStoreId]"/>
+                   
+                    <script><![CDATA[
+                        /**
+                            The featureList is the list of all the features that an assoc has,
+                            if it's only one feature, we don't need to make the combinations
+                            if it the product has more than one feature we have to make the combinations
+                            in order to follow the shopify format.
+
+                            NOTE: Shopify supports products that has at most 3 features.
+                        **/
+
+                        variant = [:]
+                        variant.option1 = featureList[0]?.productFeatureDescription
+                        variant.option2 = featureList[1]?.productFeatureDescription
+                        variant.option3 = featureList[2]?.productFeatureDescription
+                        variant.name = variant.option1 +
+                            (variant.option2 ? '/' + variant.option2 : '') + 
+                            (variant.option3 ? '/' + variant.option3 : '');
+                        variant.position = assoc.sequenceNum
+                        variant.price = priceSet.price
+                        variant.inventory_management = 'shopify'
+                        variant.inventory_quantity = availableToPromiseTotal
+                        variant.barcode = prodUPC?.idValue
+                        variant.weight = productDimension?.value
+                        variant.weight_unit = uom?.abbreviation
+                        variant.sku = prodSKU?.idValue
+
+                        // we do this so we can identify the variant in the
+                        variant.moquiProductId = assoc.toProductId
+
+                        prodVariants.add(variant)
+                    ]]>
+                    </script>
+                    <iterate list="featureList" entry="feature">
+                        <set field="item" from="feature.productFeatureTypeEnumId"/>
+                        <script><![CDATA[
+                            def optionSet = prodOptionsMap.get(item)
+                            if (!optionSet) {
+                                prodOptionsMap.put(item, [feature.productFeatureDescription])
+                            } else {
+                                if(!optionSet.contains(feature.productFeatureDescription)){
+                                   optionSet.add(feature.productFeatureDescription)
+                                }
+                            }
+                        ]]></script>
+                    </iterate>
+                    <!-- MAKE THE COMBINATIONS FOR THE PRODUCT WITH THE FEATURELIST  /-->
+                </iterate>
+                <script><![CDATA[
+                    String[] keyList = prodOptionsMap.keySet()
+                    if(keyList.length == 1){
+                        def options1 = prodOptionsMap.get(keyList[0])
+                        prodOptions.add(new HashMap([name:keyList[0], values:options1]))
+                    }else if(keyList.length == 2){
+                        def options1 = prodOptionsMap.get(keyList[0])
+                        def options2 = prodOptionsMap.get(keyList[1])
+                        prodOptions.add(new HashMap([name:keyList[0], values:options1]))
+                        prodOptions.add(new HashMap([name:keyList[1], values:options2]))
+                    }else if(keyList.length == 3){
+                        def options1 = prodOptionsMap.get(keyList[0])
+                        def options2 = prodOptionsMap.get(keyList[1])
+                        def options3 = prodOptionsMap.get(keyList[2])
+                        prodOptions.add(new HashMap([name:keyList[0], values:options1]))
+                        prodOptions.add(new HashMap([name:keyList[1], values:options2]))
+                        prodOptions.add(new HashMap([name:keyList[2], values:options3]))
+                    }
+                ]]></script>
+            </if>
+
+            <service-call name="mantle.product.AssetServices.get#AvailableInventory" out-map="assetOut"
+                            in-map="[productId:productId, productStoreId:productStoreId]"/>
+
+            <set field="productData" from="[
+                title: product.productName,
+                body_html: product.description,
+                vendor: '',
+                inventory_management: 'shopify',
+                inventory_quantity: availableToPromiseTotal,
+                images: images,
+                variants: prodVariants,
+                options: prodOptions
+            ]"/>
         </actions>
     </service>
 
@@ -442,14 +603,10 @@
 
             <set field="apiResponse" from="[:]"/>
             <script><![CDATA[
-                String collectionsUrl = ec.resource.expand(remote.sendUrl, "", [resource:"custom_collections"]) + "?limit=${limit}";
+                String collectionsUrl = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"custom_collections"]) + "?limit=${limit}";
 
-                org.moqui.util.RestClient collectionsRestClient = ec.service.rest().method("GET")
-                    .addHeader("Content-Type", "application/json")
-                    .basicAuth(remote.username, remote.password)
-                    .uri(collectionsUrl);
-
-                org.moqui.util.RestClient.RestResponse collectionsRestResponse = collectionsRestClient.call()
+                org.moqui.util.RestClient.RestResponse collectionsRestResponse = ec.service.rest().method("GET")
+                    .addHeader("X-Shopify-Access-Token", remote.password).uri(collectionsUrl).call();
 
                 if (collectionsRestResponse.statusCode != 200) {
                     String apiError = "${collectionsRestResponse.statusCode} ${collectionsRestResponse.reasonPhrase}: ${collectionsRestResponse.text()}"
@@ -480,12 +637,11 @@
 
                 <set field="apiResponse" value="[:]"/>
                 <script><![CDATA[
-                    String collectsUrl = ec.resource.expand(remote.sendUrl, "", [resource:"collects"]) + "?collection_id=${collection.id}";
+                    String collectsUrl = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"collects"]) + "?collection_id=${collection.id}";
 
-                    org.moqui.util.RestClient collectsRestClient = ec.service.rest().method("GET")
-                        .addHeader("Content-Type", "application/json").basicAuth(remote.username, remote.password).uri(collectsUrl);
+                    org.moqui.util.RestClient.RestResponse collectsRestResponse = ec.service.rest().method("GET")
+                        .addHeader("X-Shopify-Access-Token", remote.password).uri(collectsUrl).call()
 
-                    org.moqui.util.RestClient.RestResponse collectsRestResponse = collectsRestClient.call()
                     if (collectsRestResponse.statusCode != 200) {
                         apiError = "${collectsRestResponse.statusCode} ${collectsRestResponse.reasonPhrase}: ${collectsRestResponse.text()}"
                     } else {
@@ -576,9 +732,9 @@
                 <script><![CDATA[
                     String url = ec.resource.expand(remote.sendUrl, '', [resource:'collects']) + '?collection_id=' + category.pseudoId;
                     org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method('GET')
-                        .basicAuth(remote.username, remote.password).uri(url).call();
+                        .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
-                    if (restResponse.statusCode != 200) {
+                    if (restResponse.statusCode != 201) {
                         ec.message.addError("Shopify custom_collection API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}, possibly the pseudoId for Product Category ${productCategoryId} was not Shopify custom_collection.id");
                         return;
                     }
@@ -605,11 +761,11 @@
                 String resource = category.pseudoId == category.productCategoryId ? 'custom_collections' : 'custom_collections/'+category.pseudoId;
 
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method(method)
-                    .addHeader("Content-Type", "application/json").basicAuth(remote.username, remote.password)
+                    .addHeader("Content-Type", "application/json").addHeader("X-Shopify-Access-Token", remote.password)
                     .jsonObject(groovy.json.JsonOutput.toJson([custom_collection: custom_collection]))
-                    .uri(ec.resource.expand(remote.sendUrl, "", [resource:resource])).call();
+                    .uri(ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:resource])).call();
 
-                if (restResponse.statusCode != 200) {
+                if (restResponse.statusCode != 201) {
                     ec.message.addError("Shopify custom_collection API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}");
                     return;
                 }
@@ -722,7 +878,7 @@
     <service verb="upload" noun="ProductInventoryQueue">
         <in-parameters>
             <parameter name="systemMessageRemoteId" required="true"/>
-            <parameter name="limit" default-value="250">The limit per facility connected to the store on the Remote</parameter>
+            <parameter name="limit" type="Integer" default-value="250">The limit per facility connected to the store on the Remote</parameter>
         </in-parameters>
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote">
@@ -730,16 +886,20 @@
                 <field-map field-name="systemMessageRemoteId"/>
             </entity-find-one>
 
-            <entity-find entity-name="mantle.product.store.ProductStoreFacility" list="storeFaclities">
+            <entity-find entity-name="mantle.product.store.ProductStoreFacility" list="storeFacilities">
                 <econdition field-name="productStoreId" from="remote.productStoreId"/><date-filter /></entity-find>
+
+            <log message="storeFacilities: ${storeFacilities}"/>
 
             <iterate list="storeFacilities" entry="storeFacility">
                 <entity-find-one entity-name="mantle.facility.Facility" value-field="facility">
                     <field-map field-name="facilityId" from="storeFacility.facilityId"/></entity-find-one>
 
+                <if condition="!facility.externalId"><return error="true" message="Shopify location_id not stored on facility.externalId for ${storeFacility.facilityId} consider running configure#FacilityFromShopifyLocation"/></if>
+
                 <!-- get all the queued inventory updates for this facility -->
                 <entity-find entity-name="mantle.shopify.ProductInventoryQueue" limit="limit" list="productInventoryQueue">
-                    <econdition field-name="facilityId" from="storeFacility.facilityId"/><date-filter /></entity-find>
+                    <econdition field-name="facilityId" from="storeFacility.facilityId"/></entity-find>
 
                 <iterate list="productInventoryQueue" entry="productInventory">
                     <set field="inventory" from="[
@@ -747,15 +907,18 @@
                         inventory_item_id:productInventory.inventoryItemId,
                         available:productInventory.availableToPromise
                     ]"/>
+
+                    <log message="inventory: ${inventory}"/>
+
                     <script><![CDATA[
-                        String url = ec.resource.expand(remote.sendUrl, "", [resource:'inventory_levels/set']);
+                        String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:'inventory_levels/set']);
 
                         org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method('POST')
                             .addHeader("X-Shopify-Access-Token", remote.password).addHeader("Content-Type", "application/json")
                             .jsonObject(groovy.json.JsonOutput.toJson(inventory)).uri(url).call();
 
                         if (restResponse.statusCode != 200) {
-                            ec.message.addError("Shopify inventory_levels/set API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}");
+                            ec.message.addError("Shopify inventory_levels/set API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} url:${url}");
                         }
                     ]]></script>
                 </iterate>

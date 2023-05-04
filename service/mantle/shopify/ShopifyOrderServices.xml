@@ -34,19 +34,15 @@
 
             <!-- https://{hostname}/admin/api/{version}/{resource}.json?limit=250&fulfillment_status=unfulfilled&since_id={last} -->
             <script><![CDATA[
-                String url = ec.resource.expand(remote.sendUrl, "", [resource:"orders"]) +
+                String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"orders"]) +
                     "?limit=${limit}&fulfillment_status=${fulfillmentStatus}";
 
                 if (lastOrderId != null) {
                     url += "&since_id=${lastOrderId}";
                 }
 
-                org.moqui.util.RestClient restClient = ec.service.rest().method("GET")
-                    .addHeader("Content-Type", "application/json")
-                    .basicAuth(remote.username, remote.password)
-                    .uri(url);
-
-                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
+                org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
+                    .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
                 if (restResponse.statusCode != 200) {
                     ec.logger.error("Shopify Orders API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} for url: ${url}")
@@ -66,38 +62,58 @@
     </service>
 
 
-    <!-- consume the list of orders and generate individual system messages -->
+    <!-- 
+    consume the list of orders and downloads fulfilments and transactions for each one,
+    If an order fails to 
+    generate individual system messages -->
     <service verb="consume" noun="OrderListSystemMessage">
         <implements service="org.moqui.impl.SystemMessageServices.consume#SystemMessage"/>
         <actions>
-            <script>
-                import groovy.json.JsonSlurper;
-                import groovy.json.JsonOutput;
-            </script>
             <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage"/>
-            <set field="messageMap" from="new JsonSlurper().parseText(systemMessage.messageText)"/>
-
-             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote">
-                <field-map field-name="systemMessageTypeId" value="ShopifySystemMessageType"/>
-                <field-map field-name="systemMessageRemoteId" from="systemMessage.systemMessageRemoteId"/>
-            </entity-find-one>
+            <set field="messageMap" from="new groovy.json.JsonSlurper().parseText(systemMessage.messageText)"/>
 
             <iterate list="messageMap.orders" entry="order">
-                <service-call name="mantle.shopify.ShopifyOrderServices.download#ShopifyFulfillmentOrders" out-map="context"
-                    in-map="[systemMessageRemoteId:systemMessage.systemMessageRemoteId, shopifyOrderId:order.id]"/>
-
-                <if condition="!fulfillmentOrders">
-                    <return error="true" message="No fulfillment orders downloaded for shopifyOrderId:${order.id}"/>
-                </if>
-
                 <service-call name="create#moqui.service.message.SystemMessage" out-map="context"
                     in-map="[systemMessageTypeId:'ShopifySystemMessageType', parentMessageId: systemMessage.systemMessageId,
-                        messageText:JsonOutput.toJson([order:order, fulfillment_orders:fulfillmentOrders]), docType:'order',
+                        messageText:groovy.json.JsonOutput.toJson(order), docType:'order',
                         isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
             </iterate>
         </actions>
     </service>
 
+    <!-- consume order-->
+    <service verb="consume" noun="OrderSystemMessage">
+        <implements service="org.moqui.impl.SystemMessageServices.consume#SystemMessage"/>
+        <actions>
+            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage" for-update="true"/>
+
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote">
+                <field-map field-name="systemMessageTypeId" from="systemMessage.systemMessageTypeId"/>
+            </entity-find-one>
+
+            <set field="order" from="new groovy.json.JsonSlurper().parseText(systemMessage.messageText)"/>
+
+            <!-- we first attempt to download the related order data -->
+            <service-call name="mantle.shopify.ShopifyOrderServices.download#ShopifyFulfillmentOrders" out-map="context"
+                in-map="[systemMessageRemoteId:systemMessage.systemMessageRemoteId, shopifyOrderId:order.id]"/>
+
+            <service-call name="mantle.shopify.ShopifyOrderServices.download#ShopifyTransactions" out-map="context"
+                in-map="[systemMessageRemoteId:systemMessage.systemMessageRemoteId, shopifyOrderId:order.id]"/>
+
+            <!-- Then we attempt to process the order the related order data -->
+            <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyOrderMap" out-map="context"
+                in-map="[order:order, productStoreId:remote.productStoreId]"/>
+
+            <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyFulfillmentOrders"
+                in-map="[fulfillments:fulfillmentOrders, orderId:orderId]"/>
+            
+            <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyTransactions"
+                in-map="[fulfillments:transactions, orderId:orderId]"/>
+
+            <set field="systemMessage.orderId" from="orderId"/>
+            <entity-update value-field="systemMessage"/>
+        </actions>
+    </service>
 
     <service verb="download" noun="ShopifyFulfillmentOrders">
         <in-parameters>
@@ -111,7 +127,7 @@
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
             <set field="fulfillmentOrders" from="[]"/>
             <script><![CDATA[
-                String url = ec.resource.expand(remote.sendUrl, "", [resource: "/orders/${shopifyOrderId}/fulfillment_orders"]);
+                String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"/orders/${shopifyOrderId}/fulfillment_orders"]);
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
                     .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
@@ -123,33 +139,35 @@
                 Map responseMap = new groovy.json.JsonSlurper().parseText(restResponse.text());
                 fulfillmentOrders = responseMap.fulfillment_orders;
             ]]></script>
+            <if condition="!fulfillmentOrders"><return error="true" message="No fulfillment orders downloaded for shopifyOrderId:${shopifyOrderId}"/></if>
         </actions>
     </service>
 
-
-    <!-- consume order-->
-    <service verb="consume" noun="OrderSystemMessage">
-        <implements service="org.moqui.impl.SystemMessageServices.consume#SystemMessage"/>
+    <service verb="download" noun="ShopifyTransactions">
+        <in-parameters>
+            <parameter name="systemMessageRemoteId" required="true"/>
+            <parameter name="shopifyOrderId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="transactions" type="List" />
+        </out-parameters>
         <actions>
-            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage" for-update="true"/>
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
+            <set field="fulfillmentOrders" from="[]"/>
+            <script><![CDATA[
+                String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"/orders/${shopifyOrderId}/transactions"]);
+                org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
+                    .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
-            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="systemMessageRemote">
-                <field-map field-name="systemMessageTypeId" from="systemMessage.systemMessageTypeId"/>
-            </entity-find-one>
+                if (restResponse.statusCode != 200) {
+                    ec.message.addError("Shopify Orders API Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} url:${url}")
+                    return;
+                }
 
-            <set field="messageMap" from="new groovy.json.JsonSlurper().parseText(systemMessage.messageText)"/>
-
-            <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyOrderMap"
-                    in-map="[order:messageMap.order, productStoreId:systemMessageRemote.productStoreId]" out-map="context"/>
-
-            <!-- not sure what to do with orders that are missing the fulfillment message -->
-            <if condition="messageMap.fulfillment_orders">
-                <service-call name="mantle.shopify.ShopifyOrderServices.create#ShopifyFulfillmentOrders"
-                    in-map="[fulfillments:messageMap.fulfillment_orders, orderId:orderId]"/>
-            </if>
-
-            <set field="systemMessage.orderId" from="orderId"/>
-            <entity-update value-field="systemMessage"/>
+                Map responseMap = new groovy.json.JsonSlurper().parseText(restResponse.text());
+                transactions = responseMap.transactions;
+            ]]></script>
+            <if condition="!transactions"><return error="true" message="No transactions downloaded for shopifyOrderId:${shopifyOrderId}"/></if>
         </actions>
     </service>
 
@@ -284,8 +302,6 @@
             </iterate>
 
             <if condition="order.payment_details">
-                
-                <!-- "processed_at": "2008-01-10T11:00:00-05:00" -->
                 <set field="processedAt" from="OffsetDateTime.parse(order.processed_at, DateTimeFormatter.ISO_OFFSET_DATE_TIME)"/>
                 <set field="processedTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(ZoneOffset.UTC).toLocalDateTime())"/>
                 <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context" in-map="[
@@ -302,7 +318,7 @@
         </actions>
     </service>
 
-    <service verb="create" noun="ShopifyFulfillmentOrders">
+    <service verb="consume" noun="ShopifyFulfillmentOrders">
         <in-parameters>
             <parameter name="orderId" required="true"/>
             <parameter name="fulfillmentOrders" type="List"/>
@@ -331,6 +347,26 @@
                     <entity-update value-field="orderItem"/>
                 </iterate>
             </iterate>
+        </actions>
+    </service>
+
+    <service verb="consume" noun="ShopifyTransactions">
+        <in-parameters>
+            <parameter name="orderId" required="true"/>
+            <parameter name="transactions" type="List" required="true"/>
+        </in-parameters>
+        <actions>
+            <set field="authTransaction" from="transactions.find{['sale', 'authorization'].contains(it.kind) &amp;&amp; it.status.equals('success')}"/>
+            <if condition="!authTransaction"><return error="true" message="No auth/sale transaction found on ${orderId}"/></if>
+
+            <entity-find-one relationship-name="mantle.account.payment.Payment" value-field="payment" for-update="true">
+                <field-map field-name="orderId"/></entity-find-one>
+
+            <if condition="!payment"><return error="true" message="The order ${orderId} does not have an associated payment"/></if>
+
+            <set field="payment.paymentRefNum" from="authTransaction.authorization.split('#')[0]"/>
+            <set field="txIdShopify" from="authTransaction.id"/>
+            <entity-update value-field="payment"/>
         </actions>
     </service>
 
@@ -418,7 +454,7 @@
 
             <set field="responseMap" from="[:]"/>
             <script><![CDATA[
-                String url = ec.resource.expand(remote.sendUrl, "", [resource:'orders/'+order.externalId+'/refunds/calculate']);
+                String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:'orders/'+order.externalId+'/refunds/calculate']);
 
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method('POST')
                     .addHeader("X-Shopify-Access-Token", remote.password).addHeader("Content-Type", "application/json")
@@ -469,7 +505,8 @@
             <set field="carrierPartyId" from="shipmentRouteSegmentList.first().carrierPartyId"/>
 
             <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="carrierShopifyId">
-                <field-map field-name="partyId" from="carrierPartyId"/><field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
+                <field-map field-name="partyId" from="carrierPartyId"/>
+                <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
             </entity-find-one>
             <if condition="carrierShopifyId">
                 <set field="tracking_info.company" from="carrierShopifyId.idValue"/>
@@ -479,7 +516,6 @@
 
             <!-- get all the shopify fulfillment orders from this shipment -->
             <set field="orderIdList" from="shipmentItemList.orderId.unique( false )"/>
-            <log message="orderIdList: ${orderIdList}"/>
             <entity-find entity-name="mantle.shopify.ShopifyFulfillmentOrder" list="fulfillmentOrders">
                 <econdition field-name="orderId" operator="in" from="orderIdList"/>
                 <econdition field-name="locationId" from="facility.externalId"/></entity-find>
@@ -495,7 +531,6 @@
                         <field-map field-name="orderId" from="shipmentItem.orderId"/>
                         <field-map field-name="orderItemSeqId" from="shipmentItem.orderItemSeqId"/>
                     </entity-find-one>
-                    <log message="shipmentItem: ${shipmentItem}"/>
 
                     <set field="item" from="[:]"/>
                     <set field="item.id" from="od.fulfillmentOrderLineItemId"/>

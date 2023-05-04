@@ -5,32 +5,38 @@
 
     <!-- configuration for the demo store set up by Tailorsoft... possibly remove these values and let people enter their own -->
     <moqui.service.message.SystemMessageRemote systemMessageRemoteId="ShopifyDemoRemote" systemMessageTypeId="ShopifySystemMessageType" 
-        productStoreId="POPC_DEFAULT" description="Remote for pushing and pulling data from the Demo Shopify store"
+        productStoreId="POPC_DEFAULT" description="Remote for pushing and pulling data from the Shopify store"
         sendUrl="https://{store_name}.myshopify.com/admin/api/2023-01/${resource}.json" username="" password=""/>
 
     <!-- Service jobs to download Product and Collection data from Shopify -->
-    <moqui.service.job.ServiceJob jobName="poll_shopify_products_download" description="Poll download Shopify Products Demo"
+    <moqui.service.job.ServiceJob jobName="poll_shopify_products_download" description="Poll download Shopify Products"
             serviceName="mantle.shopify.ShopifyProductServices.download#ShopifyProducts" cronExpression="0 0 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
     </moqui.service.job.ServiceJob>
-    <moqui.service.job.ServiceJob jobName="poll_shopify_collections_download" description="Poll download Shopify Products Demo"
+    <moqui.service.job.ServiceJob jobName="poll_shopify_collections_download" description="Poll download Shopify Products"
             serviceName="mantle.shopify.ShopifyProductServices.download#ShopifyCollections" cronExpression="0 0 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
     </moqui.service.job.ServiceJob>
 
     <!-- Service jobs to upload Product and Category data from Moqui to Shopify -->
-    <moqui.service.job.ServiceJob jobName="poll_shopify_products_upload" description="Poll upload Shopify Products Demo"
+    <moqui.service.job.ServiceJob jobName="poll_shopify_products_upload" description="Poll upload products to Shopify"
             serviceName="mantle.shopify.ShopifyProductServices.upload#MoquiStoreProducts" cronExpression="0 0 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
     </moqui.service.job.ServiceJob>
-    <moqui.service.job.ServiceJob jobName="poll_shopify_categories_upload" description="Poll upload Shopify Store Categories Demo"
+    <moqui.service.job.ServiceJob jobName="poll_shopify_categories_upload" description="Poll upload Shopify Store Categories"
             serviceName="mantle.shopify.ShopifyProductServices.upload#MoquiStoreCategories" cronExpression="0 0 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
     </moqui.service.job.ServiceJob>
 
-    <!-- poll the service to get the demo shopify orders once per 15 minutes -->
-    <moqui.service.job.ServiceJob jobName="poll_shopify_orders_download" description="Shopify Demo Poll Orders"
+    <!-- poll the service to get the shopify orders once per 15 minutes -->
+    <moqui.service.job.ServiceJob jobName="poll_shopify_orders_download" description="Shopify poll orders and download new"
             serviceName="mantle.shopify.ShopifyOrderServices.download#ShopifyOrders" cronExpression="0 0/15 * * * ?" paused="Y">
+        <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
+    </moqui.service.job.ServiceJob>
+
+    <!-- poll the service to upload queued inventory updates -->
+    <moqui.service.job.ServiceJob jobName="poll_shopify_inventory_upload" description="Poll Shopify inventory queue and upload"
+            serviceName="mantle.shopify.ShopifyProductServices.upload#ProductInventoryQueue" cronExpression="0 0/15 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
     </moqui.service.job.ServiceJob>
 </entity-facade-xml>
