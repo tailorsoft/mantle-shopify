@@ -1,23 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <entity-facade-xml type="seed">
+    <!-- Shopify as Carrier -->
+    <moqui.basic.Enumeration enumTypeId="ShipmentMethod" enumId="ShMthFreeShip" description="Free shipping" />
+    <moqui.basic.Enumeration enumTypeId="ShipmentMethod" enumId="ShMthEconomy" description="Economy" />
+
+    <mantle.party.Party partyId="SHOPIFY" partyTypeEnumId="PtyOrganization" externalId="shopify">
+        <organization organizationName="Shopify Inc."/>
+        <roles roleTypeId="Carrier"/>
+    </mantle.party.Party>
+    <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="SHOPIFY" shipmentMethodEnumId="ShMthGround" sequenceNum="1"
+            description="Standard Shipping"/>
+    <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="SHOPIFY" shipmentMethodEnumId="ShMthFreeShip" sequenceNum="2"
+            description="Free shipping"/>
+    <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="SHOPIFY" shipmentMethodEnumId="ShMthEconomy" sequenceNum="2"
+            description="Economy"/>
+
     <moqui.basic.Enumeration description="Shopify Product ID" enumId="PidtShopify" enumTypeId="ProductIdentificationType"/>
     <moqui.basic.Enumeration description="Shopify Product Inventory Item ID" enumId="PidtInventoryItemShopify" enumTypeId="ProductIdentificationType"/>
     <moqui.basic.Enumeration description="Shopify Store Id" enumId="ShopifyStoreId" enumTypeId="ProductStoreSettingType"/>
     <moqui.basic.Enumeration description="Shopify Party Identifier" enumId="PtidShopify" enumTypeId="PartyIdType"/>
     <moqui.basic.Enumeration description="Shopify" enumId="ScShopify" enumTypeId="SalesChannel"/>
-    <moqui.basic.Enumeration description="Shopify Carrier Party Identifier" enumId="PtidCarrierShopify" enumTypeId="PartyIdType"/>
-    
-    <moqui.basic.EnumerationType description="Shopify Shipping Method " enumTypeId="ShopifyShippingMethod"/>
-    <moqui.basic.Enumeration description="Free Shipping" enumId="FreeShipping" enumTypeId="ShopifyShippingMethod"/>
-    <moqui.basic.Enumeration description="Standard Shipping" enumId="StandardShipping" enumTypeId="ShopifyShippingMethod"/>
 
     <!-- shopify creates default variant products and links them using this Enum -->
     <moqui.basic.Enumeration enumTypeId="ProductFeatureType" enumId="ShopifyDefaultOption"  description="Title" />
-
-    <mantle.party.PartyIdentification partyId="_NA_" partyIdTypeEnumId="PtidCarrierShopify" idValue="shopify"/>
-    <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="_NA_" shipmentMethodEnumId="ShMthGround" description="Standard Shipping"/>
-    <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="_NA_" shipmentMethodEnumId="ShMthGround" description="Free shipping"/>
-    <!-- TODO: ADD ENDPOINT TO VERIFY LOCATIONS IN SHOPIFY. OR CREATE A LOCATION FOR THE STORE FACILITY -->
 
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifySystemMessageType" description="Shopify System Message Type"
             consumeServiceName="mantle.shopify.ShopifyServices.consume#ShopifySystemMessage" 
@@ -27,6 +32,13 @@
     <mantle.party.PartyIdentification partyId="UPS" partyIdTypeEnumId="PtidShopify" idValue="UPS" />
     <mantle.party.PartyIdentification partyId="FedEx" partyIdTypeEnumId="PtidShopify" idValue="FedEx" />
     <mantle.party.PartyIdentification partyId="DHLX" partyIdTypeEnumId="PtidShopify" idValue="DHL Express" />
-    <mantle.party.PartyIdentification partyId="USPS" partyIdTypeEnumId="PtidCarrierShopify" idValue="usps" />
-    <mantle.party.PartyIdentification partyId="UPS" partyIdTypeEnumId="PtidCarrierShopify" idValue="ups_shipping" />
+
+
+    <moqui.basic.Enumeration enumTypeId="PartyIdType" enumId="PtidCarrierShopify" description="Shopify Carrier Party Identifier" />
+    <mantle.party.PartyIdentification partyIdTypeEnumId="PtidCarrierShopify" partyId="SHOPIFY" idValue="shopify"/>
+    <mantle.party.PartyIdentification partyIdTypeEnumId="PtidCarrierShopify" partyId="USPS" idValue="usps" />
+    <mantle.party.PartyIdentification partyIdTypeEnumId="PtidCarrierShopify" partyId="UPS" idValue="ups_shipping" />
+
+
+
 </entity-facade-xml>

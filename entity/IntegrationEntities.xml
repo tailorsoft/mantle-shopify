@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <entities xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/entity-definition-2.1.xsd">
-    <entity entity-name="ProductInventoryUpdate" package="mantle.product" cache="never">
-        <field name="updateId" type="id" is-pk="true"/>
-        <field name="productId" type="text-medium"/>
-        <field name="initDate" type="date-time"/>
+    <entity entity-name="ProductInventoryQueue" package="mantle.shopify" cache="never">
+        <field name="productId" type="id" is-pk="true"/>
+        <field name="facilityId" type="id" is-pk="true"/>
+        <field name="inventoryItemId" type="text-short" not-null="true"/>
+        <field name="availableToPromise" type="number-decimal" not-null="true"/>
+        <relationship type="one" title="Product" related="mantle.product.Product">
+            <key-map field-name="productId"/></relationship>
+        <relationship type="one" title="Facility" related="mantle.facility.Facility">
+            <key-map field-name="productId"/></relationship>
     </entity>
+
     <extend-entity entity-name="SystemMessage" package="moqui.service.message">
         <field name="productId" type="text-medium"/>
     </extend-entity>
@@ -41,7 +47,6 @@
 
     <extend-entity entity-name="PostalAddress" package="mantle.party.contact">
         <field name="shopifyAddressId" type="id"/>
-        <field name="shopifyDefaultAddress" type="text-short"/>
     </extend-entity>
 
     <view-entity entity-name="CustomerInfoView" package="brokerageengine.party.customer">
