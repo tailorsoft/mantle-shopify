@@ -6,7 +6,7 @@
     <!-- configuration for the demo store set up by Tailorsoft... possibly remove these values and let people enter their own -->
     <moqui.service.message.SystemMessageRemote systemMessageRemoteId="ShopifyDemoRemote" systemMessageTypeId="ShopifySystemMessageType" 
         productStoreId="POPC_DEFAULT" description="Remote for pushing and pulling data from the Shopify store"
-        sendUrl="https://{store_name}.myshopify.com/admin/api/2023-01/${resource}.json" username="" password=""/>
+        sendUrl="https://${store_name}.myshopify.com/admin/api/2023-01/${resource}.json" username="" password=""/>
 
     <!-- Service jobs to download Product and Collection data from Shopify -->
     <moqui.service.job.ServiceJob jobName="poll_shopify_products_download" description="Poll download Shopify Products"
