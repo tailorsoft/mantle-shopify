@@ -53,10 +53,9 @@ Go to the "API Credentials" tab and take note of the API key and secret key.
 The first step is to configure a SystemMessageRemote that will allow calls to the Shopify REST API:
 ```
 <moqui.service.message.SystemMessageRemote systemMessageTypeId="ShopifySystemMessageType" 
-        systemMessageRemoteId="" productStoreId="" username="" password=""
-        sendUrl="https://{store_name}.myshopify.com/admin/api/2023-01/${resource}.json"/>
+        systemMessageRemoteId="" productStoreId="" username="" password=""/>
 ```
-Give your remote a name, the productStoreId that it will be interacting with, and the API credentials that were noted from Shopify. The 'API Key' should be configured in the 'username' field of the SystemMessageRemote and the password in the same name field. Replace '{store_name}' with the subdomain of your store, and the sendUrl should look something like: https://moquidemo.myshopify.com/admin/api/2023-01/${resource}.json
+Give your remote a name, the productStoreId that it will be interacting with, and the API credentials that were noted from Shopify. The store name (also your store subdomain) should be configured in the 'username' field of the SystemMessageRemote and the Admin API access token in the password field.
 
 Run the following service to configure the Facility in Moqui with the previously created Location in Shopify:
 ```
