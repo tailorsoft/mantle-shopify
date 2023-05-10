@@ -37,7 +37,7 @@
             </entity-find-one>
             <if condition="!remote"><return error="true" message="No Remote of type 'ShopifySystemMessageType' found for ID ${systemMessageId}"/></if>
             <script><![CDATA[
-                String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:systemMessage.docType]);
+                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/{systemMessage.docType}.json";
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method(systemMessage.docSubType)
                     .jsonObject(systemMessage.messageText).addHeader("Content-Type", "application/json")
                     .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
@@ -66,7 +66,7 @@
 
             <set field="responseMap" from="[:]"/>
             <script><![CDATA[
-                String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"locations"])
+                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/locations.json";
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
                     .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
@@ -131,10 +131,11 @@
 
             <set field="responseMap" from="[:]"/>
             <script><![CDATA[
+                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/fulfillment_services";
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("POST")
                     .addHeader("Content-Type", "application/json").addHeader("X-Shopify-Access-Token", remote.password)
                     .jsonObject(groovy.json.JsonOutput.toJson([fulfillment_service: fulfillment_service]))
-                    .uri(ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"fulfillment_services"])).call();
+                    .uri(url).call();
 
                 if (restResponse.statusCode == 422) {
                     responseMap = new groovy.json.JsonSlurper().parseText(restResponse.text());
