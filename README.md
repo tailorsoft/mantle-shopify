@@ -53,10 +53,9 @@ Go to the "API Credentials" tab and take note of the API key and secret key.
 The first step is to configure a SystemMessageRemote that will allow calls to the Shopify REST API:
 ```
 <moqui.service.message.SystemMessageRemote systemMessageTypeId="ShopifySystemMessageType" 
-        systemMessageRemoteId="" productStoreId="" username="" password=""
-        sendUrl="https://{store_name}.myshopify.com/admin/api/2023-01/${resource}.json"/>
+        systemMessageRemoteId="" productStoreId="" username="" password=""/>
 ```
-Give your remote a name, the productStoreId that it will be interacting with, and the API credentials that were noted from Shopify. The 'API Key' should be configured in the 'username' field of the SystemMessageRemote and the password in the same name field. Replace '{store_name}' with the subdomain of your store, and the sendUrl should look something like: https://moquidemo.myshopify.com/admin/api/2023-01/${resource}.json
+Give your remote a name, the productStoreId that it will be interacting with, and the API credentials that were noted from Shopify. The stores subdomain should be configured in the  'username' field of the SystemMessageRemote and the 'API Key' should be configured as the password. See the demo data for an example.
 
 Run the following service to configure the Facility in Moqui with the previously created Location in Shopify:
 ```
@@ -86,6 +85,8 @@ There is a service that can be polled to download orders from Shopify:
 mantle.shopify.ShopifyOrderServices.download#ShopifyOrders
 ```
 
+There is a demo job that polls this service called: poll_shopify_orders_download
+
 When an order is fulfilled in Moqui, a SystemMessage is queued to POST to the shopify fulfilments API 
 ```
 mantle.shopify.ShopifyProductServices.queue#ShopifyFulfillmentSystemMessage
@@ -100,6 +101,8 @@ mantle.shopify.ShopifyProductServices.update#ItemInventory
 
 ```
 This API call updates one Item per call, with obvious limitations around the Shopify REST API rate limits. To avoid this limitation, a new endpoint would need to be developed to call the Shopify Graph API, and update multiple items per API call.
+
+TODO Complete the help for the refund services.
 
 
 
