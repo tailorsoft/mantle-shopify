@@ -34,8 +34,7 @@
 
             <!-- https://{hostname}/admin/api/{version}/{resource}.json?limit=250&fulfillment_status=unfulfilled&since_id={last} -->
             <script><![CDATA[
-                String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"orders"]) +
-                    "?limit=${limit}&fulfillment_status=${fulfillmentStatus}";
+               String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/orders?limit=${limit}&fulfillment_status=${fulfillmentStatus}";
 
                 if (lastOrderId != null) {
                     url += "&since_id=${lastOrderId}";
@@ -129,7 +128,7 @@
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
             <set field="fulfillmentOrders" from="[]"/>
             <script><![CDATA[
-                String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"/orders/${shopifyOrderId}/fulfillment_orders"]);
+                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/orders/${shopifyOrderId}/fulfillment_orders";
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
                     .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
@@ -157,7 +156,7 @@
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
             <set field="fulfillmentOrders" from="[]"/>
             <script><![CDATA[
-                String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"/orders/${shopifyOrderId}/transactions"]);
+                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/orders/${shopifyOrderId}/transactions";
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
                     .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
@@ -441,9 +440,9 @@
             <set field="refundLineItems" from="[]"/>
             <iterate list="orderItems" entry="item">
                 <set field="refundLineItems" from="refundLineItems.plus([
-                    line_item_id : item.sourceReferenceId
+                    line_item_id : item.sourceReferenceId,
                     quantity : item.quantityCancelled,
-                    restock_type = 'cancel'
+                    restock_type : 'cancel'
                 ])"/>
             </iterate>
 
@@ -455,8 +454,10 @@
             ]"/>
 
             <set field="responseMap" from="[:]"/>
+            <!-- TODO Test new String url line after being able to consume order -->
             <script><![CDATA[
                 String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:'orders/'+order.externalId+'/refunds/calculate']);
+                //String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/orders/${order.externalId}/refunds/calculate";
 
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method('POST')
                     .addHeader("X-Shopify-Access-Token", remote.password).addHeader("Content-Type", "application/json")
@@ -468,7 +469,7 @@
 
                 responseMap = new groovy.json.JsonSlurper().parseText(restResponse.text())
             ]]></script>
-            <set fiel="refund" from="responseMap.refund"/>
+            <set field="refund" from="responseMap.refund"/>
         </actions>
     </service>
 
