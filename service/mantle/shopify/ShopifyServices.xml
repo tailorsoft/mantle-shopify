@@ -27,6 +27,10 @@
         </actions>
     </service>
 
+    <!-- 
+        This is a generic send message for all outgoing POST/PUT requests.
+        Currently only used for pushing shipments and refunds.
+     -->
     <service verb="send" noun="ShopifySystemMessage" authenticate="anonymous-all">
         <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
         <actions>
@@ -53,6 +57,9 @@
         <in-parameters>
             <parameter name="systemMessageRemoteId" required="true"/>
         </in-parameters>
+        <out-parameters>
+            <parameter name="response"/>
+        </out-parameters>
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
 
@@ -62,6 +69,7 @@
             </entity-find>
             <if condition="!storeFacilityList"><return error="true" message="No Facilities configured for Store ID ${remote.productStoreId}"/></if>
             <if condition="storeFacilityList.size() &gt; 1"><return error="true" message="Too many facilities configured in Moqui for Store ID ${remote.productStoreId}, Please manually configure the externalId on mantle.facility.Facility"/></if>
+            <set field="facilityId" from="storeFacilityList.first().facilityId"/>
 
 
             <set field="responseMap" from="[:]"/>
@@ -80,15 +88,15 @@
 
             <!-- TODO, find out why extra location appears on shopify if condition="responseMap.locations.size() &gt; 1"><return error="true" message="Too many locations configured in Shopify, Please manually configure the externalId on mantle.facility.Facility"/></if-->
 
-            <entity-find-one entity-name="mantle.facility.Facility" value-field="facility" for-update="true">
-                <field-map field-name="facilityId" from="storeFacilityList.first().facilityId"/>
-            </entity-find-one>
+            <entity-find-one entity-name="mantle.facility.Facility" value-field="facility" for-update="true"/>
             <set field="location" from="responseMap.locations.find({it.name == facility.facilityName})"/>
 
             <if condition="!location"><return error="true" message="No Location named ${facility.facilityName} found in Shopify, aborting"/></if>
 
             <set field="facility.externalId" from="location.id"/>
             <entity-update value-field="facility"/>
+
+            <set field="response" value="Facility ${facilityId} with location_id ${location.id} from shopify"/>
         </actions>
     </service>
 

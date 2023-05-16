@@ -128,7 +128,7 @@
                     <field-map field-name="description" from="option.name"/>
                 </entity-find-one>
                 <if condition="!featureType">
-                    <return error="true" message="No featureType found with description: ${option.name}"/>
+                    <return error="true" message="No featureType found with description: ${option.name} for product ${product.id}"/>
                 </if>
                 <iterate list="option.values" entry="value">
                     <!-- create the product features on the virtual product as 'Selectable' -->
@@ -356,15 +356,16 @@
             <set field="apiResponse" value="[:]"/>
             <script><![CDATA[
                 String method = shopifyIdentification ? 'PUT' : 'POST';
-                //String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"products"]);
-                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/products.json";
+                String endpoint = shopifyIdentification ? 'products/${shopifyIdentification.idValue}' : 'products';
+                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/${endpoint}.json";
+                String json = groovy.json.JsonOutput.toJson([product: productData]);
 
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method(method)
-                    .addHeader("Content-Type", "application/json").jsonObject(groovy.json.JsonOutput.toJson([product: productData]))
+                    .addHeader("Content-Type", "application/json").jsonObject(json)
                     .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
-                if (restResponse.statusCode != 201) {
-                    ec.message.addError("Shopify Products API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}")
+                if (restResponse.statusCode != 201 && restResponse.statusCode != 200) {
+                    ec.message.addError("Shopify Products API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} ${json}")
                     return;
                 }
                 apiResponse = new groovy.json.JsonSlurper().parseText(restResponse.text());
@@ -571,8 +572,8 @@
                 inventory_management: 'shopify',
                 inventory_quantity: availableToPromiseTotal,
                 images: images,
-                variants: prodVariants,
-                options: prodOptions
+                variants: prodVariants ? prodVariants : null,
+                options: prodOptions ? prodOptions : null
             ]"/>
         </actions>
     </service>
@@ -606,7 +607,6 @@
 
             <set field="apiResponse" from="[:]"/>
             <script><![CDATA[
-                //String collectionsUrl = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:"custom_collections"]) + "?limit=${limit}";
                 String collectionsUrl = "https://${remote.username}.myshopify.com/admin/api/2023-01/custom_collections.json?limit=${limit}";
 
                 org.moqui.util.RestClient.RestResponse collectionsRestResponse = ec.service.rest().method("GET")
@@ -736,7 +736,8 @@
             <if condition="category.pseudoId != category.productCategoryId">
                 <script><![CDATA[
                     //String url = ec.resource.expand(remote.sendUrl, '', [resource:'collects']) + '?collection_id=' + category.pseudoId;
-                    String url = 'https://${remote.username}.myshopify.com/admin/api/2023-01/collects.json?collection_id=' + category.pseudoId;
+                    String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/collects.json?collection_id=" + category.pseudoId;
+
                     org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method('GET')
                         .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
@@ -764,9 +765,8 @@
             
             <script><![CDATA[
                 String method = category.pseudoId == category.productCategoryId ? 'POST' : 'PUT';
-                String resource = category.pseudoId == category.productCategoryId ? 'custom_collections' : 'custom_collections/'+category.pseudoId;
-                //String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:resource]);
-                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/"${resource}.json";
+                String endpoint = category.pseudoId == category.productCategoryId ? 'custom_collections' : 'custom_collections/'+category.pseudoId;
+                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/${endpoint}.json";
 
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method(method)
                     .addHeader("Content-Type", "application/json").addHeader("X-Shopify-Access-Token", remote.password)
@@ -919,8 +919,7 @@
                     <log message="inventory: ${inventory}"/>
 
                     <script><![CDATA[
-                        //String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:'inventory_levels/set']);
-                        String url = 'https://${remote.username}.myshopify.com/admin/api/2023-01/inventory_levels/set.json';
+                        String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/inventory_levels/set.json";
 
                         org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method('POST')
                             .addHeader("X-Shopify-Access-Token", remote.password).addHeader("Content-Type", "application/json")

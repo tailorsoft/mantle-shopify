@@ -66,7 +66,7 @@ mantle.shopify.ShopifyServices.configure#FacilityFromShopifyLocation
 ## Services to Sync Products and Categories
 There are 2 services that can be called to download products and collections from Shopify down to Moqui.
 ```
-mantle.shopify.ShopifyProductServices.download#ShopifyProductList
+mantle.shopify.ShopifyProductServices.download#ShopifyProducts
 mantle.shopify.ShopifyProductServices.download#ShopifyCollections
 ```
 Both services generate SystemMessages that need to be consumed. If this is not happening automatically, ensure the consume_AllReceivedSystemMessages_frequent is running.
