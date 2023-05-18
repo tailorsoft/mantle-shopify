@@ -417,8 +417,6 @@
         </in-parameters>
         <out-parameters>
             <parameter name="productData"/>
-            <parameter name="product"/>
-            <parameter name="error"/>
         </out-parameters>
         <actions>
             <entity-find-one entity-name="mantle.product.Product" value-field="product"/>
@@ -458,8 +456,8 @@
                     <!-- Each product associated has at least one feature so we get all possible features /-->
                     <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl" list="featureList">
                         <econdition field-name="productId" from="assoc.toProductId"/>
-                        <econdition field-name="fromDate" operator="is-not-null"/>
-                        <econdition field-name="thruDate" operator="is-null"/>
+                        <econdition field-name="applTypeEnumId" value="PfatDistinguishing"/>
+                        <date-filter/>
                         <order-by field-name="sequenceNum"/>
                     </entity-find>
 
@@ -526,55 +524,38 @@
                         prodVariants.add(variant)
                     ]]>
                     </script>
-                    <iterate list="featureList" entry="feature">
-                        <set field="item" from="feature.productFeatureTypeEnumId"/>
-                        <script><![CDATA[
-                            def optionSet = prodOptionsMap.get(item)
-                            if (!optionSet) {
-                                prodOptionsMap.put(item, [feature.productFeatureDescription])
-                            } else {
-                                if(!optionSet.contains(feature.productFeatureDescription)){
-                                   optionSet.add(feature.productFeatureDescription)
-                                }
-                            }
-                        ]]></script>
-                    </iterate>
-                    <!-- MAKE THE COMBINATIONS FOR THE PRODUCT WITH THE FEATURELIST  /-->
                 </iterate>
-                <script><![CDATA[
-                    String[] keyList = prodOptionsMap.keySet()
-                    if(keyList.length == 1){
-                        def options1 = prodOptionsMap.get(keyList[0])
-                        prodOptions.add(new HashMap([name:keyList[0], values:options1]))
-                    }else if(keyList.length == 2){
-                        def options1 = prodOptionsMap.get(keyList[0])
-                        def options2 = prodOptionsMap.get(keyList[1])
-                        prodOptions.add(new HashMap([name:keyList[0], values:options1]))
-                        prodOptions.add(new HashMap([name:keyList[1], values:options2]))
-                    }else if(keyList.length == 3){
-                        def options1 = prodOptionsMap.get(keyList[0])
-                        def options2 = prodOptionsMap.get(keyList[1])
-                        def options3 = prodOptionsMap.get(keyList[2])
-                        prodOptions.add(new HashMap([name:keyList[0], values:options1]))
-                        prodOptions.add(new HashMap([name:keyList[1], values:options2]))
-                        prodOptions.add(new HashMap([name:keyList[2], values:options3]))
-                    }
-                ]]></script>
             </if>
 
-            <service-call name="mantle.product.AssetServices.get#AvailableInventory" out-map="assetOut"
-                            in-map="[productId:productId, productStoreId:productStoreId]"/>
+            <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl" list="prodFeatureList">
+                <econdition field-name="productId" from="productId"/>
+                <econdition field-name="applTypeEnumId" value="PfatSelectable"/>
+                <date-filter/>
+                <order-by field-name="sequenceNum"/>
+            </entity-find>
+
+            <set field="prodOptions" from="new HashMap()"/>
+            <iterate list="featureList.productFeatureTypeEnumId.unique( false )" entry="enumId">
+                <entity-find-one entity-name="moqui.basic.Enumeration" value-field="featureTypeEnum"/>
+                <set field="options" from="prodFeatureList.findAll{it.productFeatureTypeEnumId == enumId}.productFeatureDescription"/>
+                <set field="prodOptions[featureTypeEnum.description]" from="options"/>
+            </iterate>
 
             <set field="productData" from="[
                 title: product.productName,
                 body_html: product.description,
                 vendor: '',
-                inventory_management: 'shopify',
-                inventory_quantity: availableToPromiseTotal,
-                images: images,
-                variants: prodVariants ? prodVariants : null,
-                options: prodOptions ? prodOptions : null
+                inventory_management: 'shopify'
             ]"/>
+            <if condition="images">
+                <set field="productData.images" from="images"/>
+            </if>
+            <if condition="prodVariants">
+                <set field="productData.variants" from="prodVariants"/>
+            </if>
+            <if condition="prodOptions">
+                <set field="productData.options" from="prodOptions"/>
+            </if>
         </actions>
     </service>
 
