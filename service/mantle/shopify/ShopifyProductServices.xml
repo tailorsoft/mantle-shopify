@@ -388,7 +388,7 @@
                     <!-- the only way to match the response to the request is via the options -->
                     <set field="moquiProductId" from="productData.variants.find({it.option1 == variant.option1 
                                                                       &amp;&amp; it.option2 == variant.option2 
-                                                                      &amp;&amp; it.option3 == variant.option3})?.moquiProductId"/>
+                                                                      &amp;&amp; it.option3 == variant.option3})?.metafields[0].value"/>
                     <if condition="!moquiProductId">
                         <continue/><!-- this should never happen, the moquiProductId is set inside get#ProductData -->
                     </if>
@@ -517,10 +517,6 @@
                         variant.weight_unit = uom?.abbreviation
                         variant.sku = prodSKU?.idValue
                         variant.metafields = [[namespace:'global', type:'single_line_text_field', key:'moquiproductid', value:assoc.toProductId]]
-
-                        // we do this so we can identify the variant in the shopify response
-                        // Shoify gives no option to store a customId on the product.
-                        variant.moquiProductId = assoc.toProductId
 
                         prodVariants.add(variant)
                     ]]>
