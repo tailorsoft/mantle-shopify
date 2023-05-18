@@ -534,11 +534,11 @@
                 <order-by field-name="sequenceNum"/>
             </entity-find>
 
-            <set field="prodOptions" from="new HashMap()"/>
+            <set field="prodOptions" from="[]"/>
             <iterate list="featureList.productFeatureTypeEnumId.unique( false )" entry="enumId">
                 <entity-find-one entity-name="moqui.basic.Enumeration" value-field="featureTypeEnum"/>
-                <set field="options" from="prodFeatureList.findAll{it.productFeatureTypeEnumId == enumId}.productFeatureDescription"/>
-                <set field="prodOptions[featureTypeEnum.description]" from="options"/>
+                <set field="featureDescList" from="prodFeatureList.findAll{it.productFeatureTypeEnumId == enumId}.productFeatureDescription"/>
+                <set field="prodOptions" from="prodOptions.plus([name:featureTypeEnum.description, values:featureDescList])"/>
             </iterate>
 
             <set field="productData" from="[
