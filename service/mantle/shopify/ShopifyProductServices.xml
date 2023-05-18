@@ -442,7 +442,6 @@
 
             <set field="prodVariants" from="[]"/>
             <set field="prodOptions" from="[]"/>
-            <set field="prodOptionsMap" from="new HashMap()"/>
             <if condition="product.productTypeEnumId == 'PtVirtual'">
                 <!-- Get all the products associated to the parent product /-->
                 <entity-find entity-name="mantle.product.ProductAssoc" list="assocList">
@@ -518,29 +517,31 @@
                         variant.weight_unit = uom?.abbreviation
                         variant.sku = prodSKU?.idValue
 
-                        // we do this so we can identify the variant in the
+                        // we do this so we can identify the variant in the shopify response
+                        // Shoify gives no option to store a customId on the product.
                         variant.moquiProductId = assoc.toProductId
 
                         prodVariants.add(variant)
                     ]]>
                     </script>
                 </iterate>
+
+                <!-- get all the selectable features for the virtual product -->
+                <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl" list="prodFeatureList">
+                    <econdition field-name="productId" from="productId"/>
+                    <econdition field-name="applTypeEnumId" value="PfatSelectable"/>
+                    <date-filter/>
+                    <order-by field-name="sequenceNum"/>
+                </entity-find>
+                <!-- iterate all the unique selectable feature types for this product-->
+                <iterate list="featureList.productFeatureTypeEnumId.unique( false )" entry="enumId">
+                    <entity-find-one entity-name="moqui.basic.Enumeration" value-field="featureTypeEnum"/>
+                    <!-- find all the variations for this feature, and get a simple list of descriptions, e.g ['Black', 'Blue', 'Green'] -->
+                    <set field="featureDescList" from="prodFeatureList.findAll{it.productFeatureTypeEnumId == enumId}.productFeatureDescription"/>
+                    <!-- create the shopify object with name and values, e.g {name:'Color', values:['Black', 'Blue', 'Green']} -->
+                    <set field="prodOptions" from="prodOptions.plus([name:featureTypeEnum.description, values:featureDescList])"/>
+                </iterate>
             </if>
-
-            <entity-find entity-name="mantle.product.feature.ProductAndFeatureAndFeatureAppl" list="prodFeatureList">
-                <econdition field-name="productId" from="productId"/>
-                <econdition field-name="applTypeEnumId" value="PfatSelectable"/>
-                <date-filter/>
-                <order-by field-name="sequenceNum"/>
-            </entity-find>
-
-            <set field="prodOptions" from="[]"/>
-            <iterate list="featureList.productFeatureTypeEnumId.unique( false )" entry="enumId">
-                <entity-find-one entity-name="moqui.basic.Enumeration" value-field="featureTypeEnum"/>
-                <set field="featureDescList" from="prodFeatureList.findAll{it.productFeatureTypeEnumId == enumId}.productFeatureDescription"/>
-                <set field="prodOptions" from="prodOptions.plus([name:featureTypeEnum.description, values:featureDescList])"/>
-            </iterate>
-
             <set field="productData" from="[
                 title: product.productName,
                 body_html: product.description,
