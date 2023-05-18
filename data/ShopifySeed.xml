@@ -18,7 +18,8 @@
     <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="_NA_" shipmentMethodEnumId="ShMthGround"  description="Standard Shipping"/>
     <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="_NA_" shipmentMethodEnumId="ShMthGround"  description="Free shipping"/>
     <!-- TODO: ADD ENDPOINT TO VERIFY LOCATIONS IN SHOPIFY. OR CREATE A LOCATION FOR THE STORE FACILITY -->
-    <mantle.product.store.ProductStoreSetting productStoreId="RCHERBALS" settingTypeEnumId="ShopifyStoreId"  settingValue="59386101956"/>
+    <mantle.product.store.ProductStore productStoreId="SHOPIFY_STORE" defaultLocale="en_US" defaultCurrencyUomId="USD"/>
+    <mantle.product.store.ProductStoreSetting productStoreId="SHOPIFY_STORE" settingTypeEnumId="ShopifyStoreId"  settingValue="59386101956"/>
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyUpdateProductMessage" description="Shopify Product SystemMessage Type"
             sendServiceName="mantle.shopify.ApiServices.send#UpdateStatusProductSystemMessage" />
     <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyProductMessage" description="Shopify Product SystemMessage Type"
