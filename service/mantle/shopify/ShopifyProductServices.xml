@@ -356,7 +356,7 @@
             <set field="apiResponse" value="[:]"/>
             <script><![CDATA[
                 String method = shopifyIdentification ? 'PUT' : 'POST';
-                String endpoint = shopifyIdentification ? 'products/${shopifyIdentification.idValue}' : 'products';
+                String endpoint = shopifyIdentification ? "products/${shopifyIdentification.idValue}" : "products";
                 String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/${endpoint}.json";
                 String json = groovy.json.JsonOutput.toJson([product: productData]);
 
@@ -516,6 +516,7 @@
                         variant.weight = productDimension?.value
                         variant.weight_unit = uom?.abbreviation
                         variant.sku = prodSKU?.idValue
+                        variant.metafields = [[namespace:'global', type:'single_line_text_field', key:'moquiproductid', value:assoc.toProductId]]
 
                         // we do this so we can identify the variant in the shopify response
                         // Shoify gives no option to store a customId on the product.
@@ -544,10 +545,12 @@
             </if>
             <set field="productData" from="[
                 title: product.productName,
-                body_html: product.description,
-                vendor: '',
-                inventory_management: 'shopify'
+                inventory_management: 'shopify',
+                metafields: [[namespace:'global', type:'single_line_text_field', key:'moquiproductid', value:productId]]
             ]"/>
+            <if condition="product.description">
+                <set field="productData.body_html" from="product.description"/>
+            </if>
             <if condition="images">
                 <set field="productData.images" from="images"/>
             </if>
