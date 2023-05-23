@@ -199,10 +199,11 @@
                 in-map="[partyId:partyId, address:shippingAddress, contactMechPurposeId:'PostalPrimary']"/>
             <set field="shippingPostalContactMechId" from="postalOut.contactMechId"/>
 
-            <service-call name="mantle.party.ContactServices.findOrCreate#PartyTelecomNumber" out-map="telecomOut"
-                in-map="[partyId:partyId, contactNumber:shippingAddress.phone, contactMechPurposeId:'PhonePrimary']"/>
-            <set field="shippingTelecomContactMechId" from="telecomOut.contactMechId"/>
-                
+            <if condition="shippingAddress.phone">
+                <service-call name="mantle.party.ContactServices.findOrCreate#PartyTelecomNumber" out-map="telecomOut"
+                    in-map="[partyId:partyId, contactNumber:shippingAddress.phone, contactMechPurposeId:'PhonePrimary']"/>
+                <set field="shippingTelecomContactMechId" from="telecomOut.contactMechId"/>
+            </if>
 
             <!-- store all the Address and Phone from the billing address -->
             <if condition="billingAddress">
@@ -210,9 +211,11 @@
                     in-map="[partyId:partyId, address:billingAddress, contactMechPurposeId:'PostalBilling']"/>
                 <set field="billingPostalContactMechId" from="billingPostalOut.contactMechId"/>
 
-                <service-call name="mantle.party.ContactServices.findOrCreate#PartyTelecomNumber" 
-                    in-map="[partyId:partyId, contactNumber:billingAddress.phone, contactMechPurposeId:'PhoneBilling']"/>
-                <set field="billingTelecomContactMechId" from="billingPostalOut.contactMechId"/>
+                <if condition="billingAddress.phone">
+                    <service-call name="mantle.party.ContactServices.findOrCreate#PartyTelecomNumber"
+                        in-map="[partyId:partyId, contactNumber:billingAddress.phone, contactMechPurposeId:'PhoneBilling']"/>
+                    <set field="billingTelecomContactMechId" from="billingPostalOut.contactMechId"/>
+                </if>
             </if>
         </actions>
     </service>
