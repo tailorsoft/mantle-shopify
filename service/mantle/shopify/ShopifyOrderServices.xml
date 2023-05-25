@@ -266,7 +266,7 @@
                 <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="shopifyPidt">
                     <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
                     <field-map field-name="idValue" from="line_item.variant_id"/></entity-find-one>
-                <if condition="!shopifyPidt"><return error="true" message="Shopify product_id ${orderItem.variant_id} not found"/></if>
+                <if condition="!shopifyPidt"><return error="true" message="Shopify product_id ${line_item.variant_id} not found"/></if>
 
                 <service-call name="mantle.order.OrderServices.create#OrderItem" in-map="[
                     orderId: orderId,
