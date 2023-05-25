@@ -228,7 +228,7 @@
                 <field-map field-name="abbreviation" from="order.currency"/></entity-find-one>
 
             <set field="createdAt" from="OffsetDateTime.parse(order.created_at, DateTimeFormatter.ISO_OFFSET_DATE_TIME)"/>
-            <set field="createdTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(ZoneOffset.UTC).toLocalDateTime())"/>
+            <set field="createdTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime())"/>
 
             <service-call name="mantle.order.OrderServices.create#Order" in-map="[
                 productStoreId: productStoreId,
@@ -304,7 +304,7 @@
 
             <if condition="order.payment_details">
                 <set field="processedAt" from="OffsetDateTime.parse(order.processed_at, DateTimeFormatter.ISO_OFFSET_DATE_TIME)"/>
-                <set field="processedTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(ZoneOffset.UTC).toLocalDateTime())"/>
+                <set field="processedTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime())"/>
                 <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context" in-map="[
                     orderId: orderId,
                     paymentMethodId: paymentMethodId,
