@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
+    <service verb="queue" noun="UpdateCustomerSystemMessage">
+        <in-parameters>
+            <parameter name="partyId"/>
+        </in-parameters>
+        <actions>
+            <script>
+                def getPhoneFormat(phoneNumber){
+                    def phone = null
+                    if (phoneNumber?.countryCode) {
+                            phone = phoneNumber.countryCode
+                    }
+                    if (phoneNumber?.areaCode) {
+                            phone = phone + phoneNumber.areaCode
+                    }
+                    if (phoneNumber?.contactNumber) {
+                            phone = phone + phoneNumber.contactNumber.replace('-','')
+                    }
+                    return phone
+                }
+            </script>
+
+            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentification">
+                <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
+                <field-map field-name="partyId"/></entity-find-one>
+
+            <if condition="!partyIdentification"><log message="Party ${partyId} is not a shopify customer, not sending system message"/></if>
+
+            <!-- find any orders placed by this Customer, from that, the shopify remote that created them -->
+            <entity-find entity-name="mantle.order.OrderHeaderAndPart" list="shopifyOrderList">
+                <econdition field-name="salesChannelEnumId" value="ScShopify"/>
+                <econdition field-name="customerPartyId" from="partyId"/></entity-find>
+
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote">
+                <field-map field-name="systemMessageTypeId" value="ShopifySystemMessageType"/>
+                <field-map field-name="productStoreId" operator="in" from="shopifyOrderList.productStoreId"/>
+            </entity-find-one>
+
+            <entity-find-one entity-name="mantle.party.Person" value-field="person"/>
+            <entity-find-one entity-name="mantle.party.Party" value-field="party"/>
+
+            <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber" list="telecomList">
+                <econdition field-name="contactMechPurposeId" value="PhonePrimary" />
+                <order-by field-name="fromDate"/><date-filter/></entity-find>
+
+            <set field="customer" from="[
+                id: partyIdentification.idValue,
+                email: emailList?.first()?.infoString,
+                note: party.comments,
+                first_name: person.firstName,
+                last_name: person.lastName,
+            ]"/>
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                in-map="[systemMessageTypeId:'ShopifySystemMessageType', systemMessageRemoteId:remote.systemMessageRemoteId, messageText:groovy.json.JsonOutput.toJson([customer:customer]), 
+                docType:'customers/'+partyIdentification.idValue, docSubType:'PUT']"/>
+        </actions>
+    </service>
+
+    <service verb="queue" noun="StoreAddressSystemMessage">
+        <in-parameters>
+            <parameter name="partyId" required="true"/>
+            <parameter name="contactMechId" required="true"/>
+        </in-parameters>
+        <actions>
+            <script>
+                def getPhoneFormat(phoneNumber){
+                    def phone = ''
+                    if (phoneNumber?.countryCode) {
+                            phone = phoneNumber.countryCode
+                    }
+                    if (phoneNumber?.areaCode) {
+                            phone = phone + phoneNumber.areaCode
+                    }
+                    if (phoneNumber?.contactNumber) {
+                            phone = phone + phoneNumber.contactNumber.replace('-','')
+                    }
+                    return phone
+                }
+            </script>
+
+            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentification">
+                <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
+                <field-map field-name="partyId"/></entity-find-one>
+
+            <if condition="!partyIdentification"><log message="Party ${partyId} is not a shopify customer, not sending system message"/></if>
+
+            <entity-find-one entity-name="mantle.party.Person" value-field="person"/>
+
+            <entity-find-one entity-name="mantle.party.contact.PartyContactMechPostalAddress" value-field="address">
+                <field-map field-name="contactMechId"/></entity-find-one>
+
+            <entity-find-one entity-name="moqui.basic.Geo" value-field="geoCountry">
+                <field-map field-name="geoId" from="address.countryGeoId"/>
+            </entity-find-one>
+
+            <entity-find-one entity-name="mantle.party.contact.TelecomNumber" value-field="addressPhoneNumber">
+                <field-map field-name="contactMechId" from="address.telecomContactMechId"/>
+            </entity-find-one>
+
+            <set field="addressMap" from="[
+                id: address.shopifyAddressId,
+                customer_id: partyIdentification.idValue,
+                address1: address.address1,
+                address2: address.address2,
+                city: address.city,
+                province: address.stateGeoName,
+                province_code: address.stateGeoCodeAlpha2,
+                country: geoCountry?.geoName,
+                country_code: geoContry?.geoCodeAlpha2,
+                country_name: geoCountry?.geoName,
+                zip: address.postalCode,
+                phone: getPhoneFormat(userAddressPhoneNumber)
+            ]"/>
+
+            <if condition="address.toName"><then>
+                <set field="parts" from="address.toName?.split(' ')"/>
+                <if condition="parts.size() &gt; 1"><then>
+                    <set field="midPoint" from="Math.floor(parts.size()/2)"/>
+                    <set field="addressMap.first_name" from="parts[0..midPoint-1].join(' ')" />
+                    <set field="addressMap.last_name" from="parts[midPoint..parts.size()-1].join(' ')" />
+                </then><else>
+                    <set field="addressMap.first_name" from="address.toName" />
+                    <set field="addressMap.last_name" value="person.lastName" />
+                </else></if>
+            </then><else>
+                <set field="addressMap.first_name" from="person.firstName" />
+                <set field="addressMap.last_name" value="person.lastName" />
+            </else></if>
+
+            <!-- POST /admin/api/2023-04/customers/207119551/addresses.json -->
+            <!-- {"address":{"id":207119551,"zip":"90210"}} -->
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                in-map="[systemMessageTypeId:'ShopifySystemMessageType', systemMessageRemoteId:remote.systemMessageRemoteId, messageText:groovy.json.JsonOutput.toJson([address:addressMap]), 
+                docType:'customers/'+partyIdentification.idValue+'/addresses.json', docSubType:'POST']"/>
+        </actions>
+    </service>
+
+    <service verb="queue" noun="DeleteAddressSystemMessage">
+        <in-parameters>
+            <parameter name="partyId" required="true"/>
+            <parameter name="contactMechId"/>
+        </in-parameters>
+        <actions>
+            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentification">
+                <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
+                <field-map field-name="partyId"/></entity-find-one>
+
+            <if condition="!partyIdentification"><log message="Party ${partyId} is not a shopify customer, not sending system message"/></if>
+
+            <entity-find-one entity-name="mantle.party.contact.PartyContactMechPostalAddress" value-field="address">
+                <field-map field-name="contactMechId"/></entity-find-one>
+
+            <!-- DELETE /admin/api/2023-04/customers/207119551/addresses/1053317288.json -->
+            <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
+                in-map="[systemMessageTypeId:'ShopifySystemMessageType', systemMessageRemoteId:remote.systemMessageRemoteId, 
+                docType:'customers/'+partyIdentification.idValue+'/addresses/'+address.shopifyAddressId, docSubType:'DELETE']"/>
+        </actions>
+    </service>
+
+    <service verb="store" noun="ShopifyCustomer">
+        <in-parameters>
+            <parameter name="customer" type="Map"/>
+            <parameter name="shippingAddress" type="Map"/>
+            <parameter name="billingAddress" type="Map"/>
+            <parameter name="ownerPartyId" required="true"/>
+            <parameter name="orderEmail"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="partyId"/>
+            <parameter name="shippingPostalContactMechId"/>
+            <parameter name="shippingTelecomContactMechId"/>
+            <parameter name="billingPostalContactMechId"/>
+            <parameter name="billingTelecomContactMechId"/>
+        </out-parameters>
+        <actions>
+            <!-- find if any party has used this email address before -->
+            <entity-find entity-name="mantle.party.contact.PartyContactMechInfo" list="pcmInfoList">
+                <econdition field-name="contactMechPurposeId" value="EmailPrimary"/>
+                <econdition field-name="infoString" from="customer.email"/><date-filter/></entity-find>
+            
+            
+            <if condition="!pcmInfoList"><then>
+                <service-call name="mantle.party.PartyServices.create#Person" out-map="context" in-map="[
+                    firstName:customer.first_name, lastName:customer.last_name, emailAddress:customer.email, 
+                    ownerPartyId:ownerPartyId, partyClassificationId:'CustConsumer', roleTypeId:'Customer']"/>
+            </then><else>
+                <set field="partyId" from="pcmInfoList.first().partyId"/>
+            </else></if>
+
+            <!-- store the Shopify ID and customer email address -->
+            <service-call name="store#mantle.party.PartyIdentification" out-map="context"
+                in-map="[partyId:partyId, partyIdTypeEnumId:'PtidShopify', idValue:customer.id]" />
+            <service-call name="mantle.party.ContactServices.findOrCreate#PartyEmailAddress" 
+                in-map="[partyId:partyId, emailAddress:customer.email?:orderEmail, contactMechPurposeId:'EmailPrimary']"/>
+
+            <!-- store all the Address and Phone from the shipping address -->
+            <service-call name="mantle.shopify.ShopifyPartyServices.store#ShopifyAddress" out-map="postalOut"
+                in-map="[partyId:partyId, address:shippingAddress, contactMechPurposeId:'PostalPrimary']"/>
+            <set field="shippingPostalContactMechId" from="postalOut.contactMechId"/>
+
+            <if condition="shippingAddress.phone">
+                <service-call name="mantle.party.ContactServices.findOrCreate#PartyTelecomNumber" out-map="telecomOut"
+                    in-map="[partyId:partyId, contactNumber:shippingAddress.phone, contactMechPurposeId:'PhonePrimary']"/>
+                <set field="shippingTelecomContactMechId" from="telecomOut.contactMechId"/>
+            </if>
+
+            <!-- store all the Address and Phone from the billing address -->
+            <if condition="billingAddress">
+                <service-call name="mantle.shopify.ShopifyPartyServices.store#ShopifyAddress" out-map="billingPostalOut"
+                    in-map="[partyId:partyId, address:billingAddress, contactMechPurposeId:'PostalBilling']"/>
+                <set field="billingPostalContactMechId" from="billingPostalOut.contactMechId"/>
+
+                <if condition="billingAddress.phone">
+                    <service-call name="mantle.party.ContactServices.findOrCreate#PartyTelecomNumber"
+                        in-map="[partyId:partyId, contactNumber:billingAddress.phone, contactMechPurposeId:'PhoneBilling']"/>
+                    <set field="billingTelecomContactMechId" from="billingPostalOut.contactMechId"/>
+                </if>
+            </if>
+        </actions>
+    </service>
+
+    <service verb="store" noun="ShopifyAddress">
+        <in-parameters>
+            <parameter name="partyId" required="true"/>
+            <parameter name="address"  required="true" type="Map"/>
+            <parameter name="contactMechPurposeId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="contactMechId"/>
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="moqui.basic.Geo" value-field="countyGeoId">
+                <field-map field-name="geoTypeEnumId" value="GEOT_COUNTRY"/>
+                <field-map field-name="geoCodeAlpha2" from="address.country_code"/>
+            </entity-find-one>
+
+            <!-- do not filter on geoTypeEnumId because can be all of GEOT_STATE, GEOT_TERRITORY, GEOT_PROVINCE -->
+            <entity-find-one entity-name="moqui.basic.GeoAssocAndToDetail" value-field="stateGeoList">
+                <field-map field-name="geoId" from="countyGeoId?.geoId"/>
+                <field-map field-name="geoCodeAlpha2" from="address.province_code"/>
+            </entity-find-one>
+
+            <service-call name="mantle.party.ContactServices.findOrCreate#PartyPostalAddress" in-map="[
+                shopifyAddressId:address.id,
+                partyId: partyId,
+                postalContactMechPurposeId: contactMechPurposeId,
+                toName: address.name,
+                address1: address.address1,
+                address2: address.address2,
+                city: address.city,
+                countryGeoId: countyGeoId?.geoId,
+                stateProvinceGeoId: stateGeoList?.geoId
+            ]" out-map="context"/>
+        </actions>
+    </service>
+
+
+    <service verb="store" noun="ShopifyPaymentMethod">
+        <in-parameters>
+            <parameter name="partyId" required="true"/>
+            <parameter name="paymentDetails" required="true" type="Map"/>
+            <parameter name="billingPostalContactMechId" required="true"/>
+            <parameter name="firstName" required="true"/>
+            <parameter name="lastName" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="paymentMethodId"/>
+        </out-parameters>
+        <actions>
+            <set field="creditCardDescription" from="paymentDetails.credit_card_company + ' ' + paymentDetails.credit_card_number"/>
+            <entity-find-one entity-name="mantle.account.method.PaymentMethod" value-field="creditCard">
+                <field-map field-name="paymentMethodTypeEnumId" value="PmtCreditCard"/>
+                <field-map field-name="description" from="creditCardDescription"/>
+                <field-map field-name="ownerPartyId" from="partyId"/></entity-find-one>
+
+            <set field="paymentMethodId" from="creditCard?.paymentMethodId"/>
+            <if condition="!creditCard"><then>
+                <service-call name="create#mantle.account.method.PaymentMethod" out-map="context" in-map="[
+                    ownerPartyId: partyId,
+                    paymentMethodTypeEnumId:'PmtCreditCard',
+                    postalContactMechId: billingPostalContactMechId,
+                    firstNameOnAccount: firstName,
+                    lastNameOnAccount: lastName,
+                    description: creditCardDescription
+                ]"/>
+            </then><else-if condition="creditCard.postalContactMechId != billingTelecomContactMechId">
+                <service-call name="update#mantle.account.method.PaymentMethod" out-map="context" 
+                    in-map="[paymentMethodId:paymentMethodId, postalContactMechId:billingPostalContactMechId]"/>
+            </else-if></if>
+        </actions>
+    </service>
+</services>

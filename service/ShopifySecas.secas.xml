@@ -1,74 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <secas xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-eca-2.1.xsd">
-    <seca id="UpdateBasiCustomerInfo" service="update#mantle.party.Person" when="post-service" run-on-error="false">
-        <actions>
-            <entity-find-one entity-name="mantle.party.Person" value-field="person"/>
-            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentification">
-                <field-map field-name="partyId" from="person.partyId"/>
-                <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
-            </entity-find-one>
-            <if condition="partyIdentification"><then>
-                <service-call name="mantle.shopify.ApiServices.queue#UpdateCustomerSystemMessage"  in-map="[partyId:person.partyId]" out-map="context"/>
-            </then><else>
-                <message type="warning">The customer does not have Shopify Id, you can add it in PartyIdentification entity in order to make purchases in the Shopify Store</message>
-            </else></if>
-        </actions>
+    <seca id="ShopifyCreateAssetDetail" service="create#mantle.product.asset.AssetDetail" when="post-service" run-on-error="false">
+        <condition><expression>facility != null</expression></condition>
+        <actions><service-call name="mantle.shopify.ShopifyProductServices.queue#ProductInventory" in-map="context" async="true"/></actions>
     </seca>
-    <seca id="UpdateAddressPhoneAndEmailCustomerInfo" service="mantle.party.ContactServices.store#PartyContactInfo" when="post-service">
-        <actions>
-            <entity-find-one entity-name="mantle.party.PartyIdentification" value-field="partyIdentification">
-                <field-map field-name="partyId" from="partyId"/>
-                <field-map field-name="partyIdTypeEnumId" value="PtidShopify"/>
-            </entity-find-one>
-            <if condition="partyIdentification"><then>
-                <service-call name="mantle.shopify.ApiServices.queue#UpdateCustomerSystemMessage"  in-map="[partyId:partyId]" out-map="context"/>
-            </then><else>
-                <message type="warning">The customer does not have Shopify Id, you can add it in PartyIdentification entity in order to make purchases in the Shopify Store</message>
-            </else></if>
-        </actions>
+    <seca id="ShopifyUpdateShipment" service="update#mantle.shipment.Shipment" when="post-service" run-on-error="false">
+        <condition><expression>statusChanged &amp;&amp; statusId == 'ShipShipped'</expression></condition>
+        <actions><service-call name="mantle.shopify.ShopifyOrderServices.queue#ShopifyFulfillmentSystemMessage" in-map="context"/></actions>
     </seca>
-    <seca id="CreateProductInventory" service="create#mantle.product.asset.Asset" when="post-service" run-on-error="false">
-        <actions>
-            <entity-find-one entity-name="mantle.product.asset.Asset" value-field="asset"/>
-            <entity-find entity-name="mantle.product.ProductInventoryUpdate" list="updatedProducts"/>
-            <if condition="!updatedProducts.find{it.productId.equals(asset.productId)}">
-                <service-call name="create#mantle.product.ProductInventoryUpdate"  in-map="[productId:asset.productId, initDate: asset.receivedDate]" out-map="context"/>
-            </if>
-        </actions>
+    <seca id="ShopifyCancelOrder" service="update#mantle.order.OrderHeader" when="post-service" run-on-error="false">
+        <condition><expression>statusChanged &amp;&amp; statusId == 'OrderCancelled'</expression></condition>
+        <actions><service-call name="mantle.shopify.ShopifyOrderServices.queue#RefundOrderSystemMessage" in-map="context"/></actions>
     </seca>
-    <seca id="UpdateProductInventory" service="create#mantle.product.asset.AssetDetail" when="post-service" run-on-error="false">
-        <actions>
-            <entity-find-one entity-name="mantle.product.asset.AssetDetail" value-field="assetDetail"/>
-            <entity-find entity-name="mantle.product.ProductInventoryUpdate" list="updatedProducts"/>
-            <if condition="!updatedProducts.find{it.productId.equals(assetDetail.productId)}">
-                <service-call name="create#mantle.product.ProductInventoryUpdate"  in-map="[productId:assetDetail.productId, initDate: assetDetail.effectiveDate]" out-map="context"/>
-            </if>
-        </actions>
+    <seca id="ShopifyUpdateCustomer" service="mantle.party.PartyServices.update#PartyDetail" when="post-service" run-on-error="false">
+        <actions><service-call name="mantle.shopify.ShopifyPartyServices.queue#UpdateCustomerSystemMessage" in-map="context"/></actions>
     </seca>
-    <seca id="CreateFulfillment" service="update#mantle.shipment.Shipment" when="post-service" run-on-error="false">
-        <condition><expression>statusChanged &amp;&amp; statusId in ['ShipShipped','ShipDelivered'] </expression></condition>
-        <actions>
-            <entity-find-one entity-name="mantle.shipment.Shipment" value-field="shipment"/>
-            <service-call name="mantle.shipment.ShipmentInfoServices.get#ShipmentDisplayInfo" in-map="[shipmentId:shipment.shipmentId]" out-map="context"/>
-            <if  condition="shipmentItemSourceList.isEmpty() || shipmentItemSourceList.first().orderId == null">
-                <return error="false"/>
-            </if>
-            <service-call name="mantle.shopify.ApiServices.queue#CreateFulfillmentSystemMessage" in-map="[shipmentId:shipment.shipmentId]" out-map="context"/>
-        </actions>
+    <seca id="ShopifyStoreAddress" service="mantle.party.ContactServices.store#PartyContactInfo" when="post-service" run-on-error="false">
+        <condition><expression>contactMechPurposeId == 'PostalPrimary'</expression></condition>
+        <actions><service-call name="mantle.shopify.ShopifyPartyServices.queue#StoreAddressSystemMessage" in-map="context"/></actions>
     </seca>
-
-    <seca id="GetFulfillmentOrders" service="mantle.shopify.ApiServices.consume#OrdersSystemMessage" when="post-service" run-on-error="false">
-        <actions>
-            <log message="Getting fulfillment_order for shopify Order: ${shopifyOrderId}"/>
-            <service-call name="mantle.shopify.ApiServices.queue#GetFulfillmentOrderSystemMessage" in-map="[shopifyOrderId: shopifyOrderId]"/>
-        </actions>
-    </seca>
-    
-    <seca id="CancelOrder" service="update#mantle.order.OrderHeader" when="post-service" run-on-error="false">
-        <condition><expression>statusChanged &amp;&amp; statusId in ['OrderCancelled','OrderCompleted'] </expression></condition>
-        <actions>
-            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order"/>
-            <service-call name="mantle.shopify.ApiServices.queue#CancelAndCalculateRefundOrderSystemMessage" in-map="[orderId:order.orderId]" out-map="context"/>
-        </actions>
+    <seca id="ShopifyDeleteAddress" service="mantle.party.ContactServices.delete#PartyContactMech" when="post-service" run-on-error="false">
+        <condition><expression>contactMechPurposeId == 'PostalPrimary'</expression></condition>
+        <actions><service-call name="mantle.shopify.ShopifyPartyServices.queue#DeleteAddressSystemMessage" in-map="context"/></actions>
     </seca>
 </secas>
