@@ -1948,10 +1948,13 @@
             <service-call name="create#mantle.account.method.PaymentGatewayResponse" out-map="createPGR"
                           in-map="[paymentGatewayConfigId:'Shopify Payments', paymentOperationEnumId:'PgoRefund',
                         paymentId:payment.paymentId, paymentMethodId:payment.paymentMethodId, amount:payment.amount,
-                        amountUomId:payment.amountUomId, referenceNum:'TEST', transactionDate:ec.user.nowTimestamp,
+                        amountUomId:payment.amountUomId, referenceNum:response.refund.transactions.first().authorization, transactionDate:ec.user.nowTimestamp,
                         resultSuccess:'Y', resultDeclined:'N', resultNsf:'N', resultBadExpire:'N', resultBadCardNumber:'N']"/>
             <log message="\nPayment Gateway Response: ${createPGR}\n"/>
-            <service-call name="mantle.account.PaymentServices.cancel#PaymentAndInvoices" in-map="[paymentId: payment.paymentId]" out-map="context"/>
+
+            <if condition="payment.amount == amount">
+                <service-call name="mantle.account.PaymentServices.cancel#PaymentAndInvoices" in-map="[paymentId: payment.paymentId]" out-map="context"/>
+            </if>
         </actions>
     </service>
 
