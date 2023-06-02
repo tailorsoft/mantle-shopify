@@ -1071,7 +1071,7 @@
                     <if condition="billingAddress.phone.length() == 11"><then>
                         <set field="billingPhoneAreaCode" from="billingAddress.phone[1..3]"/>
                         <set field="billingPhoneNumber" from="billingAddress.phone[4..10]"/>
-                        <set field="billingPhoneCountryCode" value="billingAddress.phone[0]"/>
+                        <set field="billingPhoneCountryCode" from="billingAddress.phone[0]"/>
                     </then><else-if condition="billingAddress.phone.length() == 10">
                         <set field="billingPhoneCountryCode" from="null"/>
                         <set field="billingPhoneAreaCode" from="billingAddress.phone[0..2]"/>
