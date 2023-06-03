@@ -77,7 +77,9 @@ There are 2 services that can be called to upload products and categories from M
 mantle.shopify.ShopifyProductServices.upload#MoquiStoreProducts
 mantle.shopify.ShopifyProductServices.upload#MoquiStoreCategories
 ```
-Choose which platform is the source of truth for Product data and then set up service jobs to poll one of the sets of services. There are demo service jobs set up fro each one. Choose a frequency that makse sense given how much your product data changes during BAU. Run the jobs manually when need data synced immediately.
+Choose which platform is the source of truth for Product data and then set up service jobs to poll one of the sets of services. There are demo service jobs set up for each one. Choose a frequency that makes sense given how much your product data changes during BAU. Run the jobs manually when you need data synced immediately.
+
+The services also upload images of the products to shopify. For this to work properly you will need your moqui product store to have a product store setting that contains the url where the product images are published.
 
 ## Services to Sync Orders, Fulfilments and Inventory
 There is a service that can be polled to download orders from Shopify:
