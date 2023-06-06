@@ -475,6 +475,7 @@
 
                     <entity-find-one entity-name="mantle.product.ProductDimension" value-field="productDimension">
                         <field-map field-name="productId" from="assoc.toProductId"/>
+                        <field-map field-name="dimensionTypeId" operator="in" value="Weight, ShippingWeight"/>
                     </entity-find-one>
 
                     <if condition="productDimension">
