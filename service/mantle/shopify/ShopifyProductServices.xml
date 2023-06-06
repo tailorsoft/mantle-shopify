@@ -353,6 +353,8 @@
                 <set field="productData.id" from="shopifyIdentification.idValue"/>
             </if>
 
+            <log message="\n\nShopify Identification before sending request:${shopifyIdentification}\n"/>
+
             <set field="apiResponse" value="[:]"/>
             <script><![CDATA[
                 String method = shopifyIdentification ? 'PUT' : 'POST';
@@ -372,8 +374,10 @@
             ]]></script>
             <set field="shopifyVariants" from="apiResponse.product.variants"/>
 
+            <log message="\n\n Shopify Identification: ${shopifyIdentification}"/>
+            <!-- TODO Figure out why it isn't being saved in erp-test.ridgecrest -->
             <if condition="!shopifyIdentification">
-                <service-call name="create#mantle.product.ProductIdentification" out-map="context" 
+                <service-call name="create#mantle.product.ProductIdentification" out-map="context"
                     in-map="[productId:productId, productIdTypeEnumId:'PidtShopify', idValue: apiResponse.product.id]"/>
 
                 <!-- if the moqui product had no variants, then we use the inventory item from the auto-created shopify variant -->
