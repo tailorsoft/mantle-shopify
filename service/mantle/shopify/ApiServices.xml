@@ -1791,15 +1791,14 @@
                              docSubControl:'createRefund',
                              orderId:orderToRefund.orderId,
                              shopifyOrderId:externalId,
-                             sendNow:false]"/><!--sendNow:false TO CALL SINGLE SEND SERVICE INSIDE THE SAME QUEUE FOR
-                                                    GATEWAY RESPONSE ID -->
+                             docControl: 'gatewayRefund']"/>
+
 
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToUpdate" for-update="true">
                 <field-map  field-name="externalId" from="externalId" />
             </entity-find-one>
             <set field="orderToUpdate.shopifyOrderStatusId"  value="OrderCancelled"/>
             <entity-update value-field="orderToUpdate"/>
-            <service-call name="mantle.shopify.ApiServices.send#CreateRefundSystemMessage" in-map="context"/>
         </actions>
     </service>
 
@@ -1909,6 +1908,35 @@
         </actions>
     </service>
 
+    <service verb="send" noun="CancelOrRefundSystemMessage">
+        <description>Since there are 3 possible kinds of refunds or cancels contemplated in the CancelOrderSystemMessage type, and one requires a different
+            handling than the other 2  (the gateway triggered refund) this services calls send#CreateRefundSystemMessage when necessary. And send#CancelOrderSystemMessage
+            for every other use case.</description>
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="paymentGatewayResponseId"/>
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage">
+                <field-map field-name="systemMessageId" from="systemMessageId"/>
+            </entity-find-one>
+            <if condition="systemMessage.docControl.equals('gatewayRefund')">
+                <then>
+                    <service-call name="mantle.shopify.ApiServices.send#CreateRefundSystemMessage" in-map="context" out-map="refundSend"/>
+                    <set field="paymentGatewayResponseId" from="refundSend.paymentGatewayResponseId"/>
+                </then>
+                <else>
+                    <service-call name="mantle.shopify.ApiServices.send#CancelOrderSystemMessage" in-map="context"/>
+                </else>
+            </if>
+        </actions>
+
+
+    </service>
+
     <service verb="send" noun="CancelOrderSystemMessage">
         <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
         <in-parameters>
@@ -1944,17 +1972,27 @@
                           out-map="context"/>
             <log message="\nSent refund message, about to update payment status\n"/>
             <log message="\nResponse from the refund system message: ${response}\n"/>
+
+            <set field="responseAmount" from="response.refund.transactions*.amount.sum()"/>
             <!-- Create gateway response to try and fix non updating people -->
             <service-call name="create#mantle.account.method.PaymentGatewayResponse" out-map="createPGR"
                           in-map="[paymentGatewayConfigId:'Shopify Payments', paymentOperationEnumId:'PgoRefund',
-                        paymentId:payment.paymentId, paymentMethodId:payment.paymentMethodId, amount:payment.amount,
+                        paymentId:payment.paymentId, paymentMethodId:payment.paymentMethodId, amount:responseAmount,
                         amountUomId:payment.amountUomId, referenceNum:response.refund.transactions.first().authorization, transactionDate:ec.user.nowTimestamp,
                         resultSuccess:'Y', resultDeclined:'N', resultNsf:'N', resultBadExpire:'N', resultBadCardNumber:'N']"/>
-            <log message="\nPayment Gateway Response: ${createPGR}\n"/>
 
-            <if condition="payment.amount == amount">
+            <set field="paymentGatewayResponseId" from="createPGR.paymentGatewayResponseId"/>
+            <log message="\nPayment Gateway Response: ${createPGR}\n"/>
+            
+            <log message="\n\nAmounts comparisson: ${Float.valueOf(payment.amount) == Float.valueOf(responseAmount)}"/>
+            <if condition="Float.valueOf(payment.amount) == Float.valueOf(responseAmount)">
+                <log message="\n\nFULL REFUND. CANCELLING PAYMENT AND INVOICES\n"/>
                 <service-call name="mantle.account.PaymentServices.cancel#PaymentAndInvoices" in-map="[paymentId: payment.paymentId]" out-map="context"/>
             </if>
+            <!-- TODO update system message status to sent -->
+            <service-call name="update#moqui.service.message.SystemMessage">
+
+            </service-call>
         </actions>
     </service>
 
