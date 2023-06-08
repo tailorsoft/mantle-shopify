@@ -342,6 +342,8 @@
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
 
+            <log message="\nUPLOADING PRODUCT ${productId} TO SHOPIFY\n"/>
+
             <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="shopifyIdentification">
                 <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
                 <field-map field-name="productId"/></entity-find-one>
@@ -374,7 +376,7 @@
             ]]></script>
             <set field="shopifyVariants" from="apiResponse.product.variants"/>
 
-            <log message="\n\n Shopify Identification: ${shopifyIdentification}"/>
+            <log message="\n\n Shopify Response uploading ${productId} : ${apiResponse}\n"/>
             <!-- TODO Figure out why it isn't being saved in erp-test.ridgecrest -->
             <if condition="!shopifyIdentification">
                 <service-call name="create#mantle.product.ProductIdentification" out-map="context"
