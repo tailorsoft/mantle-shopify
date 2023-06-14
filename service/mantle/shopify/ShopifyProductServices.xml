@@ -364,6 +364,7 @@
                 String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/${endpoint}.json";
                 String json = groovy.json.JsonOutput.toJson([product: productData]);
 
+                ec.logger.info("request: ${method} ${endpoint} ${json}")
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method(method)
                     .addHeader("Content-Type", "application/json").jsonObject(json)
                     .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
@@ -372,6 +373,7 @@
                     ec.message.addError("Shopify Products API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} ${json}")
                     return;
                 }
+                ec.logger.info("response: ${restResponse.text()}")
                 apiResponse = new groovy.json.JsonSlurper().parseText(restResponse.text());
             ]]></script>
             <set field="shopifyVariants" from="apiResponse.product.variants"/>
@@ -388,20 +390,25 @@
                         in-map="[productId:productId, productIdTypeEnumId:'PidtInventoryItemShopify', idValue:shopifyVariants[0].inventory_item_id]"/>
                 </if>
             </if>
-
-            <if condition="shopifyVariants">
+            <if condition="productData.variants &amp;&amp; shopifyVariants">
                 <iterate list="shopifyVariants" entry="variant">
-                    <!-- the only way to match the response to the request is via the options -->
-                    <set field="moquiProductId" from="productData.variants.find({it.option1 == variant.option1 
-                                                                      &amp;&amp; it.option2 == variant.option2 
-                                                                      &amp;&amp; it.option3 == variant.option3})?.metafields[0].value"/>
+                    <if condition="productData.variants.size() == 1"><then>
+                        <set field="requestVariant" from="productData.variants.first"/>
+                    </then><else>
+                        <!-- the only way to match the response to the request is via the options -->
+                        <set field="requestVariant" from="productData.variants.find({it.option1 == variant.option1
+                                                                          &amp;&amp; it.option2 == variant.option2
+                                                                          &amp;&amp; it.option3 == variant.option3})"/>
+                    </else></if>
+                    <set field="moquiProductId" from="requestVariant.metafields[0].value"/>
                     <if condition="!moquiProductId">
+                        <log message="no moqui productId found for variant: ${variant.title}"/>
                         <continue/><!-- this should never happen, the moquiProductId is set inside get#ProductData -->
                     </if>
 
                     <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="variantIdentification">
                         <field-map field-name="productIdTypeEnumId" value="PidtShopify"/>
-                        <field-map field-name="productId"/></entity-find-one>
+                        <field-map field-name="productId" from="moquiProductId"/></entity-find-one>
                     <if condition="variantIdentification">
                         <!-- identification already created for this variant, ignoring -->
                         <continue/>
