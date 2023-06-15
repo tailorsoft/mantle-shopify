@@ -40,16 +40,29 @@
                 <field-map field-name="systemMessageRemoteId" from="systemMessage.systemMessageRemoteId"/>
             </entity-find-one>
             <if condition="!remote"><return error="true" message="No Remote of type 'ShopifySystemMessageType' found for ID ${systemMessageId}"/></if>
+
+            <set field="restResponse" from="[:]"/>
             <script><![CDATA[
                 String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/{systemMessage.docType}.json";
-                org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method(systemMessage.docSubType)
-                    .jsonObject(systemMessage.messageText).addHeader("Content-Type", "application/json")
-                    .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
+
+                restResponse = ec.service.rest().method(systemMessage.docSubType).addHeader("Content-Type", "application/json")
+                    .jsonObject(systemMessage.messageText).addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
                 if (restResponse.statusCode != 200) {
                     ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${restResponse.text()} for url: ${url}")
                 }
             ]]></script>
+
+            <!-- special case where we don't want to throw an error, which would cause the message to retry. 
+            We believe the message has succeeded, but need someone to check -->
+            <if condition="restResponse.statusCode == 409">
+                <set field="errorText" value="System message send failed with error code 409. Possible success inside shopify and need someone to manually verify. If so, please cancel this message to avoid resending"/>
+                <service-call name="create#moqui.service.message.SystemMessageError" transaction="force-new"
+                    in-map="[systemMessageId:systemMessageId, errorDate:ec.user.nowTimestamp, attemptedStatusId:'SmsgSent', errorText:errorText]"/>
+
+                <service-call name="update#moqui.service.message.SystemMessage" transaction="force-new"
+                    in-map="[systemMessageId:systemMessageId, statusId:'SmsgError', lastAttemptDate:ec.user.nowTimestamp]"/>
+            </if>
         </actions>
     </service>
 
