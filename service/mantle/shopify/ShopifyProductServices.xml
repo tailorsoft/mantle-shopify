@@ -835,13 +835,15 @@
 
     <service verb="queue" noun="ProductInventory">
         <in-parameters>
+            <parameter name="assetId" required="true"/>
             <parameter name="productId" required="true"/>
-            <parameter name="facilityId" required="true"/>
         </in-parameters>
         <out-parameters>
             <parameter name="productCategoryIdList"/>
         </out-parameters>
         <actions>
+            <entity-find-one entity-name="mantle.product.asset.Asset" value-field="asset"/>
+            <set field="facilityId" from="asset.facilityId"/>
             <entity-find-one entity-name="mantle.product.ProductIdentification" value-field="productPidt">
                 <field-map field-name="productIdTypeEnumId" value="PidtInventoryItemShopify"/>
                 <field-map field-name="productId"/></entity-find-one>
