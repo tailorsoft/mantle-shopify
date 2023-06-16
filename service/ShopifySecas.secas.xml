@@ -1,12 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <secas xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-eca-2.1.xsd">
     <seca id="ShopifyCreateAssetDetail" service="create#mantle.product.asset.AssetDetail" when="post-service" run-on-error="false">
-        <condition><expression>facility != null</expression></condition>
-        <actions>
-            <log message="\n Facility in Seca create Asset Detail: ${facility}"/>
-            <log message="\n Context in case it's needed for more info: ${context}"/>
-            <service-call name="mantle.shopify.ShopifyProductServices.queue#ProductInventory" in-map="context" async="true"/>
-        </actions>
+        <actions><service-call name="mantle.shopify.ShopifyProductServices.queue#ProductInventory" in-map="context"/></actions>
     </seca>
     <seca id="ShopifyUpdateShipment" service="update#mantle.shipment.Shipment" when="post-service" run-on-error="false">
         <condition><expression>statusChanged &amp;&amp; statusId == 'ShipShipped'</expression></condition>
