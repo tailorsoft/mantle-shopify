@@ -92,9 +92,9 @@
                 restClient.basicAuth(systemMessageRemote.username,systemMessageRemote.password)
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
 
-                //Handling for weird 409 message, transaction might have succeded despite error code
-                error_409 = false;
-                if (restResponse.statusCode == 409) {
+                //Handling for weird 409 message, transaction might have succeeded despite error code
+                error_409 = restResponse.statusCode == 409;
+                if (error_409) {
                     errorMessage = '''System message send failed with error code 409.
                         Possible success inside shopify and need someone to manually verify.
                         If so, please cancel this message to avoid resending. If the message has failed inside Shopify,
@@ -105,6 +105,8 @@
                     ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${errMsg}")
                     return
                 }
+                ec.logger.info("\nRest Response Text ${restResponse.text()}\n");
+                //weird error here. Text appears to be null or missing
                 response = jsonSlurper.parseText(restResponse.text())
             ]]></script>
 
