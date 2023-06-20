@@ -1984,6 +1984,10 @@
             <log message="\nSent refund message, about to update payment status\n"/>
             <log message="\nResponse from the refund system message: ${response}\n"/>
 
+            <if condition="!response.refund">
+                <return message="The response json has no refund object." error="true"/>
+            </if>
+
             <set field="responseAmount" from="response.refund.transactions*.amount.sum()"/>
             <!-- Create gateway response to try and fix non updating people -->
             <service-call name="create#mantle.account.method.PaymentGatewayResponse" out-map="createPGR"
