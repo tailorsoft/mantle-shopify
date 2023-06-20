@@ -109,8 +109,6 @@
                     ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${errMsg}")
                     return
                 }
-                ec.logger.info("\nRest Response Text ${restResponse.text()}\n");
-                //weird error here. Text appears to be null or missing
                 response = jsonSlurper.parseText(restResponse.text())
             ]]></script>
             <!-- TODO: WebFacadeImpl.handleSystemMessage() will need to return a message ID before we can do this: <set field="remoteMessageId" from=""/> -->
