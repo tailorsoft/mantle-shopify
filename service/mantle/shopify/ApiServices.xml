@@ -92,14 +92,26 @@
 
                 restClient.basicAuth(systemMessageRemote.username,systemMessageRemote.password)
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
-                if (restResponse.statusCode < 200 || restResponse.statusCode >= 300) {
+
+                //Handling for weird 409 message, transaction might have succeeded despite error code
+                error_409 = restResponse.statusCode == 409;
+                if (error_409) {
+                    errorMessage = '''System message send failed with error code 409.
+                        Possible success inside shopify and need someone to manually verify.
+                        If so, please cancel this message to avoid resending. If the message has failed inside Shopify,
+                        reset the system message so it can be retried.'''
+
+                    ec.message.addError(errorMessage);
+
+                    return;
+
+                }else if (restResponse.statusCode < 200 || restResponse.statusCode >= 300) {
                     String errMsg = restResponse.text()
                     ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${errMsg}")
                     return
                 }
                 response = jsonSlurper.parseText(restResponse.text())
             ]]></script>
-
             <!-- TODO: WebFacadeImpl.handleSystemMessage() will need to return a message ID before we can do this: <set field="remoteMessageId" from=""/> -->
         </actions>
     </service>
@@ -2069,6 +2081,10 @@
                           out-map="context"/>
             <log message="\nSent refund message, about to update payment status\n"/>
             <log message="\nResponse from the refund system message: ${response}\n"/>
+
+            <if condition="!response.refund">
+                <return message="The response json has no refund object." error="true"/>
+            </if>
 
             <set field="responseAmount" from="response.refund.transactions*.amount.sum()"/>
             <!-- Create gateway response to try and fix non updating people -->
