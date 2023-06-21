@@ -106,7 +106,7 @@
                 in-map="[order:order, productStoreId:remote.productStoreId]"/>
 
             <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyFulfillmentOrders"
-                in-map="[fulfillments:fulfillmentOrders, orderId:orderId]"/>
+                in-map="[fulfillmentOrders:fulfillmentOrders, orderId:orderId]"/>
             
             <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyTransactions"
                 in-map="[transactions:transactions, orderId:orderId]"/>
