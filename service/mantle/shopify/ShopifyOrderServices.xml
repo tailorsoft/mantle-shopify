@@ -549,9 +549,13 @@
 
             <set field="fulfillment" from="[:]"/>
             <set field="fulfillment.message" from="shipment.handlingInstructions"/>
+            <!-- TODO: Check if maybe notify customer can be configurable (Maybe a productStore Setting)
+                   some clients like to let shopify send the notification emails and shut it down in moqui -->
             <set field="fulfillment.notify_customer" from="false"/>
             <set field="fulfillment.tracking_info" from="tracking_info"/>
             <set field="fulfillment.line_items_by_fulfillment_order" from="line_items_by_fulfillment_order"/>
+
+            <set field="jsonBody" from="groovy.json.JsonOutput.toJson([fulfillment:fulfillment])"/>
 
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote">
                 <field-map field-name="systemMessageTypeId" value="ShopifySystemMessageType"/>
@@ -559,7 +563,7 @@
             </entity-find-one>
 
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
-                in-map="[systemMessageTypeId:'ShopifySystemMessageType', systemMessageRemoteId:remote.systemMessageRemoteId, messageText:groovy.json.JsonOutput.toJson(fulfillment), docType:'fulfillments', docSubType:'POST']"/>
+                in-map="[systemMessageTypeId:'ShopifySystemMessageType', systemMessageRemoteId:remote.systemMessageRemoteId, messageText:jsonBody, docType:'fulfillments', docSubType:'POST']"/>
         </actions>
     </service>
 </services>
