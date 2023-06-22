@@ -331,7 +331,7 @@
                 </entity-find-one>
 
                 <service-call name="create#mantle.shopify.ShopifyFulfillmentOrder" out-map="context"
-                    in-map="[fulfillmentOrderId:fulfillment_order.id, orderId:orderId, status:fulfillment_order.status, locationId:assigned_location_id]"/>
+                    in-map="[fulfillmentOrderId:fulfillment_order.id, orderId:orderId, status:fulfillment_order.status, locationId:fulfillment_order.assigned_location_id]"/>
 
                 <!-- Get Fulfillment order line items Id -->
                 <entity-find entity-name="mantle.order.OrderItem" list="orderItems" for-update="true">
