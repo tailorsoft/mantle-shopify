@@ -483,13 +483,17 @@
             <parameter name="systemMessageId"/>
         </out-parameters>
         <actions>
+            <!-- Find and validate shipment is in correct status -->
             <entity-find-one entity-name="mantle.shipment.Shipment" value-field="shipment" />
             <if condition="!shipment"><return error="true" message="No shipment found with ID ${shipmentId}"/></if>
             <if condition="!shipment.statusId in ['ShipShipped','ShipDelivered']">
                 <return error="true" message="ERROR:The shipment ${shipment.shipmentId} must be in status Shipped or Delivered for registering a fulfillment "/>
             </if>
+
+            <!-- Find orderItems in the shipment and it has items of at leas one order -->
             <entity-find entity-name="mantle.shipment.ShipmentItemSource" list="shipmentItemList">
-                <econdition field-name="shipmentId"/></entity-find>
+                <econdition field-name="shipmentId"/>
+            </entity-find>
             <if  condition="shipmentItemList.isEmpty() || shipmentItemList.first().orderId == null">
                 <return error="false"/>
             </if>
@@ -521,7 +525,8 @@
             <set field="orderIdList" from="shipmentItemList.orderId.unique( false )"/>
             <entity-find entity-name="mantle.shopify.ShopifyFulfillmentOrder" list="fulfillmentOrders">
                 <econdition field-name="orderId" operator="in" from="orderIdList"/>
-                <econdition field-name="locationId" from="facility.externalId"/></entity-find>
+                <econdition field-name="locationId" from="facility.externalId"/>
+            </entity-find>
 
             
             <set field="line_items_by_fulfillment_order" from="[]"/>
