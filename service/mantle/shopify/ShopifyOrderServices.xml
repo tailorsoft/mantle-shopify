@@ -544,6 +544,7 @@
                     <set field="item" from="[:]"/>
                     <set field="item.id" from="od.fulfillmentOrderLineItemId"/>
                     <set field="item.quantity" from="shipmentItem.quantityPicked"/>
+                    <set field="item.quantity" from="shipmentItem.quantity"/>
                     <set field="line_items" from="line_items.plus(item)"/>
                 </iterate>
                 <set field="fulfillment_order" from="[:]"/>
