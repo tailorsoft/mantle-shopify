@@ -308,7 +308,7 @@
                 <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context" in-map="[
                     orderId: orderId,
                     paymentMethodId: paymentMethodId,
-                    amount: order.total_price,
+                    amount: order.current_total_price,
                     amountUomId: currencyUomId,
                     statusId: 'PmntDelivered',
                     effectiveDate: processedTime,
