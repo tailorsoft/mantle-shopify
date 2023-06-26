@@ -217,10 +217,6 @@
                     <set field="billingTelecomContactMechId" from="billingPostalOut.contactMechId"/>
                 </if>
             </if>
-
-            <!-- Set Party Role and Classification as customer and consumer -->
-            <service-call name="create#mantle.party.PartyRole" in-map="[partyId:partyId, roleTypeId:'Customer']"/>
-            <service-call name="mantle.party.PartyServices.set#PartyClassification" in-map="[partyId: partyId, partyClassificationId: 'CustConsumer']"/>
         </actions>
     </service>
 
