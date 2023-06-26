@@ -48,7 +48,7 @@
                 restResponse = ec.service.rest().method(systemMessage.docSubType).addHeader("Content-Type", "application/json")
                     .jsonObject(systemMessage.messageText).addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
-                if (restResponse.statusCode != 200) {
+                if (restResponse.statusCode < 200 || restResponse.statusCode >= 300) {
                     ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${restResponse.text()} for url: ${url}")
                 }
             ]]></script>
