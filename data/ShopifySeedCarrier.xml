@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<entity-facade-xml type="seed">
-    <mantle.party.PartyIdentification partyId="USPS"  partyIdTypeEnumId="PtidShopify" idValue="USPS" />
-    <mantle.party.PartyIdentification partyId="UPS"   partyIdTypeEnumId="PtidShopify" idValue="UPS" />
-    <mantle.party.PartyIdentification partyId="FedEx" partyIdTypeEnumId="PtidShopify" idValue="FedEx" />
-    <mantle.party.PartyIdentification partyId="DHLX"  partyIdTypeEnumId="PtidShopify" idValue="DHL Express" />
-    <mantle.party.PartyIdentification partyId="USPS"  partyIdTypeEnumId="PtidCarrierShopify" idValue="usps" />
-    <mantle.party.PartyIdentification partyId="UPS"   partyIdTypeEnumId="PtidCarrierShopify" idValue="ups_shipping" />
-</entity-facade-xml>
