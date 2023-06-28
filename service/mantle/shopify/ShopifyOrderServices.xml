@@ -220,7 +220,8 @@
                 in-map="[customer:order.customer, shippingAddress:order.shipping_address, billingAddress:order.billing_address, ownerPartyId:productStore.organizationPartyId, orderEmail:order.email]" out-map="context"/>
 
             <service-call name="mantle.shopify.ShopifyPartyServices.store#ShopifyPaymentMethod" 
-                in-map="[partyId:partyId, paymentDetails:order.payment_details, billingPostalContactMechId:billingPostalContactMechId, firstName:order.billing_address.first_name, lastName:order.billing_address.last_name]"/>
+                in-map="[partyId:partyId, paymentDetails:order.payment_details, billingPostalContactMechId:billingPostalContactMechId, firstName:order.billing_address.first_name, lastName:order.billing_address.last_name]"
+                out-map="context"/>
 
             <!-- get the currency the order was placed in -->
             <entity-find-one entity-name="moqui.basic.Uom" value-field="currencyUom">
@@ -305,6 +306,7 @@
             <if condition="order.payment_details">
                 <set field="processedAt" from="OffsetDateTime.parse(order.processed_at, DateTimeFormatter.ISO_OFFSET_DATE_TIME)"/>
                 <set field="processedTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime())"/>
+                <log message="\n\nCONTEXT BEFORE CREATING PAYMENT ${context}\n\n"/>
                 <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context" in-map="[
                     orderId: orderId,
                     paymentMethodId: paymentMethodId,
