@@ -315,7 +315,8 @@
                     statusId: 'PmntDelivered',
                     effectiveDate: processedTime,
                     fromPartyId: partyId,
-                    toPartyId: productStore.organizationPartyId
+                    toPartyId: productStore.organizationPartyId,
+                    orderPartSeqId: orderPartSeqId
                 ]"/>
             </if>
         </actions>
