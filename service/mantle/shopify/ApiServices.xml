@@ -92,14 +92,26 @@
 
                 restClient.basicAuth(systemMessageRemote.username,systemMessageRemote.password)
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
-                if (restResponse.statusCode < 200 || restResponse.statusCode >= 300) {
+
+                //Handling for weird 409 message, transaction might have succeeded despite error code
+                error_409 = restResponse.statusCode == 409;
+                if (error_409) {
+                    errorMessage = '''System message send failed with error code 409.
+                        Possible success inside shopify and need someone to manually verify.
+                        If so, please cancel this message to avoid resending. If the message has failed inside Shopify,
+                        reset the system message so it can be retried.'''
+
+                    ec.message.addError(errorMessage);
+
+                    return;
+
+                }else if (restResponse.statusCode < 200 || restResponse.statusCode >= 300) {
                     String errMsg = restResponse.text()
                     ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${errMsg}")
                     return
                 }
                 response = jsonSlurper.parseText(restResponse.text())
             ]]></script>
-
             <!-- TODO: WebFacadeImpl.handleSystemMessage() will need to return a message ID before we can do this: <set field="remoteMessageId" from=""/> -->
         </actions>
     </service>
@@ -949,24 +961,38 @@
                 <!-- Find or create shipping phone number -->
                 <!-- Phone formatting -->
                 <if condition="shippingAddress.phone">
-                    <set field="shippingAddress.phone" from='shippingAddress.phone.replace("+","")'/>
-                    <if condition="shippingAddress.phone.size() != 14"><then>
-                        <set field="shippingPhoneNumber" from="shippingAddress.phone"/>
-                        <set field="shippingPhoneCountryCode" value=""/>
-                        <set field="shippingPhoneAreaCode" value=""/>
-                    </then><else>
-                        <set field="shippingPhoneCountryCode" from="shippingAddress.phone.substring(0,1)"/>
-                        <set field="shippingPhoneAreaCode" from="shippingAddress.phone.substring(2,5)"/>
-                        <set field="shippingPhoneNumber" from="shippingAddress.phone.substring(6)"/>
-                        <set field="shippingPhoneNumber" from="shippingPhoneNumber.replace('-','')"/>
-                    </else></if>
+                    <!-- TODO Keep importing code here (maybe add an if for netherlands and other phone numbers lenght ==12 -->
+                    <set field="shippingAddress.phone" from="shippingAddress.phone.replaceAll('[^\\d]', '')"/>
+                    <log message="phone number for shipping is: ${shippingAddress.phone} after removing non digits\n
+                            Length: ${shippingAddress.phone.length()}"/>
+                    <if condition="shippingAddress.phone.length() == 11">
+                        <then>
+                            <set field="shippingPhoneAreaCode" from="shippingAddress.phone[1..3]"/>
+                            <set field="shippingPhoneNumber" from="shippingAddress.phone[4..10]"/>
+                            <set field="shippingPhoneCountryCode" from="shippingAddress.phone[0]"/>
+                        </then>
+                        <else-if condition="shippingAddress.phone.length() == 10">
+                            <set field="shippingPhoneCountryCode" from="null"/>
+                            <set field="shippingPhoneAreaCode" from="shippingAddress.phone[0..2]"/>
+                            <set field="shippingPhoneNumber" from="shippingAddress.phone[3..9]"/>
+                        </else-if>
+                        <else>
+                            <set field="shippingPhoneCountryCode" from="null"/>
+                            <set field="shippingPhoneAreaCode" from="null"/>
+                            <set field="shippingPhoneNumber" from="shippingAddress.phone"/>
+                        </else>
+                    </if>
+
                     <!-- Checking shipping phone existence -->
                     <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber" list="shippingTelecomMechList">
                         <econdition field-name="partyId" from="partyId"/>
                         <econdition field-name="contactMechPurposeId" value="PhonePrimary"/>
                     </entity-find>
                     <if condition="shippingTelecomMechList.size() &gt; 0">
-                        <set field="shippingTelecomMech" from="shippingTelecomMechList.find{it.contactNumber.replace('-','').equals(shippingPhoneNumber.replace('-',''))}"/>
+                        <set field="shippingTelecomMech" from="shippingTelecomMechList.find{
+                                                            it.contactNumber.replace('-','').equals(shippingPhoneNumber.replace('-',''))
+                                                            &amp;&amp; it.countryCode.replace('-','').equals(shippingPhoneCountryCode.replace('-',''))
+                                                            &amp;&amp; it.areaCode.replace('-','').equals(shippingPhoneAreaCode.replace('-',''))}"/>
                     </if>
                     <if condition="shippingTelecomMech">
                         <then>
@@ -978,7 +1004,7 @@
                                                                                                       contactNumber: shippingPhoneNumber,
                                                                                                       countryCode: shippingPhoneCountryCode,
                                                                                                       areaCode: shippingPhoneAreaCode,
-                                                                                                      telecomContactMechPurposeId:&apos;PhonePrimary&apos;]" out-map="telecomMechData"/>
+                                                                                                      telecomContactMechPurposeId:'PhonePrimary']" out-map="telecomMechData"/>
                             <set field="shippingTelecomContactMechId" from="telecomMechData.telecomContactMechId"/>
                         </else>
                     </if>
@@ -1053,24 +1079,26 @@
                 <!-- Find or create billing phone number -->
                 <!-- Phone formatting -->
                 <if condition="billingAddress.phone">
-                    <set field="billingAddress.phone" from='billingAddress.phone.replace("+","")'/>
-                    <if condition="billingAddress.phone.size() != 14"><then>
-                        <set field="billingPhoneNumber" from="billingAddress.phone"/>
-                        <set field="billingPhoneCountryCode" value=""/>
-                        <set field="billingPhoneAreaCode" value=""/>
-                    </then><else>
-                        <set field="billingPhoneCountryCode" from="billingAddress.phone.substring(0,1)"/>
-                        <set field="billingPhoneAreaCode" from="billingAddress.phone.substring(2,5)"/>
-                        <set field="billingPhoneNumber" from="billingAddress.phone.substring(6)"/>
-                        <set field="billingPhoneNumber" from="billingPhoneNumber.replace('-','')"/>
-                    </else></if>
+                    <set field="billingAddress.phone" from="billingAddress.phone.replaceAll('[^\\d]', '')"/>
+                    <if condition="billingAddress.phone.length() == 11"><then>
+                        <set field="billingPhoneAreaCode" from="billingAddress.phone[1..3]"/>
+                        <set field="billingPhoneNumber" from="billingAddress.phone[4..10]"/>
+                        <set field="billingPhoneCountryCode" from="billingAddress.phone[0]"/>
+                    </then><else-if condition="billingAddress.phone.length() == 10">
+                        <set field="billingPhoneCountryCode" from="null"/>
+                        <set field="billingPhoneAreaCode" from="billingAddress.phone[0..2]"/>
+                        <set field="billingPhoneNumber" from="billingAddress.phone[3..9]"/>
+                    </else-if></if>
                     <!-- Checking billing phone existence -->
                     <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber" list="billingTelecomMechList">
                         <econdition field-name="partyId" from="partyId"/>
                         <econdition field-name="contactMechPurposeId" value="PhonePayment"/>
                     </entity-find>
                     <if condition="billingTelecomMechList.size() &gt; 0">
-                        <set field="billingTelecomMech" from="billingTelecomMechList.find{it.contactNumber.replace('-','').equals(billingPhoneNumber.replace('-',''))}"/>
+                        <set field="billingTelecomMech" from="billingTelecomMechList.find{
+                                                            it.contactNumber.replace('-','').equals(billingPhoneNumber.replace('-',''))
+                                                            &amp;&amp; it.countryCode.replace('-','').equals(billingPhoneCountryCode.replace('-',''))
+                                                            &amp;&amp; it.areaCode.replace('-','').equals(billingPhoneAreaCode.replace('-',''))}"/>
                     </if>
                     <if condition="billingTelecomMech">
                         <then>
@@ -1270,9 +1298,10 @@
                             <if condition="billToList"><set field="fromPartyId" from="billToList[0].partyId"/></if>
                             <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context"
                                           in-map="context + [amount:(amount ?: orderPart.partTotal),
+                                                    memo: 'Shopify Order - ' + order.order_number,
                                                     amountUomId:orderHeader.currencyUomId,
                                                     statusId:'PmntDelivered',
-                                                     effectiveDate:ec.user.nowTimestamp,
+                                                    effectiveDate:ec.user.nowTimestamp,
                                                     fromPartyId:fromPartyId,
                                                     toPartyId:orderPart.vendorPartyId]"/>
                         </if>
@@ -1822,6 +1851,9 @@
             <parameter name="paymentId"/>
             <parameter name="amount"/>
         </in-parameters>
+        <out-parameters>
+            <parameter name="paymentGatewayResponseId"/>
+        </out-parameters>
         <!-- Find Order from payment -->
         <actions>
             <entity-find-one entity-name="mantle.account.payment.Payment" value-field="paymentToRefund">
@@ -1863,13 +1895,15 @@
                              messageText:messageText,
                              docSubControl:'createRefund',
                              orderId:orderToRefund.orderId,
-                             shopifyOrderId:externalId]"/>
+                             shopifyOrderId:externalId,
+                             docControl: 'gatewayRefund']"/>
 
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToUpdate" for-update="true">
                 <field-map  field-name="externalId" from="externalId" />
             </entity-find-one>
             <set field="orderToUpdate.shopifyOrderStatusId"  value="OrderCancelled"/>
             <entity-update value-field="orderToUpdate"/>
+            <service-call name="mantle.shopify.ApiServices.send#CreateRefundSystemMessage" in-map="context"/>
         </actions>
     </service>
 
@@ -1984,6 +2018,34 @@
         </actions>
     </service>
 
+    <service verb="send" noun="CancelOrRefundSystemMessage">
+        <description>Since there are 3 possible kinds of refunds or cancels contemplated in the CancelOrderSystemMessage type, and one requires a different
+            handling than the other 2  (the gateway triggered refund) this services calls send#CreateRefundSystemMessage when necessary. And send#CancelOrderSystemMessage
+            for every other use case.</description>
+        <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
+        <in-parameters>
+            <parameter name="systemMessageId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="paymentGatewayResponseId"/>
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="moqui.service.message.SystemMessage" value-field="systemMessage">
+                <field-map field-name="systemMessageId" from="systemMessageId"/>
+            </entity-find-one>
+            <if condition="systemMessage.docControl.equals('gatewayRefund')">
+                <then>
+                    <service-call name="mantle.shopify.ApiServices.send#CreateRefundSystemMessage" in-map="context" out-map="refundSend"/>
+                    <set field="paymentGatewayResponseId" from="refundSend.paymentGatewayResponseId"/>
+                </then>
+                <else>
+                    <service-call name="mantle.shopify.ApiServices.send#CancelOrderSystemMessage" in-map="context"/>
+                </else>
+            </if>
+        </actions>
+    </service>
+
+
     <service verb="send" noun="CancelOrderSystemMessage">
         <implements service="org.moqui.impl.SystemMessageServices.send#SystemMessage"/>
         <in-parameters>
@@ -2001,10 +2063,45 @@
         <in-parameters>
             <parameter name="systemMessageId" required="true"/>
         </in-parameters>
+        <out-parameters>
+            <parameter name="paymentGatewayResponseId"/>
+        </out-parameters>
         <actions>
-            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest" 
+            <entity-find-one value-field="SM" entity-name="moqui.service.message.SystemMessage">
+                <field-map field-name="systemMessageId"/>
+            </entity-find-one>
+<!--            <if condition="SM.statusId.equals('sent')">-->
+<!--                <return/>-->
+<!--            </if>-->
+            <entity-find-one entity-name="mantle.account.payment.Payment" value-field="payment">
+                <field-map field-name="orderId" from="SM.orderId"/>
+            </entity-find-one>
+            <service-call name="mantle.shopify.ApiServices.send#SystemMessageRest"
                           in-map="[systemMessageId: systemMessageId]"
-                          out-map="context" />
+                          out-map="context"/>
+            <log message="\nSent refund message, about to update payment status\n"/>
+            <log message="\nResponse from the refund system message: ${response}\n"/>
+
+            <if condition="!response.refund">
+                <return message="The response json has no refund object." error="true"/>
+            </if>
+
+            <set field="responseAmount" from="response.refund.transactions*.amount.sum()"/>
+            <!-- Create gateway response to try and fix non updating people -->
+            <service-call name="create#mantle.account.method.PaymentGatewayResponse" out-map="createPGR"
+                          in-map="[paymentGatewayConfigId:'Shopify Payments', paymentOperationEnumId:'PgoRefund',
+                        paymentId:payment.paymentId, paymentMethodId:payment.paymentMethodId, amount:responseAmount,
+                        amountUomId:payment.amountUomId, referenceNum:response.refund.transactions.first().authorization, transactionDate:ec.user.nowTimestamp,
+                        resultSuccess:'Y', resultDeclined:'N', resultNsf:'N', resultBadExpire:'N', resultBadCardNumber:'N']"/>
+
+            <set field="paymentGatewayResponseId" from="createPGR.paymentGatewayResponseId"/>
+            <log message="\nPayment Gateway Response: ${createPGR}\n"/>
+
+            <log message="\n\nAmounts comparisson: ${Float.valueOf(payment.amount) == Float.valueOf(responseAmount)}"/>
+            <if condition="Float.valueOf(payment.amount) == Float.valueOf(responseAmount)">
+                <log message="\n\nFULL REFUND. CANCELLING PAYMENT AND INVOICES\n"/>
+                <service-call name="mantle.account.PaymentServices.cancel#PaymentAndInvoices" in-map="[paymentId: payment.paymentId]" out-map="context"/>
+            </if>
         </actions>
     </service>
 
