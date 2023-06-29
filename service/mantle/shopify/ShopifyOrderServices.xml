@@ -319,6 +319,12 @@
                     orderPartSeqId: orderPartSeqId
                 ]"/>
             </if>
+
+            <service-call name="mantle.order.OrderServices.set#OrderBillingShippingInfo" in-map="[orderId: orderId,
+                          paymentId: paymentId,
+                          paymentMethodId: paymentMethodId,
+                          shippingPostalContactMechId: shippingPostalContactMechId,
+                          shippingTelecomContactMechId: shippingTelecomContactMechId]" out-map="updatedPayment"/>
         </actions>
     </service>
 
