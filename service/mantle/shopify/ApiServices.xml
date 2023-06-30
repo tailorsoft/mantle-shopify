@@ -991,7 +991,7 @@
                     <if condition="shippingTelecomMechList.size() &gt; 0">
                         <set field="shippingTelecomMech" from="shippingTelecomMechList.find{
                                                             it.contactNumber.replace('-','').equals(shippingPhoneNumber.replace('-',''))
-                                                            &amp;&amp; it.countryCode.replace('-','').equals(shippingPhoneCountryCode.replace('-',''))
+                                                            &amp;&amp; it.countryCode?.replace('-','').equals(shippingPhoneCountryCode?.replace('-',''))
                                                             &amp;&amp; it.areaCode.replace('-','').equals(shippingPhoneAreaCode.replace('-',''))}"/>
                     </if>
                     <if condition="shippingTelecomMech">
@@ -1097,7 +1097,7 @@
                     <if condition="billingTelecomMechList.size() &gt; 0">
                         <set field="billingTelecomMech" from="billingTelecomMechList.find{
                                                             it.contactNumber.replace('-','').equals(billingPhoneNumber.replace('-',''))
-                                                            &amp;&amp; it.countryCode.replace('-','').equals(billingPhoneCountryCode.replace('-',''))
+                                                            &amp;&amp; it.countryCode?.replace('-','').equals(billingPhoneCountryCode?.replace('-',''))
                                                             &amp;&amp; it.areaCode.replace('-','').equals(billingPhoneAreaCode.replace('-',''))}"/>
                     </if>
                     <if condition="billingTelecomMech">
