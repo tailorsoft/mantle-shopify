@@ -350,7 +350,7 @@
                 <iterate list="orderItems" entry="orderItem">
                     <set field="lineItem" from="fulfillment_order.line_items.find{(String)it.line_item_id == orderItem.sourceReferenceId}"/>
                     <if condition="!lineItem">
-                        <log warn="No fulfillment order line item found for OrderItem: ${orderItem.orderItemSeqId}"/>
+                        <log level="warn" message="No fulfillment order line item found for OrderItem: ${orderItem.orderItemSeqId}"/>
                         <continue/>
                     </if>
                     <set field="orderItem.fulfillmentOrderLineItemId" from="lineItem.id"/>
