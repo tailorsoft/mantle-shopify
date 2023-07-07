@@ -401,7 +401,7 @@
             <if condition="!remote"><return error="true" message="No Remote of type 'ShopifySystemMessageType' found for order ID ${orderId}"/></if>
 
             <!-- first call Shopify to calculate the refund according to them -->
-            <service-call name="mantle.shopify.ShopifyOrderServices.download#OrderRefundCalculation" in-map="context" out-map="context"/>
+            <service-call name="mantle.shopify.ShopifyOrderServices.download#OrderRefundCalculation" in-map="context+[systemMessageRemoteId:remote.systemMessageRemoteId]" out-map="context"/>
 
             <!-- convert the returned 'refund' object into a suitable request object -->
             <iterate list="refund.transactions" entry="transaction">
@@ -431,7 +431,8 @@
     <service verb="download" noun="OrderRefundCalculation">
         <description>Call Shopify to calculate the refund</description>
         <in-parameters>
-            <parameter name="orderId" required="true" />
+            <parameter name="orderId" required="true"/>
+            <parameter name="systemMessageRemoteId" required="true"/>
         </in-parameters>
         <out-parameters>
             <parameter name="refund"/>
@@ -444,6 +445,10 @@
                 <econdition field-name="itemTypeEnumId" value="ItemProduct"/>
                 <econdition field-name="quantityCancelled" operator="greater" from="0.0"/>
             </entity-find>
+            
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote">
+                <select-field field-name="systemMessageRemoteId"/>
+            </entity-find-one>
 
             <if condition="!orderItems"><return message="No applicable line items on order, ignoring"/></if>
 
@@ -456,24 +461,23 @@
                 ])"/>
             </iterate>
 
-            <set field="calculateRefund" from="[
+            <set field="calculateRefund" from="[refund:[
                 shipping: [full_refund:true],
                 currency: order.currencyUomId,
                 refund_line_items: refundLineItems,
-                orderId: order.externalId
+                orderId: order.externalId]
             ]"/>
 
             <set field="responseMap" from="[:]"/>
             <!-- TODO Test new String url line after being able to consume order -->
             <script><![CDATA[
-                String url = ec.resource.expand(remote.sendUrl, "", [store_name:remote.username, resource:'orders/'+order.externalId+'/refunds/calculate']);
-                //String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/orders/${order.externalId}/refunds/calculate.json";
+                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/orders/${order.externalId}/refunds/calculate.json";
 
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method('POST')
                     .addHeader("X-Shopify-Access-Token", remote.password).addHeader("Content-Type", "application/json")
                     .jsonObject(groovy.json.JsonOutput.toJson(calculateRefund)).uri(url).call();
 
-                if (restResponse.statusCode != 200) {
+                if (restResponse.statusCode < 200 && restResponse.statusCode >= 300) {
                     ec.message.addError("Shopify refunds/calculate API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}");
                 }
 
