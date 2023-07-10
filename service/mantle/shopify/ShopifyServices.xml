@@ -121,7 +121,9 @@
     <service verb="create" noun="ShopifyFulfilmentService">
         <in-parameters>
             <parameter name="systemMessageRemoteId" required="true"/>
-            <parameter name="facilityId"/><!--If not passed, the Facility from the store configured on the SystemMessageRemote will be used-->
+            <parameter name="facilityId">
+                <description>If not passed, the Facility from the store configured on the SystemMessageRemote will be used</description>
+            <parameter>
         </in-parameters>
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
