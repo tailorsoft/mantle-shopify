@@ -354,7 +354,6 @@
                         <continue/>
                     </if>
                     <set field="orderItem.fulfillmentOrderLineItemId" from="lineItem.id"/>
-                    <set field="orderItem.fulfillmentOrderId" from="fulfillment_order.id"/>
                     <entity-update value-field="orderItem"/>
                 </iterate>
             </iterate>
