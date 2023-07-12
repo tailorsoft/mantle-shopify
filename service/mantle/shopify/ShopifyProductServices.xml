@@ -573,7 +573,7 @@
         </actions>
     </service>
 
-    <!-- 
+    <!--
         Endpoint to pull down products from Shopify.
 
         https://{store_name}.myshopify.com/admin/api/2023-04/custom_collections.json?limit={limit}
