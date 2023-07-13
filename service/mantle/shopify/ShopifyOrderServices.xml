@@ -375,7 +375,7 @@
             <if condition="!payment"><return error="true" message="The order ${orderId} does not have an associated payment"/></if>
 
             <set field="payment.paymentRefNum" from="authTransaction.authorization.split('#')[0]"/>
-            <set field="txIdShopify" from="authTransaction.id"/>
+            <set field="payment.shopifyPaymentId" from="authTransaction.id"/>
             <entity-update value-field="payment"/>
         </actions>
     </service>
