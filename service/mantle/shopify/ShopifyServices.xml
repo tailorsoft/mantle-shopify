@@ -52,17 +52,7 @@
                     ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${restResponse.text()} for url: ${url}")
                 }
             ]]></script>
-
-            <!-- special case where we don't want to throw an error, which would cause the message to retry. 
-            We believe the message has succeeded, but need someone to check -->
-            <if condition="restResponse.statusCode == 409">
-                <set field="errorText" value="System message send failed with error code 409. Possible success inside shopify and need someone to manually verify. If so, please cancel this message to avoid resending. If the message has failed inside Shopify, reset the system message so it can be retried."/>
-                <service-call name="create#moqui.service.message.SystemMessageError" transaction="force-new"
-                    in-map="[systemMessageId:systemMessageId, errorDate:ec.user.nowTimestamp, attemptedStatusId:'SmsgSent', errorText:errorText]"/>
-
-                <service-call name="update#moqui.service.message.SystemMessage" transaction="force-new"
-                    in-map="[systemMessageId:systemMessageId, statusId:'SmsgError', lastAttemptDate:ec.user.nowTimestamp]"/>
-            </if>
+            
         </actions>
     </service>
 
