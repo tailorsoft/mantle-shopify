@@ -52,7 +52,7 @@
                     ec.message.addError("System message ${systemMessageId} send error response (${restResponse.statusCode}): ${restResponse.text()} for url: ${url}")
                 }
             ]]></script>
-            
+
         </actions>
     </service>
 
