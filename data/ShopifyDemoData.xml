@@ -38,4 +38,11 @@
             serviceName="mantle.shopify.ShopifyProductServices.upload#ProductInventoryQueue" cronExpression="0 0/15 * * * ?" paused="Y">
         <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
     </moqui.service.job.ServiceJob>
+
+    <!-- Shopify Payment Gateway to configure in your store if you wish to use the payment gateway refund option -->
+    <moqui.basic.Enumeration description="Shopify Payments Gateway" enumId="PgtShopifyPayments" enumTypeId="PaymentGatewayType"/>
+
+    <mantle.account.method.PaymentGatewayConfig paymentGatewayConfigId="ShopifyPayments"
+                                                paymentGatewayTypeEnumId="PgtShopifyPayments" description="Shopify payments gateway config"
+                                                refundServiceName="mantle.shopify.ShopifyGatewayServices.send#GatewayRefund"/>
 </entity-facade-xml>
