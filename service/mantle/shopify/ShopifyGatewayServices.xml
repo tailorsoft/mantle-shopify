@@ -13,76 +13,79 @@
 
         <!-- Find Order from payment -->
         <actions>
-        <entity-find-one entity-name="mantle.account.payment.Payment" value-field="paymentToRefund">
-            <field-map field-name="paymentId"/>
-        </entity-find-one>
-        <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToRefund">
-            <field-map field-name="orderId" from="paymentToRefund.orderId"/>
-        </entity-find-one>
+            <entity-find-one entity-name="mantle.account.payment.Payment" value-field="paymentToRefund">
+                <field-map field-name="paymentId"/>
+            </entity-find-one>
+            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderToRefund">
+                <field-map field-name="orderId" from="paymentToRefund.orderId"/>
+            </entity-find-one>
 
-        <!-- Find product Store for remote -->
-        <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="ProductStore">
-            <field-map field-name="productStoreId" from="orderToRefund.productStoreId"/>
-        </entity-find-one>
-        <entity-find entity-name="moqui.service.message.SystemMessageRemote" list="remotes">
-            <econdition field-name="productStoreId" from="ProductStore.productStoreId"/>
-        </entity-find>
+            <!-- Error if a payment is not associated to a shopify order
+                    To validate the order must exist, have an external id and Sales channel must be ScShopify-->
+            <if condition=" !orderToRefund || orderToRefund.salesChannelEnumId != 'ScShopify' ||">
+                <return error="true" message="This payment is not associated to a Shopify Order and cannot be processed through this gateway"/>
+            </if>
 
-        <if condition="remotes.size()==0">
-            <return error="true" message="The product store where this payment was processed does not have a remote configured to proccess the refund"/>
-        </if>
+            <entity-find entity-name="moqui.service.message.SystemMessageRemote" list="remotes">
+                <econdition field-name="productStoreId" from="orderToRefund.productStoreId"/>
 
-        <set field="remote" from="remotes.first()"/>
+            </entity-find>
 
-        <set field="refundReason" value="Moqui gateway refund"/>
-        <set field="externalId" from="orderToRefund.externalId"/>
-        <set field="shipping" from="[:]"/>
-        <set field="shipping.full_refund" value="true"/>
-        <set field="currency" from="orderToRefund.currencyUomId"/>
-        <set field="refund_line_items" from="[]"/>
-        <set field="transactions" from="[]"/>
+            <if condition="remotes.size()==0">
+                <return error="true" message="The product store where this payment was processed does not have a remote configured to proccess the refund"/>
+            </if>
 
-        <set field="refund" from="[:]"/>
-
-        <script>
-            transaction = [:];
-
-            transaction.parent_id = paymentToRefund.shopifyPaymentId;
-            transaction.amount = amount;
-            transaction.kind = "refund";
-            transaction.gateway = "shopify_payments";
-            transactions.add(transaction);
-        </script>
-
-        <set field="refund.currency" from="currency"/>
-        <set field="refund.shipping" from="shipping"/>
-        <set field="refund.refund_line_items" from="refund_line_items"/>
-        <set field="refund.transactions" from="transactions"/>
-
-        <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
+            <set field="remote" from="remotes.first()"/>
 
 
-            <!-- SEND THE REQUEST TO SHOPIFY AND STORE THE RESPONSE -->
-        <script><![CDATA[
-            import groovy.json.JsonSlurper
-            def jsonSlurper = new JsonSlurper();
-            String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/orders/${orderToRefund.externalId}/refunds.json";
+            <!-- Build JSON for request -->
+            <set field="refundReason" value="Moqui gateway refund"/>
+            <set field="externalId" from="orderToRefund.externalId"/>
+
+            <set field="transactions" from="[]"/>
+            <set field="refund" from="[:]"/>
+
+            <script>
+                transaction = [:];
+
+                transaction.parent_id = paymentToRefund.shopifyPaymentId;
+                transaction.amount = amount;
+                transaction.kind = "refund";
+                transaction.gateway = "shopify_payments";
+                transactions.add(transaction);
+            </script>
+
+            <set field="refund.currency" from="orderToRefund.currencyUomId"/>
+            <set field="refund.shipping" from="[full_refund:true]"/>
+            <!-- Empty because it's a refund processed by the accounting team,
+                not linked to any items -->
+            <set field="refund.refund_line_items" from="[]"/>
+            <set field="refund.transactions" from="transactions"/>
+
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
+
+
+                <!-- SEND THE REQUEST TO SHOPIFY AND STORE THE RESPONSE -->
+            <script><![CDATA[
+                import groovy.json.JsonSlurper
+                def jsonSlurper = new JsonSlurper();
+                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/orders/${orderToRefund.externalId}/refunds.json";
 
 
 
-            org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("POST").addHeader("Content-Type", "application/json")
-                .jsonObject(messageText).addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
+                org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("POST").addHeader("Content-Type", "application/json")
+                    .jsonObject(messageText).addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
-            ec.logger.log("info", "Send Refund request to ${url} \nBody: ${messageText}", null);
+                ec.logger.log("info", "Send Refund request to ${url} \nBody: ${messageText}", null);
 
-            //Ignore ´error´ code 409 because it seems sometimes it was a success inside shopify.
-            if (restResponse.statusCode < 200 || (restResponse.statusCode >= 300 && restResponse.statusCode != 409)) {
-                ec.message.addError("Shopify Refund error response (${restResponse.statusCode}): ${restResponse.text()} for url: ${url}");
-                return;
-            }
+                //Ignore ´error´ code 409 because it seems sometimes it was a success inside shopify.
+                if (restResponse.statusCode < 200 || (restResponse.statusCode >= 300 && restResponse.statusCode != 409)) {
+                    ec.message.addError("Shopify Refund error response (${restResponse.statusCode}): ${restResponse.text()} for url: ${url}");
+                    return;
+                }
 
-            response = jsonSlurper.parseText(restResponse.text())
-        ]]></script>
+                response = jsonSlurper.parseText(restResponse.text())
+            ]]></script>
 
 
             <if condition="!response.refund">
@@ -100,6 +103,7 @@
             <set field="paymentGatewayResponseId" from="createPGR.paymentGatewayResponseId"/>
 
             <log message="\n\nAmounts comparisson: ${Float.valueOf(paymentToRefund.amount) == Float.valueOf(responseAmount)}"/>
+            <!-- Only void payment if the refund amount was the full payment, otherwise the refund payment created is enough update -->
             <if condition="Float.valueOf(paymentToRefund.amount) == Float.valueOf(responseAmount)">
                 <log message="\n\nFULL REFUND. CANCELLING PAYMENT AND INVOICES\n"/>
                 <service-call name="mantle.account.PaymentServices.cancel#PaymentAndInvoices" in-map="[paymentId: paymentToRefund.paymentId]" out-map="context"/>
