@@ -104,6 +104,24 @@ mantle.shopify.ShopifyProductServices.update#ItemInventory
 ```
 This API call updates one Item per call, with obvious limitations around the Shopify REST API rate limits. To avoid this limitation, a new endpoint would need to be developed to call the Shopify Graph API, and update multiple items per API call.
 
+
+## Refunds and Order Cancellation
+
+This integration support to cancel or refund orders is based on 2 main services
+
+```
+mantle.shopify.ShopifyOrderServices.queue#RefundOrderSystemMessage
+```
+
+Which is set up in a SECA to automatically queue the refund into shopify for order items that weren't fulfilled at the moment of closing an order in moqui, or cancel an order if none of it's order items were shipped
+
+```
+mantle.shopify.ShopifyGatewayServices.send#GatewayRefund
+```
+Which can be used by setting up the shopify payment gateway found in the demo data as the payment gateway to process credit cards in your store.
+
+Once you have set up the payment gateway for your store, this service can be used to refund specific amounts through the "Gateway Refund" button found at the top right of the payment screen.
+
 TODO Complete the help for the refund services.
 
 
