@@ -1,3 +1,4 @@
 
 data/ShopifyDemoData.xml
 *.http
+.idea/*
