@@ -306,7 +306,6 @@
             <if condition="order.payment_details">
                 <set field="processedAt" from="OffsetDateTime.parse(order.processed_at, DateTimeFormatter.ISO_OFFSET_DATE_TIME)"/>
                 <set field="processedTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime())"/>
-                <log message="\n\nCONTEXT BEFORE CREATING PAYMENT ${context}\n\n"/>
                 <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context" in-map="[
                     orderId: orderId,
                     paymentMethodId: paymentMethodId,
