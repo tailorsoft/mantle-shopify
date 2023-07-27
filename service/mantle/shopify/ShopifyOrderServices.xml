@@ -296,6 +296,7 @@
                     <service-call name="mantle.order.OrderServices.create#OrderItem" in-map="[
                         orderId: orderId,
                         orderPartSeqId: orderPartSeqId,
+                        parentItemSeqId: productOIContext.orderItemSeqId,
                         itemTypeEnumId: 'ItemSalesTax',
                         comments: tax_line.title,
                         unitAmount: Double.parseDouble(tax_line.price)
