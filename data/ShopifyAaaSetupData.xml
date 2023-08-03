@@ -26,7 +26,7 @@
             description="Free shipping"/>
     <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="SHOPIFY" shipmentMethodEnumId="ShMthEconomy" sequenceNum="2"
             description="Economy"/>
-    
+
     <!-- idValue is needed for the tracking_info.company on fulfilment message -->
     <mantle.party.PartyIdentification partyIdTypeEnumId="PtidShopify" partyId="USPS" idValue="USPS" />
     <mantle.party.PartyIdentification partyIdTypeEnumId="PtidShopify" partyId="UPS" idValue="UPS" />
