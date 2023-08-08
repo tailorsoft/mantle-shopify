@@ -251,9 +251,35 @@
                     </else>
                 </if>
 
-                <service-call name="mantle.party.ContactServices.findOrCreate#PartyTelecomNumber" out-map="telecomOut"
-                    in-map="[partyId:partyId,countryCode:shippingPhoneCountryCode,areaCode:shippingPhoneAreaCode, contactNumber:shippingPhoneNumber, contactMechPurposeId:'PhonePrimary']"/>
-                <set field="shippingTelecomContactMechId" from="telecomOut.contactMechId"/>
+                <!-- Use the code from the previous code base to search for existing records because
+                        findOrCreate#PartyTelecomNumber was duplicating records -->
+                <!-- Checking shipping phone existence -->
+                <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber"
+                             list="shippingTelecomMechList">
+                    <econdition field-name="partyId" from="partyId"/>
+                    <econdition field-name="contactMechPurposeId" value="PhonePrimary"/>
+                </entity-find>
+                <if condition="shippingTelecomMechList.size() &gt; 0">
+                    <set field="shippingTelecomMech" from="shippingTelecomMechList.find{
+                                                            it.contactNumber.replace('-','').equals(shippingPhoneNumber.replace('-',''))
+                                                            &amp;&amp; it.countryCode?.replace('-','').equals(shippingPhoneCountryCode?.replace('-',''))
+                                                            &amp;&amp; it.areaCode.replace('-','').equals(shippingPhoneAreaCode.replace('-',''))}"/>
+                </if>
+                <if condition="shippingTelecomMech">
+                    <then>
+                        <set field="shippingTelecomContactMechId" from="shippingTelecomMech.contactMechId"/>
+                        <log message="shipping PHONE NUMBER ALREADY EXISTS"/>
+                    </then>
+                    <else>
+                        <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
+                                                                      contactNumber: shippingPhoneNumber,
+                                                                      countryCode: shippingPhoneCountryCode,
+                                                                      areaCode: shippingPhoneAreaCode,
+                                                                      telecomContactMechPurposeId:'PhonePrimary']"
+                                                                      out-map="telecomMechData"/>
+                        <set field="shippingTelecomContactMechId" from="telecomMechData.telecomContactMechId"/>
+                    </else>
+                </if>
             </if>
 
             <!-- store all the Address and Phone from the billing address -->
@@ -288,9 +314,35 @@
                         </else>
                     </if>
 
-                    <service-call name="mantle.party.ContactServices.findOrCreate#PartyTelecomNumber"
-                        in-map="[partyId:partyId, countryCode:billingPhoneCountryCode,areaCode:billingPhoneAreaCode, contactNumber:billingPhoneNumber, contactMechPurposeId:'PhoneBilling']"/>
-                    <set field="billingTelecomContactMechId" from="billingPostalOut.contactMechId"/>
+                    <!-- Use the code from the previous code base to search for existing records because
+                        findOrCreate#PartyTelecomNumber was duplicating records -->
+                    <!-- Checking billing phone existence -->
+                    <entity-find entity-name="mantle.party.contact.PartyContactMechTelecomNumber"
+                                 list="billingTelecomMechList">
+                        <econdition field-name="partyId" from="partyId"/>
+                        <econdition field-name="contactMechPurposeId" value="PhoneBilling"/>
+                    </entity-find>
+                    <if condition="billingTelecomMechList.size() &gt; 0">
+                        <set field="billingTelecomMech" from="billingTelecomMechList.find{
+                                                            it.contactNumber.replace('-','').equals(billingPhoneNumber.replace('-',''))
+                                                            &amp;&amp; it.countryCode?.replace('-','').equals(billingPhoneCountryCode?.replace('-',''))
+                                                            &amp;&amp; it.areaCode.replace('-','').equals(billingPhoneAreaCode.replace('-',''))}"/>
+                    </if>
+                    <if condition="billingTelecomMech">
+                        <then>
+                            <set field="billingTelecomContactMechId" from="billingTelecomMech.contactMechId"/>
+                            <log message="billing PHONE NUMBER ALREADY EXISTS"/>
+                        </then>
+                        <else>
+                            <service-call name="mantle.party.ContactServices.store#PartyContactInfo" in-map="[partyId: partyId,
+                                                                                                          contactNumber: billingPhoneNumber,
+                                                                                                          countryCode: billingPhoneCountryCode,
+                                                                                                          areaCode: billingPhoneAreaCode,
+                                                                                                               telecomContactMechPurposeId:'PhonePrimary']"
+                                          out-map="telecomMechData"/>
+                            <set field="billingTelecomContactMechId" from="telecomMechData.telecomContactMechId"/>
+                        </else>
+                    </if>
                 </if>
             </if>
         </actions>
