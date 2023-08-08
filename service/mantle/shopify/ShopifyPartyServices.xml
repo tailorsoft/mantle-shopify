@@ -338,7 +338,7 @@
                                                                                                           contactNumber: billingPhoneNumber,
                                                                                                           countryCode: billingPhoneCountryCode,
                                                                                                           areaCode: billingPhoneAreaCode,
-                                                                                                               telecomContactMechPurposeId:'PhonePrimary']"
+                                                                                                               telecomContactMechPurposeId:'PhoneBilling']"
                                           out-map="telecomMechData"/>
                             <set field="billingTelecomContactMechId" from="telecomMechData.telecomContactMechId"/>
                         </else>
