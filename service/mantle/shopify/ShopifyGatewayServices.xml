@@ -64,7 +64,7 @@
             <script><![CDATA[
                 import groovy.json.JsonSlurper
                 def jsonSlurper = new JsonSlurper();
-                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/orders/${order.externalId}/refunds.json";
+                String url = "https://${remote.username}.myshopify.com/admin/api/2023-04/orders/${order.externalId}/refunds.json";
 
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("POST").addHeader("Content-Type", "application/json")
                     .jsonObject(messageText).addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();

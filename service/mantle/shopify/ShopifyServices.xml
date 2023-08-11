@@ -43,7 +43,7 @@
 
             <set field="restResponse" from="[:]"/>
             <script><![CDATA[
-                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/${systemMessage.docType}.json";
+                String url = "https://${remote.username}.myshopify.com/admin/api/2023-04/${systemMessage.docType}.json";
 
                 restResponse = ec.service.rest().method(systemMessage.docSubType).addHeader("Content-Type", "application/json")
                     .jsonObject(systemMessage.messageText).addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
@@ -77,7 +77,7 @@
 
             <set field="responseMap" from="[:]"/>
             <script><![CDATA[
-                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/locations.json";
+                String url = "https://${remote.username}.myshopify.com/admin/api/2023-04/locations.json";
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("GET")
                     .addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
 
@@ -144,7 +144,7 @@
 
             <set field="responseMap" from="[:]"/>
             <script><![CDATA[
-                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/fulfillment_services.json";
+                String url = "https://${remote.username}.myshopify.com/admin/api/2023-04/fulfillment_services.json";
                 org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("POST")
                     .addHeader("Content-Type", "application/json").addHeader("X-Shopify-Access-Token", remote.password)
                     .jsonObject(groovy.json.JsonOutput.toJson([fulfillment_service: fulfillment_service]))
