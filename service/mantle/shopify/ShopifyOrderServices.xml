@@ -62,7 +62,7 @@
 
 
     <!-- 
-    consume the list of orders and downloads fulfilments and transactions for each one,
+    consume the list of orders and downloads fulfillments and transactions for each one,
     If an order fails to 
     generate individual system messages -->
     <service verb="consume" noun="OrderListSystemMessage">
@@ -98,18 +98,18 @@
             <service-call name="mantle.shopify.ShopifyOrderServices.download#ShopifyFulfillmentOrders" out-map="context"
                 in-map="[systemMessageRemoteId:remote.systemMessageRemoteId, shopifyOrderId:order.id]"/>
 
-            <service-call name="mantle.shopify.ShopifyOrderServices.download#ShopifyTransactions" out-map="context"
+            <service-call name="mantle.shopify.ShopifyOrderServices.download#ShopifyAuthTransaction" out-map="context"
                 in-map="[systemMessageRemoteId:remote.systemMessageRemoteId, shopifyOrderId:order.id]"/>
 
             <!-- Then we attempt to process the order the related order data -->
             <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyOrderMap" out-map="context"
-                in-map="[order:order, productStoreId:remote.productStoreId]"/>
+                in-map="[order:order, productStoreId:remote.productStoreId, payment_details: authTransaction.payment_details]"/>
 
             <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyFulfillmentOrders"
                 in-map="[fulfillmentOrders:fulfillmentOrders, orderId:orderId]"/>
             
-            <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyTransactions"
-                in-map="[transactions:transactions, orderId:orderId]"/>
+            <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyAuthTransaction"
+                in-map="[authTransaction:authTransaction, orderId:orderId]"/>
 
             <set field="systemMessage.orderId" from="orderId"/>
             <entity-update value-field="systemMessage"/>
@@ -144,13 +144,13 @@
         </actions>
     </service>
 
-    <service verb="download" noun="ShopifyTransactions">
+    <service verb="download" noun="ShopifyAuthTransaction">
         <in-parameters>
             <parameter name="systemMessageRemoteId" required="true"/>
             <parameter name="shopifyOrderId" required="true"/>
         </in-parameters>
         <out-parameters>
-            <parameter name="transactions" type="List" />
+            <parameter name="authTransaction" type="Map" />
         </out-parameters>
         <actions>
             <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote"/>
@@ -169,6 +169,8 @@
                 transactions = responseMap.transactions;
             ]]></script>
             <if condition="!transactions"><return error="true" message="No transactions downloaded for shopifyOrderId:${shopifyOrderId}"/></if>
+            <set field="authTransaction" from="transactions.find{['sale', 'authorization'].contains(it.kind) &amp;&amp; it.status.equals('success')}"/>
+            <if condition="!authTransaction"><return error="true" message="No auth/sale transaction found on ${orderId}"/></if>
         </actions>
     </service>
 
@@ -177,6 +179,7 @@
         <in-parameters>
             <parameter name="order" type="Map"/>
             <parameter name="productStoreId" required="true"/>
+            <parameter name="payment_details" type="Map"/>
         </in-parameters>
         <out-parameters>
             <parameter name="orderId"/>
@@ -190,7 +193,7 @@
             <if condition="!order.customer"><return error="true" message="ERROR: NO CUSTOMER FOUND"/></if>
             <if condition="!order.shipping_address"><return error="true" message="ERROR: NO SHIPPING ADDRESS FOUND"/></if>
             <if condition="!order.line_items"><return error="true" message="ERROR: NO ORDER ITEMS FOUND"/></if>
-            <if condition="!order.payment_details &amp;&amp; order.current_total_price != '0.00'">
+            <if condition="!payment_details &amp;&amp; order.current_total_price != '0.00'">
                 <return error="true" message="ERROR: NO PAYMENT DETAILS FOUND and current_total_price is ${order.current_total_price}"/>
             </if>
 
@@ -220,7 +223,7 @@
                 in-map="[customer:order.customer, shippingAddress:order.shipping_address, billingAddress:order.billing_address, ownerPartyId:productStore.organizationPartyId, orderEmail:order.email]" out-map="context"/>
 
             <service-call name="mantle.shopify.ShopifyPartyServices.store#ShopifyPaymentMethod" 
-                in-map="[partyId:partyId, paymentDetails:order.payment_details, billingPostalContactMechId:billingPostalContactMechId, firstName:order.billing_address.first_name, lastName:order.billing_address.last_name]"
+                in-map="[partyId:partyId, paymentDetails:payment_details, billingPostalContactMechId:billingPostalContactMechId, firstName:order.billing_address.first_name, lastName:order.billing_address.last_name]"
                 out-map="context"/>
 
             <!-- get the currency the order was placed in -->
@@ -304,7 +307,7 @@
                 </iterate>
             </iterate>
 
-            <if condition="order.payment_details">
+            <if condition="payment_details">
                 <set field="processedAt" from="OffsetDateTime.parse(order.processed_at, DateTimeFormatter.ISO_OFFSET_DATE_TIME)"/>
                 <set field="processedTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime())"/>
                 <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context" in-map="[
@@ -360,15 +363,12 @@
         </actions>
     </service>
 
-    <service verb="consume" noun="ShopifyTransactions">
+    <service verb="consume" noun="ShopifyAuthTransaction">
         <in-parameters>
             <parameter name="orderId" required="true"/>
-            <parameter name="transactions" type="List" required="true"/>
+            <parameter name="authTransaction" type="Map" required="true"/>
         </in-parameters>
         <actions>
-            <set field="authTransaction" from="transactions.find{['sale', 'authorization'].contains(it.kind) &amp;&amp; it.status.equals('success')}"/>
-            <if condition="!authTransaction"><return error="true" message="No auth/sale transaction found on ${orderId}"/></if>
-
             <entity-find-one entity-name="mantle.account.payment.Payment" value-field="payment" for-update="true">
                 <field-map field-name="orderId"/></entity-find-one>
 
