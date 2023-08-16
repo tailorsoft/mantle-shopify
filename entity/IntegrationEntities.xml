@@ -39,4 +39,9 @@
     <extend-entity entity-name="Payment" package="mantle.account.payment">
         <field name="shopifyPaymentId" type="id"/>
     </extend-entity>
+
+    <extend-entity entity-name="SystemMessage" package="moqui.service.message">
+        <field name="shopifyOrderId" type="text-medium"/>
+        <field name="shopifyOrderDisplayId" type="text-medium"/>
+    </extend-entity>
 </entities>

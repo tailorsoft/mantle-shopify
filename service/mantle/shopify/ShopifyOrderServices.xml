@@ -72,10 +72,21 @@
             <set field="messageMap" from="new groovy.json.JsonSlurper().parseText(systemMessage.messageText)"/>
 
             <iterate list="messageMap.orders" entry="order">
-                <service-call name="create#moqui.service.message.SystemMessage" out-map="context"
-                    in-map="[systemMessageTypeId:'ShopifySystemMessageType', parentMessageId: systemMessage.systemMessageId,
-                        messageText:groovy.json.JsonOutput.toJson(order), docType:'order',
-                        isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
+
+                <!-- Check for a system message that might already exist for the same order to avoid duplicate -->
+                <entity-find entity-name="moqui.service.message.SystemMessage" list="SystemMessagesForThisOrder">
+                    <econdition field-name="shopifyOrderId" from="order.id"/>
+                    <econdition field-name="systemMessageTypeId" value="ShopifySystemMessageType"/>
+                    <econdition field-name="docType" value="order"/>
+                </entity-find>
+
+                <if condition="SystemMessagesForThisOrder.size() == 0">
+                    <service-call name="create#moqui.service.message.SystemMessage" out-map="context"
+                        in-map="[systemMessageTypeId:'ShopifySystemMessageType', parentMessageId: systemMessage.systemMessageId,
+                            messageText:groovy.json.JsonOutput.toJson(order), docType:'order',
+                            shopifyOrderId: order.id, shopifyOrderDisplayId: order.name,
+                            isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
+                </if>
             </iterate>
         </actions>
     </service>
