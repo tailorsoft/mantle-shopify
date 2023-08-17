@@ -78,6 +78,10 @@
                     <econdition field-name="shopifyOrderId" from="order.id"/>
                     <econdition field-name="systemMessageTypeId" value="ShopifySystemMessageType"/>
                     <econdition field-name="docType" value="order"/>
+                    <econdition field-name="statusId" operator="in" from="['SmsgConsumed',
+                                                                            'SmsgConsuming',
+                                                                            'SmsgReceived',
+                                                                            'SmsgError' ]"/>
                 </entity-find>
 
                 <if condition="SystemMessagesForThisOrder.size() == 0">
