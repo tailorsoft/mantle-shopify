@@ -23,7 +23,7 @@
     <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="SHOPIFY" shipmentMethodEnumId="ShMthGround" sequenceNum="1"
             description="Standard Shipping"/>
     <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="SHOPIFY" shipmentMethodEnumId="ShMthFreeShip" sequenceNum="2"
-            description="Free shipping"/>
+            description="Free Shipping"/>
     <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="SHOPIFY" shipmentMethodEnumId="ShMthEconomy" sequenceNum="2"
             description="Economy"/>
 
