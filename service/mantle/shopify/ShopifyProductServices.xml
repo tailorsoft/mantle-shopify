@@ -393,7 +393,7 @@
             <if condition="productData.variants &amp;&amp; shopifyVariants">
                 <iterate list="shopifyVariants" entry="variant">
                     <if condition="productData.variants.size() == 1"><then>
-                        <set field="requestVariant" from="productData.variants.first"/>
+                        <set field="requestVariant" from="productData.variants.first()"/>
                     </then><else>
                         <!-- the only way to match the response to the request is via the options -->
                         <set field="requestVariant" from="productData.variants.find({it.option1 == variant.option1
