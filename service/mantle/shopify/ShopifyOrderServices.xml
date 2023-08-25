@@ -113,8 +113,11 @@
             <service-call name="mantle.shopify.ShopifyOrderServices.download#ShopifyFulfillmentOrders" out-map="context"
                 in-map="[systemMessageRemoteId:remote.systemMessageRemoteId, shopifyOrderId:order.id]"/>
 
-            <service-call name="mantle.shopify.ShopifyOrderServices.download#ShopifyTransactions" out-map="context"
-                in-map="[systemMessageRemoteId:remote.systemMessageRemoteId, shopifyOrderId:order.id]"/>
+            <!-- Check if order total is 0, there will be no payment and no transactions in this case -->
+            <if condition="order.current_total_price > 0">
+                <service-call name="mantle.shopify.ShopifyOrderServices.download#ShopifyTransactions" out-map="context"
+                    in-map="[systemMessageRemoteId:remote.systemMessageRemoteId, shopifyOrderId:order.id]"/>
+            </if>
 
             <!-- Then we attempt to process the order the related order data -->
             <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyOrderMap" out-map="context"
@@ -122,10 +125,12 @@
 
             <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyFulfillmentOrders"
                 in-map="[fulfillmentOrders:fulfillmentOrders, orderId:orderId]"/>
-            
-            <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyTransactions"
-                in-map="[transactions:transactions, orderId:orderId]"/>
 
+            <!-- Check if order total is 0, there will be no payment and no transactions in this case -->
+            <if condition="order.current_total_price > 0">
+                <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyTransactions"
+                    in-map="[transactions:transactions, orderId:orderId]"/>
+            </if>
             <set field="systemMessage.orderId" from="orderId"/>
             <entity-update value-field="systemMessage"/>
         </actions>
