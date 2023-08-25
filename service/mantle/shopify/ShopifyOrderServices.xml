@@ -239,9 +239,12 @@
             <service-call name="mantle.shopify.ShopifyPartyServices.store#ShopifyCustomer" 
                 in-map="[customer:order.customer, shippingAddress:order.shipping_address, billingAddress:order.billing_address, ownerPartyId:productStore.organizationPartyId, orderEmail:order.email]" out-map="context"/>
 
-            <service-call name="mantle.shopify.ShopifyPartyServices.store#ShopifyPaymentMethod" 
+            <!-- Only needed when order total is not zero -->
+            <if condition="order.current_total_price !='0.00'">
+                <service-call name="mantle.shopify.ShopifyPartyServices.store#ShopifyPaymentMethod"
                 in-map="[partyId:partyId, paymentDetails:order.payment_details, billingPostalContactMechId:billingPostalContactMechId, firstName:order.billing_address.first_name, lastName:order.billing_address.last_name]"
                 out-map="context"/>
+            </if>
 
             <!-- get the currency the order was placed in -->
             <entity-find-one entity-name="moqui.basic.Uom" value-field="currencyUom">
