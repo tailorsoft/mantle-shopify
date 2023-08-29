@@ -429,15 +429,12 @@
             <iterate list="refund.transactions" entry="transaction">
                 <set field="transaction.kind" value="refund"/>
             </iterate>
-            
-            <set field="request" from="[
-                currency: refund.currency,
-                notify: true,
-                note: '',
-                shipping: [full_refund:true],
-                refund_line_items: refund.refund_line_items,
-                transactions: refund.transactions
-            ]"/>
+
+            <set field="refund.notify" value="true"/>
+            <set field="refund.shipping" from="[full_refund:true]"/>
+
+            <set field="request" from="[refund:refund]"/>
+
 
             <!-- 
                 if the previous status was 'OrderCompleted' it's necessary to refund the cancel item
