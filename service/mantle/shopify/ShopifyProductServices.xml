@@ -922,11 +922,15 @@
                             .addHeader("X-Shopify-Access-Token", remote.password).addHeader("Content-Type", "application/json")
                             .jsonObject(groovy.json.JsonOutput.toJson(inventory)).uri(url).call();
 
+                        if (restResponse.statusCode >= 200 && restResponse.statusCode < 300) {
+                            productInventory.delete();
+                        }
                         if (restResponse.statusCode != 200) {
-                            ec.message.addError("Shopify inventory_levels/set API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} url:${url}");
+                            //ec.message.addError("Shopify inventory_levels/set API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} url:${url}");
+                            ec.logger.warn("Shopify inventory_levels/set API Error Trying to Upload Product Inventory Queue ${productInventory.productId} \n
+                            ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()} url:${url}")
                         }
                     ]]></script>
-                    <entity-delete value-field="productInventory"/>
                 </iterate>
             </iterate>
         </actions>
