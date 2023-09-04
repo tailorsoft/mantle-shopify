@@ -59,7 +59,7 @@
                 <set field="updatedAtStr" from="updatedAt.plusSeconds(1).format(dateFormat)"/>
                 <service-call name="create#moqui.service.message.SystemMessage" out-map="context"
                                 in-map="[systemMessageTypeId:'ShopifySystemMessageType', systemMessageRemoteId:systemMessageRemoteId,
-                                messageText:restResponse.text(), docType:'json', docType:'products', docVersion:updatedAtStr,
+                                messageText:restResponse.text(), docType:'products', docVersion:updatedAtStr,
                                 isOutgoing:'N', initDate:ec.user.nowTimestamp, statusId:'SmsgReceived']"/>
             </if>
         </actions>
