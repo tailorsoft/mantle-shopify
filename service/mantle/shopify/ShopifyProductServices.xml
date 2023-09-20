@@ -880,7 +880,7 @@
         </actions>
     </service>
 
-    <service verb="upload" noun="ProductInventoryQueue">
+    <service verb="upload" noun="ProductInventoryQueue" authenticate="anonymous-all">
         <in-parameters>
             <parameter name="systemMessageRemoteId" required="true"/>
             <parameter name="limit" type="Integer" default-value="250">The limit per facility connected to the store on the Remote</parameter>

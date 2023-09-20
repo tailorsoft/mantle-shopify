@@ -5,7 +5,7 @@
 
         https://{store_name}.myshopify.com/admin/api/2023-04/orders.json?limit={limit}&fulfillment_status={status}&since_id={order_id}
     -->
-    <service verb="download" noun="ShopifyOrders">
+    <service verb="download" noun="ShopifyOrders" authenticate="anonymous-all">
         <in-parameters>
             <parameter name="systemMessageRemoteId" required="true"/>
             <parameter name="fulfillmentStatus" default-value="unfulfilled"/>
