@@ -252,7 +252,7 @@
                 <field-map field-name="abbreviation" from="order.currency"/></entity-find-one>
 
             <set field="createdAt" from="OffsetDateTime.parse(order.created_at, DateTimeFormatter.ISO_OFFSET_DATE_TIME)"/>
-            <set field="createdTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime())"/>
+            <set field="createdTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(createdAt.getOffset()).toLocalDateTime())"/>
 
             <service-call name="mantle.order.OrderServices.create#Order" in-map="[
                 productStoreId: productStoreId,
