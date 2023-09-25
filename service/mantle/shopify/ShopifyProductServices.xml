@@ -905,7 +905,9 @@
 
                 <iterate list="productInventoryQueue" entry="productInventory">
 
-                    <service-call name="mantle.product.AssetServices.get#AvailableInventory" in-map="productInventory.productId" out-map="context"/>-->
+                    <service-call name="mantle.product.AssetServices.get#AvailableInventory"
+                                  in-map="[productId: productInventory.productId, productStoreId: remote.productStoreId]" out-map="context"/>
+
                     <set field="inventory" from="[
                         location_id:facility.externalId,
                         inventory_item_id:productInventory.inventoryItemId,
