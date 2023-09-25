@@ -5,7 +5,6 @@
         <field name="productId" type="id" is-pk="true"/>
         <field name="facilityId" type="id" is-pk="true"/>
         <field name="inventoryItemId" type="text-short" not-null="true"/>
-        <field name="availableToPromise" type="number-decimal" not-null="true"/>
         <relationship type="one" title="Product" related="mantle.product.Product">
             <key-map field-name="productId"/></relationship>
         <relationship type="one" title="Facility" related="mantle.facility.Facility">

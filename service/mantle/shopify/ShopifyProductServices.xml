@@ -867,16 +867,13 @@
                 <return/>
             </if>
 
-            <service-call name="mantle.product.AssetServices.get#AvailableInventory" in-map="context" out-map="context"/>
-            <entity-find-one entity-name="mantle.shopify.ProductInventoryQueue" value-field="queuedInventory" for-update="true"/>
+<!--            <service-call name="mantle.product.AssetServices.get#AvailableInventory" in-map="context" out-map="context"/>-->
+            <entity-find-one entity-name="mantle.shopify.ProductInventoryQueue" value-field="queuedInventory"/>
 
-            <if condition="!queuedInventory"><then>
+            <if condition="!queuedInventory">
                 <service-call name="create#mantle.shopify.ProductInventoryQueue" 
-                    in-map="context + [availableToPromise:availableToPromiseTotal, inventoryItemId:productPidt.idValue]"/>
-            </then><else-if condition="queuedInventory.availableToPromise != availableToPromiseTotal">
-                <set field="queuedInventory.availableToPromise" from="availableToPromiseTotal"/>
-                <entity-update value-field="queuedInventory"/>
-            </else-if></if>
+                    in-map="context + [inventoryItemId:productPidt.idValue]"/>
+            </if>
         </actions>
     </service>
 
@@ -907,10 +904,12 @@
                     <econdition field-name="facilityId" from="storeFacility.facilityId"/></entity-find>
 
                 <iterate list="productInventoryQueue" entry="productInventory">
+
+                    <service-call name="mantle.product.AssetServices.get#AvailableInventory" in-map="productInventory.productId" out-map="context"/>-->
                     <set field="inventory" from="[
                         location_id:facility.externalId,
                         inventory_item_id:productInventory.inventoryItemId,
-                        available:productInventory.availableToPromise
+                        available:availableToPromiseTotal
                     ]"/>
 
                     <log message="inventory: ${inventory}"/>
