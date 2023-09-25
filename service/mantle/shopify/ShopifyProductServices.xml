@@ -911,7 +911,7 @@
                     <set field="inventory" from="[
                         location_id:facility.externalId,
                         inventory_item_id:productInventory.inventoryItemId,
-                        available:availableToPromiseTotal
+                        available: (availableToPromiseTotal as BigInteger)
                     ]"/>
 
                     <log message="inventory: ${inventory}"/>
