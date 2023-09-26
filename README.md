@@ -20,3 +20,111 @@ It requires that you have a store set up in Shopify, and a basic knowledge of th
 
 For more detailed information on the Moqui Framework, please read the documentation available here:
 https://www.moqui.org/docs/framework
+
+## Generate Shopify API credentials
+
+To allow moqui to communicate with the Shopify API for your store, you need to create a 'Custom App' in the shopify admin:
+ 1. From your Shopify admin, click Settings > Apps and sales channels.
+ 2. Click Develop apps.
+ 3. Click Allow custom app development.
+ 4. Click Create a custom app.
+ 5. In the modal window, enter the App name (e.g 'Moqui') and select an App developer.
+
+Click Create app, and assign the following scopes:
+```
+write_assigned_fulfillment_orders, read_assigned_fulfillment_orders, write_customers, read_customers, write_discounts, read_discounts, write_fulfillments, read_fulfillments, write_inventory, read_inventory, write_locations, read_locations, write_merchant_managed_fulfillment_orders, read_merchant_managed_fulfillment_orders, write_orders, read_orders, write_products, read_products, write_custom_fulfillment_services, read_custom_fulfillment_services
+```
+
+6. Click "install app"
+
+https://help.shopify.com/en/manual/apps/app-types/custom-apps?shpxid=d49fae40-17FA-4911-FF2D-EE18EA231E81
+
+Go to the "API Credentials" tab and take note of the API key and secret key.
+
+### Create a default 'Location' in Shopify
+ 1. From your Shopify admin, click Settings > Locations
+ 2. Click on the name of the default location
+ 3. Modify the 'Location name' to match the name of your 'Facility' in Moqui. 
+
+ In the example, we call the location 'Ziziwork Retail Warehouse'
+
+
+## Configure Moqui to read/write Orders and Fulfillments
+The first step is to configure a SystemMessageRemote that will allow calls to the Shopify REST API:
+```
+<moqui.service.message.SystemMessageRemote systemMessageTypeId="ShopifySystemMessageType" 
+        systemMessageRemoteId="" productStoreId="" username="" password=""/>
+```
+Give your remote a name, the productStoreId that it will be interacting with, and the API credentials that were noted from Shopify. The stores subdomain should be configured in the  'username' field of the SystemMessageRemote and the 'API Key' should be configured as the password. See the demo data for an example.
+
+Run the following service to configure the Facility in Moqui with the previously created Location in Shopify:
+```
+mantle.shopify.ShopifyServices.configure#FacilityFromShopifyLocation
+```
+
+
+## Services to Sync Products and Categories
+There are 2 services that can be called to download products and collections from Shopify down to Moqui.
+```
+mantle.shopify.ShopifyProductServices.download#ShopifyProducts
+mantle.shopify.ShopifyProductServices.download#ShopifyCollections
+```
+Both services generate SystemMessages that need to be consumed. If this is not happening automatically, ensure the consume_AllReceivedSystemMessages_frequent is running.
+
+
+There are 2 services that can be called to upload products and categories from Moqui to Shopify
+```
+mantle.shopify.ShopifyProductServices.upload#MoquiStoreProducts
+mantle.shopify.ShopifyProductServices.upload#MoquiStoreCategories
+```
+Choose which platform is the source of truth for Product data and then set up service jobs to poll one of the sets of services. There are demo service jobs set up for each one. Choose a frequency that makes sense given how much your product data changes during BAU. Run the jobs manually when you need data synced immediately.
+
+The services also upload images of the products to shopify. For this to work properly you will need your moqui product store to have a product store setting that contains the url where the product images are published.
+
+## Services to Sync Orders, Fulfilments and Inventory
+There is a service that can be polled to download orders from Shopify:
+```
+mantle.shopify.ShopifyOrderServices.download#ShopifyOrders
+```
+
+There is a demo job that polls this service called: poll_shopify_orders_download
+
+When an order is fulfilled in Moqui, a SystemMessage is queued to POST to the shopify fulfilments API 
+```
+mantle.shopify.ShopifyProductServices.queue#ShopifyFulfillmentSystemMessage
+```
+
+Fulfilments are queued as SystemMessage to allow retries if the API call fails.
+
+
+When an order is fulfilled in Moqui, or Inventory is received in the Moqui Facility, services are triggered to update inventory in Shopify
+```
+mantle.shopify.ShopifyProductServices.update#ItemInventory
+
+```
+This API call updates one Item per call, with obvious limitations around the Shopify REST API rate limits. To avoid this limitation, a new endpoint would need to be developed to call the Shopify Graph API, and update multiple items per API call.
+
+
+## Refunds and Order Cancellation
+
+This integration support to cancel or refund orders is based on 2 main services
+
+```
+mantle.shopify.ShopifyOrderServices.queue#RefundOrderSystemMessage
+```
+
+Which is set up in a SECA to automatically queue the refund into shopify for order items that weren't fulfilled at the moment of closing an order in moqui, or cancel an order if none of it's order items were shipped
+
+```
+mantle.shopify.ShopifyGatewayServices.send#GatewayRefund
+```
+Which can be used by setting up the shopify payment gateway found in the demo data as the payment gateway to process credit cards in your store.
+
+Once you have set up the payment gateway for your store, this service can be used to refund specific amounts through the "Gateway Refund" button found at the top right of the payment screen.
+
+TODO Complete the help for the refund services.
+
+
+
+
+

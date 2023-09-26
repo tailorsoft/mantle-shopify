@@ -1,63 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <entity-facade-xml type="seed">
-    <moqui.service.job.ServiceJob jobName="shopify_get_order" description="make a http request to the Shopify store to get all paid orders" serviceName="mantle.shopify.ApiServices.queue#GetOrdersSystemMessage" cronExpression="0 0 * ? * *" fromDate ="2021-09-02" paused="Y"/>
-    <moqui.service.job.ServiceJob jobName="shopify_set_inventory" description="make a http request to the Shopify to update product inventory" serviceName="mantle.shopify.ApiServices.consume#SetInventorySystemMessage" cronExpression="0 0 0/1 ? * * *" fromDate ="2021-09-02" paused="Y"/>
+    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifySystemMessageType" description="Shopify System Message Type"
+            consumeServiceName="mantle.shopify.ShopifyServices.consume#ShopifySystemMessage" 
+            sendServiceName="mantle.shopify.ShopifyServices.send#ShopifySystemMessage"/>
 
-    <moqui.basic.Enumeration description="Shopify Product ID" enumId="PidtShopify" enumTypeId="ProductIdentificationType"/>
-    <moqui.basic.Enumeration description="Shopify Product Variant ID" enumId="PidtVariantShopify" enumTypeId="ProductIdentificationType"/>
-    <moqui.basic.Enumeration description="Shopify Product Inventory Item ID" enumId="PidtInventoryItemShopify" enumTypeId="ProductIdentificationType"/>
-    <moqui.basic.Enumeration description="Shopify Store Id" enumId="ShopifyStoreId" enumTypeId="ProductStoreSettingType"/>
-    <moqui.basic.Enumeration description="Shopify Party Identifier" enumId="PtidShopify" enumTypeId="PartyIdType"/>
-    <moqui.basic.Enumeration description="Shopify" enumId="ScShopify" enumTypeId="SalesChannel"/>
-    <moqui.basic.Enumeration description="Shopify Carrier Party Identifier" enumId="PtidCarrierShopify" enumTypeId="PartyIdType"/>
-    <moqui.basic.EnumerationType description="Shopify Shipping Method " enumTypeId="ShopifyShippingMethod"/>
-    <moqui.basic.Enumeration description="Free Shipping" enumId="FreeShipping" enumTypeId="ShopifyShippingMethod"/>
-    <moqui.basic.Enumeration description="Standard Shipping" enumId="StandardShipping" enumTypeId="ShopifyShippingMethod"/>
+    <!-- shopify creates default variant products and links them using this Enum -->
+    <moqui.basic.Enumeration enumTypeId="ProductFeatureType" enumId="ShopifyDefaultOption"  description="Title" />
+    <moqui.basic.Enumeration enumTypeId="ProductIdentificationType" enumId="PidtShopify" description="Shopify Product ID"/>
+    <moqui.basic.Enumeration enumTypeId="ProductIdentificationType" enumId="PidtInventoryItemShopify" description="Shopify Product Inventory Item ID"/>
+    <moqui.basic.Enumeration enumTypeId="ProductStoreSettingType" enumId="ShopifyStoreId" description="Shopify Store Id"/>
+    <moqui.basic.Enumeration enumTypeId="PartyIdType" enumId="PtidShopify" description="Shopify Party Identifier"/>
+    <moqui.basic.Enumeration enumTypeId="PartyIdType" enumId="PtidCarrierShopify" description="Shopify Carrier Party Identifier" />
+    <moqui.basic.Enumeration enumTypeId="SalesChannel" enumId="ScShopify" description="Shopify"/>
+    <moqui.basic.Enumeration enumTypeId="ShipmentMethod" enumId="ShMthFreeShip" description="Free shipping" />
+    <moqui.basic.Enumeration enumTypeId="ShipmentMethod" enumId="ShMthEconomy" description="Economy" />
 
-    <mantle.party.PartyIdentification partyId="_NA_" partyIdTypeEnumId="PtidCarrierShopify" idValue="shopify"/>
-    <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="_NA_" shipmentMethodEnumId="ShMthGround" description="Standard Shipping"/>
-    <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="_NA_" shipmentMethodEnumId="ShMthGround" description="Free shipping"/>
-    <!-- TODO: ADD ENDPOINT TO VERIFY LOCATIONS IN SHOPIFY. OR CREATE A LOCATION FOR THE STORE FACILITY -->
-    
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyUpdateProductMessage" description="Shopify Product SystemMessage Type"
-            sendServiceName="mantle.shopify.ApiServices.send#UpdateStatusProductSystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyProductMessage" description="Shopify Product SystemMessage Type"
-            sendServiceName="mantle.shopify.ApiServices.send#ProductSystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCreateCollectionMessage" description="Create Shopify Collection SystemMessage Type"
-            sendServiceName="mantle.shopify.ApiServices.send#CreateCollectionSystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyDeleteCollectionMessage" description="Delete Shopify Collection SystemMessage Type"
-            sendServiceName="mantle.shopify.ApiServices.send#DeleteCollectionSystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCreateCollectMessage" description="Create Shopify Collect SystemMessage Type"
-            sendServiceName="mantle.shopify.ApiServices.send#CreateCollectSystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyGetCollectsMessage" description="Get Shopify Collects SystemMessage Type"
-            sendServiceName="mantle.shopify.ApiServices.send#GetCollectsSystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyDeleteCollectMessage" description="Delete Shopify Collect SystemMessage Type"
-            sendServiceName="mantle.shopify.ApiServices.send#DeleteCollectSystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyGetOrdersMessage" description="Get Shopify Orders SystemMessage Type"
-            sendServiceName="mantle.shopify.ApiServices.send#GetOrdersSystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifySetInventoryMessage" description="Update Shopify Inventory Level SystemMessage Type"
-            sendServiceName="mantle.shopify.ApiServices.send#SetInventorySystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyUpdateCustomerMessage" description="Update Shopify Customer info SystemMessage Type"
-            sendServiceName="mantle.shopify.ApiServices.send#UpdateCustomerSystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCancelOrderMessage" description="Cancel Shopify Order SystemMessage Type"
-            sendServiceName="mantle.shopify.ApiServices.send#CancelOrRefundSystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCalculateRefundMessage" description="Calculate Refund Order SystemMessage Type"
-            sendServiceName="mantle.shopify.ApiServices.send#CancelAndCalculateRefundOrderSystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCreateRefundMessage" description="Create Refund Order SystemMessage Type"
-            sendServiceName="mantle.shopify.ApiServices.send#CreateRefundSystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyCreateFulfillmentMessage" description="Create a fulfillment SystemMessage Type"
-            sendServiceName="mantle.shopify.ApiServices.send#CreateFulfillmentSystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyGetCustomerAddressesMessage" description="Get a list of the customer addresses Type"
-            sendServiceName="mantle.shopify.ApiServices.send#GetCustomerAddressesSystemMessage" />
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyGetOrderTransactionsMessage" description="Get a list of the transactions for a shopify order  Type"
-            sendServiceName="mantle.shopify.ApiServices.send#GetOrderTransactionsSystemMessage"/>
-    <moqui.service.message.SystemMessageType systemMessageTypeId="ShopifyGetFulfillmentOrderMessage" description="Get fulfillment order to fulfill order later"
-            sendServiceName="mantle.shopify.ApiServices.send#GetFulfillmentOrderSystemMessage"/>
+    <!-- Shopify as Carrier when no carrier is configured -->
+    <mantle.party.Party partyId="SHOPIFY" partyTypeEnumId="PtyOrganization" externalId="shopify">
+        <organization organizationName="Shopify Inc."/>
+        <roles roleTypeId="Carrier"/>
+    </mantle.party.Party>
+    <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="SHOPIFY" shipmentMethodEnumId="ShMthGround" sequenceNum="1"
+            description="Standard Shipping"/>
+    <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="SHOPIFY" shipmentMethodEnumId="ShMthFreeShip" sequenceNum="2"
+            description="Free Shipping"/>
+    <mantle.shipment.carrier.CarrierShipmentMethod carrierPartyId="SHOPIFY" shipmentMethodEnumId="ShMthEconomy" sequenceNum="2"
+            description="Economy"/>
 
-    <mantle.party.PartyIdentification partyId="USPS" partyIdTypeEnumId="PtidShopify" idValue="USPS" />
-    <mantle.party.PartyIdentification partyId="UPS" partyIdTypeEnumId="PtidShopify" idValue="UPS" />
-    <mantle.party.PartyIdentification partyId="FedEx" partyIdTypeEnumId="PtidShopify" idValue="FedEx" />
-    <mantle.party.PartyIdentification partyId="DHLX" partyIdTypeEnumId="PtidShopify" idValue="DHL Express" />
-    <mantle.party.PartyIdentification partyId="USPS" partyIdTypeEnumId="PtidCarrierShopify" idValue="usps" />
-    <mantle.party.PartyIdentification partyId="UPS" partyIdTypeEnumId="PtidCarrierShopify" idValue="ups_shipping" />
+    <!-- idValue is needed for the tracking_info.company on fulfilment message -->
+    <mantle.party.PartyIdentification partyIdTypeEnumId="PtidShopify" partyId="USPS" idValue="USPS" />
+    <mantle.party.PartyIdentification partyIdTypeEnumId="PtidShopify" partyId="UPS" idValue="UPS" />
+    <mantle.party.PartyIdentification partyIdTypeEnumId="PtidShopify" partyId="FedEx" idValue="FedEx" />
+    <mantle.party.PartyIdentification partyIdTypeEnumId="PtidShopify"  partyId="DHLX" idValue="DHL Express" />
+
+    <!-- idValue used to find the carrier from shippingLine.source -->
+    <mantle.party.PartyIdentification partyIdTypeEnumId="PtidCarrierShopify" partyId="SHOPIFY" idValue="shopify"/>
+    <mantle.party.PartyIdentification partyIdTypeEnumId="PtidCarrierShopify" partyId="USPS" idValue="usps" />
+    <mantle.party.PartyIdentification partyIdTypeEnumId="PtidCarrierShopify" partyId="UPS" idValue="ups_shipping" />
 </entity-facade-xml>

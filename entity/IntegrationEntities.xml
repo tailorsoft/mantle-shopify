@@ -1,94 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <entities xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/entity-definition-2.1.xsd">
-    <entity entity-name="ProductInventoryUpdate" package="mantle.product" cache="never">
-        <field name="updateId" type="id" is-pk="true"/>
-        <field name="productId" type="text-medium"/>
-        <field name="initDate" type="date-time"/>
+    <entity entity-name="ProductInventoryQueue" package="mantle.shopify" cache="never">
+        <field name="productId" type="id" is-pk="true"/>
+        <field name="facilityId" type="id" is-pk="true"/>
+        <field name="inventoryItemId" type="text-short" not-null="true"/>
+        <relationship type="one" title="Product" related="mantle.product.Product">
+            <key-map field-name="productId"/></relationship>
+        <relationship type="one" title="Facility" related="mantle.facility.Facility">
+            <key-map field-name="facilityId"/></relationship>
     </entity>
-    <extend-entity entity-name="SystemMessage" package="moqui.service.message">
-        <field name="sentProductId" type="text-medium"/>
-        <field name="sentProductCategoryId" type="text-medium"/>
-        <field name="sentPartyId" type="text-medium"/>
-        <field name="sentContactMechId" type="text-medium"/>
-        <field name="shopifyOrderId" type="text-medium"/>
-        <field name="shopifyDisplayOrderId" type="text-medium"/>
-        <field name="sentShipmentId" type="text-medium"/>
-    </extend-entity>
-    <extend-entity entity-name="Shipment" package="mantle.shipment">
-        <field name="shopifyShipmentStatusId" type="text-short"/>
-    </extend-entity>
+
     <extend-entity entity-name="OrderHeader" package="mantle.order">
         <field name="shopifyOrderStatusId" type="text-short"/>
         <field name="shopifyFulfillmentOrderId" type="id"/>
     </extend-entity>
+
+    <!-- Shopify API returns a list of Fulfillment Orders per customer order -->
+    <entity entity-name="ShopifyFulfillmentOrder" package="mantle.shopify">
+        <field name="fulfillmentOrderId" type="id" is-pk="true"/>
+        <field name="orderId" type="id"/>
+        <field name="locationId" type="id">Shopify LocationId stored on Facility.externalId</field>
+        <field name="status" type="text-medium"/>
+    </entity>
+
     <extend-entity entity-name="OrderItem" package="mantle.order">
-        <field name="shopifyFulfillmentOrderLineItemId" type="id-long"/>
-    </extend-entity>
-    <extend-entity entity-name="ProductCategoryMember" package="mantle.product.category">
-        <field name="shopifyId" type="id"/>
-    </extend-entity>
-    <extend-entity entity-name="Payment" package="mantle.account.payment">
-        <field name="shopifyId" type="id"/>
+        <field name="fulfillmentOrderId" type="id"/>
+        <field name="fulfillmentOrderLineItemId" type="id"/>
+        <relationship type="one" title="BillTo" related="mantle.shopify.ShopifyFulfillmentOrder">
+            <key-map field-name="fulfillmentOrderId"/></relationship>
     </extend-entity>
 
     <extend-entity entity-name="PostalAddress" package="mantle.party.contact">
         <field name="shopifyAddressId" type="id"/>
-        <field name="shopifyDefaultAddress" type="text-short"/>
     </extend-entity>
 
-    <view-entity entity-name="CustomerInfoView" package="brokerageengine.party.customer">
-        <member-entity entity-alias="PTY" entity-name="mantle.party.Party" />
-        <member-entity entity-alias="PTR" join-from-alias="PTY" entity-name="mantle.party.PartyRole" join-optional="true" >
-            <key-map field-name="partyId" related="partyId" />
-        </member-entity>
+    <extend-entity entity-name="Payment" package="mantle.account.payment">
+        <field name="shopifyPaymentId" type="id"/>
+    </extend-entity>
 
-        <member-entity entity-alias="PER" join-from-alias="PTY" entity-name="mantle.party.Person" join-optional="true" >
-            <key-map field-name="partyId" related="partyId" />
-        </member-entity>
-
-        <member-entity entity-alias="PCTM" join-from-alias="PTY" entity-name="mantle.party.contact.PartyContactMech" join-optional="true" >
-            <key-map field-name="partyId" related="partyId" />
-            <entity-condition>
-                <econditions>
-                    <econdition entity-alias="PCTM" field-name="thruDate" operator="is-null"/>
-                </econditions>
-            </entity-condition>
-        </member-entity>
-
-        <member-entity entity-alias="PSTA" join-from-alias="PCTM" entity-name="mantle.party.contact.PostalAddress" join-optional="true" >
-            <key-map field-name="contactMechId" related="contactMechId" />
-        </member-entity>
-
-        <member-entity entity-alias="TEL" join-from-alias="PCTM" entity-name="mantle.party.contact.TelecomNumber" join-optional="true" >
-            <key-map field-name="contactMechId" related="contactMechId" />
-        </member-entity>
-
-        <member-entity entity-alias="GEO" join-from-alias="PSTA" entity-name="moqui.basic.Geo" join-optional="true" >
-            <key-map field-name="countryGeoId" related="countryGeoId" />
-        </member-entity>
-
-        <member-entity entity-alias="CTM" join-from-alias="PCTM" entity-name="mantle.party.contact.ContactMech" join-optional="true" >
-            <key-map field-name="contactMechId" related="contactMechId" />
-        </member-entity>
-
-        <alias entity-alias="PTR" field="roleTypeId" name="roleTypeId"/>
-        <alias entity-alias="PTY" field="partyId" name="partyId"/>
-        <alias entity-alias="PER" field="firstName" name="firstName"/>
-        <alias entity-alias="PER" field="lastName" name="lastName"/>
-        <alias entity-alias="CTM" field="infoString" name="email"/>
-        <alias entity-alias="PSTA" field="address1" name="address1"/>
-        <alias entity-alias="PSTA" field="address2" name="address2"/>
-        <alias entity-alias="PSTA" field="city" name="city"/>
-        <alias entity-alias="GEO" field="geoName" name="country"/>
-        <alias entity-alias="GEO" field="geoCodeAlpha2" name="countryCode"/>
-        <alias entity-alias="PSTA" field="postalCode" name="zip"/>
-        <alias entity-alias="TEL" field="contactNumber" name="phone"/>
-
-        <entity-condition>
-            <econditions>
-                <econdition entity-alias="PTR" field-name="roleTypeId" operator="equals" value="Customer"/>
-            </econditions>
-        </entity-condition>
-    </view-entity>
+    <extend-entity entity-name="SystemMessage" package="moqui.service.message">
+        <field name="shopifyOrderId" type="text-medium"/>
+        <field name="shopifyOrderDisplayId" type="text-medium"/>
+    </extend-entity>
 </entities>

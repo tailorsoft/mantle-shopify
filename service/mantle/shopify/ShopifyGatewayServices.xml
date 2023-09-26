@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
+    <service verb="send" noun="GatewayRefund">
+        <description>A service to create a refund in shopify through the payment screen "Gateway Refund" option. For this a payment gateway must be configured (Example in seed data)</description>
+        <implements service="mantle.account.PaymentServices.refund#Payment"/>
+        <in-parameters>
+            <parameter name="paymentId"/>
+            <parameter name="amount"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="paymentGatewayResponseId"/>
+        </out-parameters>
+
+        <!-- Find Order from payment -->
+        <actions>
+            <entity-find-one entity-name="mantle.account.payment.Payment" value-field="payment">
+                <field-map field-name="paymentId"/>
+            </entity-find-one>
+            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="order">
+                <field-map field-name="orderId" from="payment.orderId"/>
+            </entity-find-one>
+            <entity-find-one entity-name="moqui.service.message.SystemMessageRemote" value-field="remote">
+                <field-map field-name="productStoreId" from="order.productStoreId"/>
+                <field-map field-name="systemMessageTypeId" value="ShopifySystemMessageType"/>
+            </entity-find-one>
+
+            <!-- Error if a payment is not associated to a shopify order
+                    To validate the order must exist, have an external id and Sales channel must be ScShopify-->
+            <if condition="!order">
+                <return error="true" message="This payment is not associated to an Order, aborting gateway refund"/>
+            </if>
+            <if condition="order.salesChannelEnumId != 'ScShopify'">
+                <return error="true" message="This order is not a Shopify Order, so a refund cannot be processed through this gateway"/>
+            </if>
+            <if condition="!order.externalId">
+                <return error="true" message="The order ${order.orderId} does not have a Shopify ID, aborting gateway refund"/>
+            </if>
+            <if condition="!remote">
+                <return error="true" message="The product store where this payment was processed does not have a remote configured to proccess the refund"/>
+            </if>
+
+            <!-- Build JSON for request -->
+            <set field="transactions" from="[]"/>
+            <script>
+                transaction = [:];
+                transaction.parent_id = payment.shopifyPaymentId;
+                transaction.amount = amount;
+                transaction.kind = "refund";
+                transaction.gateway = "shopify_payments";
+                transactions.add(transaction);
+            </script>
+
+            <set field="refund" from="[:]"/>
+            <set field="refund.currency" from="order.currencyUomId"/>
+            <set field="refund.shipping" from="[full_refund:true]"/>
+            <!-- Empty because it's a refund processed by the accounting team,
+                not linked to any items -->
+            <set field="refund.refund_line_items" from="[]"/>
+            <set field="refund.transactions" from="transactions"/>
+
+            <set field="messageText" from="groovy.json.JsonOutput.toJson([refund:refund])"/>
+
+            <!-- SEND THE REQUEST TO SHOPIFY AND STORE THE RESPONSE -->
+            <script><![CDATA[
+                import groovy.json.JsonSlurper
+                def jsonSlurper = new JsonSlurper();
+                String url = "https://${remote.username}.myshopify.com/admin/api/2023-01/orders/${order.externalId}/refunds.json";
+
+                org.moqui.util.RestClient.RestResponse restResponse = ec.service.rest().method("POST").addHeader("Content-Type", "application/json")
+                    .jsonObject(messageText).addHeader("X-Shopify-Access-Token", remote.password).uri(url).call();
+
+                ec.logger.log("info", "Send Refund request to ${url} \nBody: ${messageText}", null);
+
+                //Ignore ´error´ code 409 because it seems sometimes it was a success inside shopify.
+                if (restResponse.statusCode < 200 || (restResponse.statusCode >= 300 && restResponse.statusCode != 409)) {
+                    ec.message.addError("Shopify Refund error response (${restResponse.statusCode}): ${restResponse.text()} for url: ${url}");
+                    return;
+                }
+
+                response = jsonSlurper.parseText(restResponse.text())
+            ]]></script>
+
+
+            <if condition="!response.refund">
+                <return message="The response json has no refund object." error="true"/>
+            </if>
+
+            <set field="responseAmount" from="response.refund.transactions*.amount.sum()"/>
+            <!-- Create gateway response to try and fix non updating people -->
+            <service-call name="create#mantle.account.method.PaymentGatewayResponse" out-map="createPGR"
+                          in-map="[paymentGatewayConfigId:'Shopify Payments', paymentOperationEnumId:'PgoRefund',
+                        paymentId:payment.paymentId, paymentMethodId:payment.paymentMethodId, amount:responseAmount,
+                        amountUomId:payment.amountUomId, referenceNum:response.refund.transactions.first().authorization, transactionDate:ec.user.nowTimestamp,
+                        resultSuccess:'Y', resultDeclined:'N', resultNsf:'N', resultBadExpire:'N', resultBadCardNumber:'N']"/>
+
+            <set field="paymentGatewayResponseId" from="createPGR.paymentGatewayResponseId"/>
+
+            <log message="\n\nAmounts comparisson: ${Float.valueOf(payment.amount) == Float.valueOf(responseAmount)}"/>
+            <!-- Only void payment if the refund amount was the full payment, otherwise the refund payment created is enough update -->
+            <if condition="Float.valueOf(payment.amount) == Float.valueOf(responseAmount)">
+                <log message="\n\nFULL REFUND. CANCELLING PAYMENT AND INVOICES\n"/>
+                <service-call name="mantle.account.PaymentServices.cancel#PaymentAndInvoices" in-map="[paymentId: payment.paymentId]" out-map="context"/>
+            </if>
+        </actions>
+    </service>
+</services>
