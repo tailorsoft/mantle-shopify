@@ -600,6 +600,10 @@
                 <field-map field-name="productStoreId" from="shipment.productStoreId"/>
             </entity-find-one>
 
+            <if condition="!remote">
+                <return message="Fulfillment Message not sent to shopify for shipment ${shipment.shipmentId}"/>
+            </if>
+
             <service-call name="org.moqui.impl.SystemMessageServices.queue#SystemMessage" out-map="context"
                 in-map="[systemMessageTypeId:'ShopifySystemMessageType', systemMessageRemoteId:remote.systemMessageRemoteId, messageText:jsonBody, docType:'fulfillments', docSubType:'POST']"/>
         </actions>
