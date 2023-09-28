@@ -358,14 +358,14 @@
             <parameter name="contactMechId"/>
         </out-parameters>
         <actions>
-            <entity-find-one entity-name="moqui.basic.Geo" value-field="countyGeoId">
+            <entity-find-one entity-name="moqui.basic.Geo" value-field="countryGeoId">
                 <field-map field-name="geoTypeEnumId" value="GEOT_COUNTRY"/>
                 <field-map field-name="geoCodeAlpha2" from="address.country_code"/>
             </entity-find-one>
 
             <!-- do not filter on geoTypeEnumId because can be all of GEOT_STATE, GEOT_TERRITORY, GEOT_PROVINCE -->
             <entity-find-one entity-name="moqui.basic.GeoAssocAndToDetail" value-field="stateGeoList">
-                <field-map field-name="geoId" from="countyGeoId?.geoId"/>
+                <field-map field-name="geoId" from="countryGeoId?.geoId"/>
                 <field-map field-name="geoCodeAlpha2" from="address.province_code"/>
             </entity-find-one>
 
@@ -377,8 +377,8 @@
                 address1: address.address1,
                 address2: address.address2,
                 city: address.city,
-                countryGeoId: countyGeoId?.geoId,
-                stateProvinceGeoId: stateGeoList?.geoId
+                countryGeoId: countryGeoId?.geoId,
+                stateProvinceGeoId: stateGeoList?.geoCodeAlpha2
             ]" out-map="context"/>
         </actions>
     </service>
