@@ -67,7 +67,7 @@
     <service verb="queue" noun="StoreAddressSystemMessage">
         <in-parameters>
             <parameter name="partyId" required="true"/>
-            <parameter name="contactMechId" required="true"/>
+            <parameter name="postalContactMechId" required="true"/>
         </in-parameters>
         <actions>
             <script>
