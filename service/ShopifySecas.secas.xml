@@ -11,13 +11,13 @@
         <condition><expression>statusChanged &amp;&amp; statusId == 'OrderCancelled'</expression></condition>
         <actions><service-call name="mantle.shopify.ShopifyOrderServices.queue#RefundOrderSystemMessage" in-map="context"/></actions>
     </seca>
-    <seca id="ShopifyUpdateCustomer" service="mantle.party.PartyServices.update#PartyDetail" when="post-service" run-on-error="false">
-        <actions><service-call name="mantle.shopify.ShopifyPartyServices.queue#UpdateCustomerSystemMessage" in-map="context"/></actions>
-    </seca>
-    <seca id="ShopifyStoreAddress" service="mantle.party.ContactServices.store#PartyContactInfo" when="post-service" run-on-error="false">
-        <condition><expression>contactMechPurposeId == 'PostalPrimary'</expression></condition>
-        <actions><service-call name="mantle.shopify.ShopifyPartyServices.queue#StoreAddressSystemMessage" in-map="context"/></actions>
-    </seca>
+<!--    <seca id="ShopifyUpdateCustomer" service="mantle.party.PartyServices.update#PartyDetail" when="post-service" run-on-error="false">-->
+<!--        <actions><service-call name="mantle.shopify.ShopifyPartyServices.queue#UpdateCustomerSystemMessage" in-map="context"/></actions>-->
+<!--    </seca>-->
+<!--    <seca id="ShopifyStoreAddress" service="mantle.party.ContactServices.store#PartyContactInfo" when="post-service" run-on-error="false">-->
+<!--        <condition><expression>contactMechPurposeId == 'PostalPrimary'</expression></condition>-->
+<!--        <actions><service-call name="mantle.shopify.ShopifyPartyServices.queue#StoreAddressSystemMessage" in-map="context"/></actions>-->
+<!--    </seca>-->
     <seca id="ShopifyDeleteAddress" service="mantle.party.ContactServices.delete#PartyContactMech" when="post-service" run-on-error="false">
         <condition><expression>contactMechPurposeId == 'PostalPrimary'</expression></condition>
         <actions><service-call name="mantle.shopify.ShopifyPartyServices.queue#DeleteAddressSystemMessage" in-map="context"/></actions>
