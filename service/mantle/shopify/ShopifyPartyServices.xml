@@ -98,7 +98,7 @@
             <entity-find-one entity-name="mantle.party.Person" value-field="person"/>
 
             <entity-find-one entity-name="mantle.party.contact.PartyContactMechPostalAddress" value-field="address">
-                <field-map field-name="contactMechId"/>
+                <field-map field-name="postalContactMechId"/>
             </entity-find-one>
 
             <entity-find-one entity-name="moqui.basic.Geo" value-field="geoCountry">
