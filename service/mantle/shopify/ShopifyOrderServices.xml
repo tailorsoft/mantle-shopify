@@ -420,7 +420,9 @@
                 <field-map field-name="productStoreId" from="order.productStoreId"/>
             </entity-find-one>
 
-            <if condition="!remote"><return error="true" message="No Remote of type 'ShopifySystemMessageType' found for order ID ${orderId}"/></if>
+            <if condition="!remote">
+                <return message="No Remote of type 'ShopifySystemMessageType' found for order ID ${orderId}"/>
+            </if>
 
             <!-- first call Shopify to calculate the refund according to them -->
             <service-call name="mantle.shopify.ShopifyOrderServices.download#OrderRefundCalculation" in-map="context+[systemMessageRemoteId:remote.systemMessageRemoteId]" out-map="context"/>
