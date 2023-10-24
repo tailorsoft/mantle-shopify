@@ -210,10 +210,6 @@
             <if condition="!order.customer"><return error="true" message="ERROR: NO CUSTOMER FOUND"/></if>
             <if condition="!order.shipping_address"><return error="true" message="ERROR: NO SHIPPING ADDRESS FOUND"/></if>
             <if condition="!order.line_items"><return error="true" message="ERROR: NO ORDER ITEMS FOUND"/></if>
-            <if condition="!order.payment_details &amp;&amp; order.current_total_price != '0.00'">
-                <return error="true" message="ERROR: NO PAYMENT DETAILS FOUND and current_total_price is ${order.current_total_price}"/>
-            </if>
-
             <!-- {"id": 4326646153502, "carrier_identifier": null, "code": "Economy", "price": "0.00", "source": "shopify", "title": "Economy"}-->
             <set field="shippingLine" from="order.shipping_lines.first()" />
 
@@ -239,11 +235,21 @@
             <service-call name="mantle.shopify.ShopifyPartyServices.store#ShopifyCustomer" 
                 in-map="[customer:order.customer, shippingAddress:order.shipping_address, billingAddress:order.billing_address, ownerPartyId:productStore.organizationPartyId, orderEmail:order.email]" out-map="context"/>
 
-            <!-- Only needed when order total is not zero -->
+            <!-- Only used when there are payment details -->
             <if condition="order.payment_details">
-                <service-call name="mantle.shopify.ShopifyPartyServices.store#ShopifyPaymentMethod"
-                in-map="[partyId:partyId, paymentDetails:order.payment_details, billingPostalContactMechId:billingPostalContactMechId, firstName:order.billing_address.first_name, lastName:order.billing_address.last_name]"
-                out-map="context"/>
+                <then>
+                    <service-call name="mantle.shopify.ShopifyPartyServices.store#ShopifyPaymentMethod"
+                    in-map="[partyId:partyId, paymentDetails:order.payment_details, billingPostalContactMechId:billingPostalContactMechId, firstName:order.billing_address.first_name, lastName:order.billing_address.last_name]"
+                    out-map="context"/>
+                </then>
+                <!-- Assign Payment instrument when we don't get details on the payment method-->
+                <else>
+                    <entity-find entity-name="moqui.basic.Enumeration" list="payment_instrument" limit="1">
+                        <econdition field-name="enumTypeId" value="PaymentInstrument"/>
+                        <econdition field-name="enumCode" from="order.payment_gateway_names[0]"/>
+                    </entity-find>
+                    <set field="paymentInstrumentId" from="payment_instrument? payment_instrument[0].enumId : 'PiShopifyPaid'"/>
+                </else>
             </if>
 
             <!-- get the currency the order was placed in -->
@@ -327,30 +333,28 @@
                 </iterate>
             </iterate>
 
-            <if condition="order.payment_details">
-                <then>
-                    <set field="processedAt" from="OffsetDateTime.parse(order.processed_at, DateTimeFormatter.ISO_OFFSET_DATE_TIME)"/>
-                    <set field="processedTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime())"/>
-                    <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context" in-map="[
-                        orderId: orderId,
-                        paymentMethodId: paymentMethodId,
-                        amount: order.current_total_price,
-                        amountUomId: currencyUomId,
-                        statusId: 'PmntDelivered',
-                        effectiveDate: processedTime,
-                        fromPartyId: partyId,
-                        toPartyId: productStore.organizationPartyId,
-                        orderPartSeqId: orderPartSeqId
-                    ]"/>
-                </then>
-                <else>
-                    <if condition="order.payment_terms">
-                        <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyPaymentTerms"
-                                      in-map="[payment_term: order.payment_terms,
+
+            <if condition="order.payment_terms">
+                <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyPaymentTerms"
+                              in-map="[payment_term: order.payment_terms,
                                                 productStoreId: productStore.productStoreId,
                                                 partyId: partyId]"/>
-                    </if>
-                </else>
+            </if>
+            <if condition="order.total_amount != '0.00'">
+                <set field="processedAt" from="OffsetDateTime.parse(order.processed_at, DateTimeFormatter.ISO_OFFSET_DATE_TIME)"/>
+                <set field="processedTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime())"/>
+                <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context" in-map="[
+                    orderId: orderId,
+                    paymentMethodId: paymentMethodId,
+                    paymentInstrumentEnumId: paymentInstrumentId,
+                    amount: order.current_total_price,
+                    amountUomId: currencyUomId,
+                    statusId: 'PmntDelivered',
+                    effectiveDate: processedTime,
+                    fromPartyId: partyId,
+                    toPartyId: productStore.organizationPartyId,
+                    orderPartSeqId: orderPartSeqId
+                ]"/>
             </if>
 
             <service-call name="mantle.order.OrderServices.set#OrderBillingShippingInfo" in-map="[orderId: orderId,
