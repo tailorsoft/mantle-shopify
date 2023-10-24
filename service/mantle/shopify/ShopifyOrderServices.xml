@@ -240,7 +240,7 @@
                 in-map="[customer:order.customer, shippingAddress:order.shipping_address, billingAddress:order.billing_address, ownerPartyId:productStore.organizationPartyId, orderEmail:order.email]" out-map="context"/>
 
             <!-- Only needed when order total is not zero -->
-            <if condition="order.current_total_price !='0.00'">
+            <if condition="order.payment_details">
                 <service-call name="mantle.shopify.ShopifyPartyServices.store#ShopifyPaymentMethod"
                 in-map="[partyId:partyId, paymentDetails:order.payment_details, billingPostalContactMechId:billingPostalContactMechId, firstName:order.billing_address.first_name, lastName:order.billing_address.last_name]"
                 out-map="context"/>
@@ -328,19 +328,29 @@
             </iterate>
 
             <if condition="order.payment_details">
-                <set field="processedAt" from="OffsetDateTime.parse(order.processed_at, DateTimeFormatter.ISO_OFFSET_DATE_TIME)"/>
-                <set field="processedTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime())"/>
-                <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context" in-map="[
-                    orderId: orderId,
-                    paymentMethodId: paymentMethodId,
-                    amount: order.current_total_price,
-                    amountUomId: currencyUomId,
-                    statusId: 'PmntDelivered',
-                    effectiveDate: processedTime,
-                    fromPartyId: partyId,
-                    toPartyId: productStore.organizationPartyId,
-                    orderPartSeqId: orderPartSeqId
-                ]"/>
+                <then>
+                    <set field="processedAt" from="OffsetDateTime.parse(order.processed_at, DateTimeFormatter.ISO_OFFSET_DATE_TIME)"/>
+                    <set field="processedTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime())"/>
+                    <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context" in-map="[
+                        orderId: orderId,
+                        paymentMethodId: paymentMethodId,
+                        amount: order.current_total_price,
+                        amountUomId: currencyUomId,
+                        statusId: 'PmntDelivered',
+                        effectiveDate: processedTime,
+                        fromPartyId: partyId,
+                        toPartyId: productStore.organizationPartyId,
+                        orderPartSeqId: orderPartSeqId
+                    ]"/>
+                </then>
+                <else>
+                    <if condition="order.payment_terms">
+                        <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyPaymentTerms"
+                                      in-map="[payment_term: order.payment_terms,
+                                                productStoreId: productStore.productStoreId,
+                                                partyId: partyId]"/>
+                    </if>
+                </else>
             </if>
 
             <service-call name="mantle.order.OrderServices.set#OrderBillingShippingInfo" in-map="[orderId: orderId,
@@ -400,6 +410,39 @@
             <set field="payment.paymentRefNum" from="authTransaction.authorization.split('#')[0]"/>
             <set field="payment.shopifyPaymentId" from="authTransaction.id"/>
             <entity-update value-field="payment"/>
+        </actions>
+    </service>
+
+    <service verb="consume" noun="ShopifyPaymentTerms">
+        <in-parameters>
+            <parameter name="payment_term" type="Map" required="true"/>
+            <parameter name="productStoreId"/>
+            <parameter name="partyId"/>
+        </in-parameters>
+        <actions>
+            <set field="shopify_terms_id" from="payment_term.payment_terms_name.replace(' ', '')"/>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
+                <select-field field-name="productStoreId"/>
+            </entity-find-one>
+            <set field="orgId" from="productStore.organizationPartyId"/>
+            <entity-find entity-name="mantle.party.agreement.Agreement" list="agreements">
+                <econdition field-name="partyId" from="orgId"/>
+                <econdition field-name="otherPartyId" from="partyId"/>
+                <econdition field-name="agreementTypeEnumId" value="AgrSales"/>
+            </entity-find>
+
+            <entity-find entity-name="mantle.party.agreement.AgreementTerm" list="terms" limit="1">
+                <econdition field-name="agreementId" operator="in" from="agreements.collect { it.agreementId }"/>
+                <econdition field-name="settlementTermId" from="shopify_terms_id"/>
+            </entity-find>
+            <if condition="terms.size() &gt; 0">
+                <return error="False" message="The customer {partyId} Already had the settlement terms for shopify order"/>
+            </if>
+            <service-call name="store#mantle.party.agreement.AgreementTerm"
+                          in-map="[organizationPartyId: orgId,
+                                    otherPartyId: partyId,
+                                    agreementTypeEnumId: 'ArgSales']"
+                            out-map="newAgreement"/>
         </actions>
     </service>
 

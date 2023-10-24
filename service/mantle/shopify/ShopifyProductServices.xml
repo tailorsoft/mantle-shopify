@@ -125,7 +125,7 @@
                 <!-- the value option.id and option.position apply at the 'values' level in moqui -->
                 <entity-find-one entity-name="moqui.basic.Enumeration" value-field="featureType">
                     <field-map field-name="enumTypeId" value="ProductFeatureType"/>
-                    <field-map field-name="description" from="option.name"/>
+                    <field-map field-name="enumId" from="option.name"/>
                 </entity-find-one>
                 <if condition="!featureType">
                     <return error="true" message="No featureType found with description: ${option.name} for product ${product.id}"/>
