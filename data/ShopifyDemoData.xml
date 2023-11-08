@@ -1,43 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <entity-facade-xml type="demo">
-    <productStores requireInventory="N" markupShipmentShipLabels="N" productStoreId="SHOPIFY_STORE" inventoryFacilityId="ZIRET_WH" 
-      defaultDisableShippingCalc="N" defaultDisablePromotions="N" defaultCurrencyUomId="USD" shipmentAnyCarrierMethod="N" defaultDisableTaxCalc="N" defaultLocale="en_US"
-      organizationPartyId="ORG_ZIZI_RETAIL" markupOrderShipLabels="N"/>
-    <mantle.product.store.ProductStoreSetting productStoreId="SHOPIFY_STORE" settingTypeEnumId="ShopifyStoreId"  settingValue="59386101956"/>
+    <!-- Demo data in mantle-udm does not configure the Demo store with a facility -->
+    <mantle.product.store.ProductStoreFacility productStoreId="POPC_DEFAULT" facilityId="ZIRET_WH" fromDate="1485028800000" />
 
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_PRODUCTS_REMOTE" systemMessageTypeId="ShopifyProductMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/products.json" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_PUT_PRODUCTS_REMOTE" systemMessageTypeId="ShopifyUpdateProductMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/products/" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_CREATE_COLLECTION_REMOTE" systemMessageTypeId="ShopifyCreateCollectionMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/custom_collections.json" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_DELETE_COLLECTION_REMOTE" systemMessageTypeId="ShopifyDeleteCollectionMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/custom_collections/" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_CREATE_COLLECT_REMOTE" systemMessageTypeId="ShopifyCreateCollectMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/collects.json" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_GET_COLLECTS_REMOTE" systemMessageTypeId="ShopifyGetCollectsMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/collects.json?collection_id=" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_DELETE_COLLECT_REMOTE" systemMessageTypeId="ShopifyDeleteCollectMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/collects/" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_GET_ORDERS_REMOTE" systemMessageTypeId="ShopifyGetOrdersMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/orders.json?financial_status=" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_SET_INVENTORY_REMOTE" systemMessageTypeId="ShopifySetInventoryMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/inventory_levels/set.json" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_PUT_CUSTOMER_REMOTE" systemMessageTypeId="ShopifyUpdateCustomerMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/customers/" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_CANCEL_ORDER_REMOTE" systemMessageTypeId="ShopifyCancelOrderMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/orders/" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_CALCULATE_REFUND_REMOTE" systemMessageTypeId="ShopifyCalculateRefundMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/orders/" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_REFUND_ORDER_REMOTE" systemMessageTypeId="ShopifyCreateRefundMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/orders/" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_CREATE_FULFILLMENT_REMOTE" systemMessageTypeId="ShopifyCreateFulfillmentMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/fulfillments.json" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_GET_ADDRESSES_REMOTE" systemMessageTypeId="ShopifyGetCustomerAddressesMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/customers/" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_GET_TRANSACTIONS_REMOTE" systemMessageTypeId="ShopifyGetOrderTransactionsMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/orders/" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
-    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="DEMO_SHOPIFY_GET_FO_REMOTE" systemMessageTypeId="ShopifyGetFulfillmentOrderMessage" sendUrl="https://b6318f782c52bda768d23f5a404b51b6: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@moquidemo.myshopify.com/admin/api/2022-07/orders/" productStoreId="SHOPIFY_STORE" username="b6318f782c52bda768d23f5a404b51b6" password="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"/>
+    <!-- configuration for the demo store set up by Tailorsoft... possibly remove these values and let people enter their own -->
+    <moqui.service.message.SystemMessageRemote systemMessageRemoteId="ShopifyDemoRemote" systemMessageTypeId="ShopifySystemMessageType" 
+        productStoreId="POPC_DEFAULT" description="Remote for pushing and pulling data from the Shopify store" username="" password=""/>
 
-    <!-- PRODUCTS TO PROCESS SHOPIFY ORDERS-->
-    <products productName="Shopify_Demo 1" pseudoId="100000" productId="100000" productTypeEnumId="PtVirtual" ownerPartyId="ORG_ZIZI_RETAIL">
-        <features fromDate="1681493229737" amount="1" sequenceNum="1" productFeatureId="ColorBlack" applTypeEnumId="PfatDistinguishing"/>
-        <features fromDate="1681493256905" amount="1" sequenceNum="2" productFeatureId="ColorBlue" applTypeEnumId="PfatDistinguishing"/>
-    </products>
-    <products productName="Shopify Demo 1 black" pseudoId="Shopify_Demo_1_Bl" productId="100001" productTypeEnumId="PtVirtual" ownerPartyId="ORG_ZIZI_RETAIL">
-        <features fromDate="1681493229737" amount="1" sequenceNum="1" productFeatureId="ColorBlack" applTypeEnumId="PfatDistinguishing"/>
-        <features fromDate="1681493256905" amount="1" sequenceNum="2" productFeatureId="ColorBlue" applTypeEnumId="PfatDistinguishing"/>
-        <identifications productIdTypeEnumId="PidtVariantShopify" idValue="44890420576542"/>
-    </products>
-    <products productName="Shopify Demo 1 Blue" pseudoId="Shopify_Demo_1_Bu" productId="100002" productTypeEnumId="PtVirtual" ownerPartyId="ORG_ZIZI_RETAIL">
-        <features fromDate="1681493229737" amount="1" sequenceNum="1" productFeatureId="ColorBlack" applTypeEnumId="PfatDistinguishing"/>
-        <features fromDate="1681493256905" amount="1" sequenceNum="2" productFeatureId="ColorBlue" applTypeEnumId="PfatDistinguishing"/>
-        <identifications productIdTypeEnumId="PidtVariantShopify" idValue="44890420609310"/>
-    </products>
+    <!-- Service jobs to download Product and Collection data from Shopify -->
+    <moqui.service.job.ServiceJob jobName="poll_shopify_products_download" description="Poll download Shopify Products"
+            serviceName="mantle.shopify.ShopifyProductServices.download#ShopifyProducts" cronExpression="0 0 * * * ?" paused="Y">
+        <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
+    </moqui.service.job.ServiceJob>
+    <moqui.service.job.ServiceJob jobName="poll_shopify_collections_download" description="Poll download Shopify Products"
+            serviceName="mantle.shopify.ShopifyProductServices.download#ShopifyCollections" cronExpression="0 0 * * * ?" paused="Y">
+        <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
+    </moqui.service.job.ServiceJob>
 
+    <!-- Service jobs to upload Product and Category data from Moqui to Shopify -->
+    <moqui.service.job.ServiceJob jobName="poll_shopify_products_upload" description="Poll upload products to Shopify"
+            serviceName="mantle.shopify.ShopifyProductServices.upload#MoquiStoreProducts" cronExpression="0 0 * * * ?" paused="Y">
+        <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
+    </moqui.service.job.ServiceJob>
+    <moqui.service.job.ServiceJob jobName="poll_shopify_categories_upload" description="Poll upload Shopify Store Categories"
+            serviceName="mantle.shopify.ShopifyProductServices.upload#MoquiStoreCategories" cronExpression="0 0 * * * ?" paused="Y">
+        <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
+    </moqui.service.job.ServiceJob>
 
+    <!-- poll the service to get the shopify orders once per 15 minutes -->
+    <moqui.service.job.ServiceJob jobName="poll_shopify_orders_download" description="Shopify poll orders and download new"
+            serviceName="mantle.shopify.ShopifyOrderServices.download#ShopifyOrders" cronExpression="0 0/15 * * * ?" paused="Y">
+        <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
+    </moqui.service.job.ServiceJob>
+
+    <!-- poll the service to upload queued inventory updates -->
+    <moqui.service.job.ServiceJob jobName="poll_shopify_inventory_upload" description="Poll Shopify inventory queue and upload"
+            serviceName="mantle.shopify.ShopifyProductServices.upload#ProductInventoryQueue" cronExpression="0 0/15 * * * ?" paused="Y">
+        <parameters parameterName="systemMessageRemoteId" parameterValue="ShopifyDemoRemote"/>
+    </moqui.service.job.ServiceJob>
+
+    <!-- Shopify Payment Gateway to configure in your store if you wish to use the payment gateway refund option -->
+    <moqui.basic.Enumeration description="Shopify Payments Gateway" enumId="PgtShopifyPayments" enumTypeId="PaymentGatewayType"/>
+
+    <mantle.account.method.PaymentGatewayConfig paymentGatewayConfigId="ShopifyPayments"
+                                                paymentGatewayTypeEnumId="PgtShopifyPayments" description="Shopify payments gateway config"
+                                                refundServiceName="mantle.shopify.ShopifyGatewayServices.send#GatewayRefund"/>
 </entity-facade-xml>
