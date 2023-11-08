@@ -14,6 +14,8 @@
     <moqui.basic.Enumeration enumTypeId="SalesChannel" enumId="ScShopify" description="Shopify"/>
     <moqui.basic.Enumeration enumTypeId="ShipmentMethod" enumId="ShMthFreeShip" description="Free shipping" />
     <moqui.basic.Enumeration enumTypeId="ShipmentMethod" enumId="ShMthEconomy" description="Economy" />
+    <moqui.basic.Enumeration  enumTypeId="PaymentInstrument" enumId="PiShopPayInstallments" description="Shopify Shop Pay Installments" enumCode="shopify_installments"/>
+    <moqui.basic.Enumeration  enumTypeId="PaymentInstrument" enumId="PiShopifyPaid" description="Shopify Paid Order" enumCode="manual"/>
 
     <!-- Shopify as Carrier when no carrier is configured -->
     <mantle.party.Party partyId="SHOPIFY" partyTypeEnumId="PtyOrganization" externalId="shopify">
