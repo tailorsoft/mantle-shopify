@@ -114,7 +114,7 @@
                 in-map="[systemMessageRemoteId:remote.systemMessageRemoteId, shopifyOrderId:order.id]"/>
 
             <!-- Check if order total is 0, there will be no payment and no transactions in this case -->
-            <if condition="Double.parseDouble(order.current_total_price) > 0.00">
+            <if condition="Double.parseDouble(order.current_total_price) > 0.00 &amp;&amp; !order.payment_terms">
                 <service-call name="mantle.shopify.ShopifyOrderServices.download#ShopifyTransactions" out-map="context"
                     in-map="[systemMessageRemoteId:remote.systemMessageRemoteId, shopifyOrderId:order.id]"/>
             </if>
@@ -127,7 +127,7 @@
                 in-map="[fulfillmentOrders:fulfillmentOrders, orderId:orderId]"/>
 
             <!-- Check if order total is 0, there will be no payment and no transactions in this case -->
-            <if condition="Double.parseDouble(order.current_total_price) > 0">
+            <if condition="Double.parseDouble(order.current_total_price) > 0 &amp;&amp; !order.payment_terms">
                 <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyTransactions"
                     in-map="[transactions:transactions, orderId:orderId]"/>
             </if>
@@ -252,6 +252,21 @@
                 </else>
             </if>
 
+            <!-- Process payment terms if they exist -->
+            <if condition="order.payment_terms">
+                <log message="Processing Payment Terms ${[payment_term: order.payment_terms,
+                                    productStoreId: productStore.productStoreId,
+                                    partyId: partyId]}"/>
+                <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyPaymentTerms"
+                              in-map="[payment_term: order.payment_terms,
+                                    productStoreId: productStore.productStoreId,
+                                    partyId: partyId]" out-map="consumeTermsOut"/>
+                <log message="\n\n Payment Terms Consume Output: ${consumeTermsOut}\n\n"/>
+                <entity-find-one entity-name="mantle.party.agreement.AgreementTerm" value-field="paymentTerms">
+                    <field-map field-name="agreementTermId" from="consumeTermsOut.newAgreementTermId"/>
+                </entity-find-one>
+            </if>
+
             <!-- get the currency the order was placed in -->
             <entity-find-one entity-name="moqui.basic.Uom" value-field="currencyUom">
                 <field-map field-name="uomTypeEnumId" value="UT_CURRENCY_MEASURE"/>
@@ -260,6 +275,7 @@
             <set field="createdAt" from="OffsetDateTime.parse(order.created_at, DateTimeFormatter.ISO_OFFSET_DATE_TIME)"/>
             <set field="createdTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(createdAt.getOffset()).toLocalDateTime())"/>
 
+            <!-- TODO maybe settlement term here -->
             <service-call name="mantle.order.OrderServices.create#Order" in-map="[
                 productStoreId: productStoreId,
                 carrierPartyId: carrierPtid.partyId,
@@ -279,7 +295,8 @@
                 entryDate: createdTime,
                 placedDate: createdTime,
                 approvedDate: ec.user.nowTimestamp,
-                statusId: 'OrderApproved'
+                statusId: 'OrderApproved',
+                settlementTermId: paymentTerms?.settlementTermId
             ]" out-map="context"/>
 
             <!--registering the shipping cost -->
@@ -334,13 +351,7 @@
             </iterate>
 
 
-            <if condition="order.payment_terms">
-                <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyPaymentTerms"
-                              in-map="[payment_term: order.payment_terms,
-                                                productStoreId: productStore.productStoreId,
-                                                partyId: partyId]"/>
-            </if>
-            <if condition="order.total_amount != '0.00'">
+            <if condition="!order.payment_terms &amp;&amp; order.total_amount != '0.00'">
                 <set field="processedAt" from="OffsetDateTime.parse(order.processed_at, DateTimeFormatter.ISO_OFFSET_DATE_TIME)"/>
                 <set field="processedTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime())"/>
                 <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context" in-map="[
@@ -423,30 +434,67 @@
             <parameter name="productStoreId"/>
             <parameter name="partyId"/>
         </in-parameters>
+        <out-parameters>
+            <parameter name="newAgreementTermId"/>
+        </out-parameters>
         <actions>
             <set field="shopify_terms_id" from="payment_term.payment_terms_name.replace(' ', '')"/>
             <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
                 <select-field field-name="productStoreId"/>
             </entity-find-one>
             <set field="orgId" from="productStore.organizationPartyId"/>
-            <entity-find entity-name="mantle.party.agreement.Agreement" list="agreements">
-                <econdition field-name="partyId" from="orgId"/>
+            <entity-find entity-name="mantle.party.agreement.Agreement" list="agreements" limit="1">
+                <econdition field-name="organizationPartyId" from="orgId"/>
                 <econdition field-name="otherPartyId" from="partyId"/>
                 <econdition field-name="agreementTypeEnumId" value="AgrSales"/>
             </entity-find>
 
-            <entity-find entity-name="mantle.party.agreement.AgreementTerm" list="terms" limit="1">
-                <econdition field-name="agreementId" operator="in" from="agreements.collect { it.agreementId }"/>
-                <econdition field-name="settlementTermId" from="shopify_terms_id"/>
-            </entity-find>
-            <if condition="terms.size() &gt; 0">
-                <return error="False" message="The customer {partyId} Already had the settlement terms for shopify order"/>
+            <!-- If no previous agreements exist for party, create agreement and term -->
+            <if condition="agreements.size() == 0">
+                <service-call name="create#mantle.party.agreement.Agreement"
+                              in-map="[agreementTypeEnumId: 'AgrSales',
+                              organizationPartyId: orgId,
+                              otherPartyId: partyId]" out-map="newAgreement"/>
+                <service-call name="create#mantle.party.agreement.AgreementTerm"
+                              in-map="[agreementId: newAgreement.agreementId,
+                              settlementTermId: shopify_terms_id]" out-map="newAgreementTerm"/>
+                <set field="newAgreementTermId" from="newAgreementTerm.agreementTermId"/>
+                <return message="Created Agreement with term ${shopify_terms_id} for party ${partyId}" error="False"/>
             </if>
-            <service-call name="store#mantle.party.agreement.AgreementTerm"
-                          in-map="[organizationPartyId: orgId,
-                                    otherPartyId: partyId,
-                                    agreementTypeEnumId: 'ArgSales']"
-                            out-map="newAgreement"/>
+            <!-- Else we should find the settlement terms of the agreement -->
+            <entity-find entity-name="mantle.party.agreement.AgreementTerm" list="agreementTerms">
+                <econdition field-name="agreementId" from="agreements[0].agreementId"/>
+            </entity-find>
+            <entity-find entity-name="mantle.account.invoice.SettlementTerm" list="settlementTerms">
+                <econdition field-name="termTypeEnumId" operator="like" value="TtFinPayment%"/>
+                <econdition field-name="settlementTermId" operator="in" from="agreementTerms*.settlementTermId"/>
+            </entity-find>
+
+            <set field="orderTerm" from="settlementTerms.find{ it.settlementTermId == shopify_terms_id }"/>
+            <!-- If settlement term is equal to order term do nothing -->
+            <if condition="orderTerm">
+
+                <set field="newAgreementTermId" from="agreementTerms.find {it.settlementTermId == shopify_terms_id }.agreementTermId"/>
+                <return message="Agreement with term ${shopify_terms_id} already existed for party ${partyId}" error="False"/>
+            </if>
+            <!-- There are settlement Terms but not the same as order, so update agreement term-->
+            <if condition="settlementTerms.size() &gt; 0">
+                <set field="prevSettlementTerm" from="settlementTerms.first()"/>
+                <set field="prevAgreementTerm" from="agreementTerms.find { it.settlementTermId == prevSettlementTerm.settlementTermId }"/>
+                <service-call name="update#AgreementTerm"
+                              in-map="[agreementTermId: prevAgreementTerm.agreementTermId,
+                                      settlementTermId: shopify_terms_id]"
+                              out-map="newAgreementTerm"/>
+                <set field="newAgreementTermId" from="prevAgreementTerm.agreementTermId"/>
+                <return message="Updated Terms of Agreement ${prevAgreementTerm.agreementId} for party ${partyId}" error="False"/>
+            </if>
+            <!-- Agreement exists, but no payment agreement term so create it -->
+            <service-call name="create#AgreementTerm"
+                          in-map="[agreementId: agreements[0].agreementId,
+                                  settlementTermId: shopify_terms_id]"
+                          out-map="newAgreementTerm"/>
+            <set field="newAgreementTermId" from="newAgreementTerm.agreementTermId"/>
+            <return message="Created Agreement Term with term ${shopify_terms_id} for party ${partyId}" error="False"/>
         </actions>
     </service>
 
