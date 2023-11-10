@@ -368,6 +368,10 @@
                 ]"/>
             </if>
 
+            <if condition="order.note">
+                <service-call name="create#OrderNote" in-map="[orderId: orderId, noteText: order.note]"/>
+            </if>
+
             <service-call name="mantle.order.OrderServices.set#OrderBillingShippingInfo" in-map="[orderId: orderId,
                           paymentId: paymentId,
                           paymentMethodId: paymentMethodId,
