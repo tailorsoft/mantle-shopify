@@ -127,7 +127,7 @@
                 in-map="[fulfillmentOrders:fulfillmentOrders, orderId:orderId]"/>
 
             <!-- Check if order total is 0, there will be no payment and no transactions in this case -->
-            <if condition="Double.parseDouble(order.current_total_price) > 0 &amp;&amp; !order.payment_terms">
+            <if condition="order.payment_details">
                 <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyTransactions"
                     in-map="[transactions:transactions, orderId:orderId]"/>
             </if>
