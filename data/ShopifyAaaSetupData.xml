@@ -39,4 +39,10 @@
     <mantle.party.PartyIdentification partyIdTypeEnumId="PtidCarrierShopify" partyId="SHOPIFY" idValue="shopify"/>
     <mantle.party.PartyIdentification partyIdTypeEnumId="PtidCarrierShopify" partyId="USPS" idValue="usps" />
     <mantle.party.PartyIdentification partyIdTypeEnumId="PtidCarrierShopify" partyId="UPS" idValue="ups_shipping" />
+
+    <!-- Payment Terms That are Default in Shopify And Not Moqui -->
+    <mantle.account.invoice.SettlementTerm settlementTermId="Net7" termTypeEnumId="TtFinPaymentDays"
+                                           termValueUomId="TF_day" termValue="7" description="Net Due in 7 Days"/>
+    <mantle.account.invoice.SettlementTerm settlementTermId="Net45" termTypeEnumId="TtFinPaymentDays"
+                                           termValueUomId="TF_day" termValue="45" description="Net Due in 45 Days"/>
 </entity-facade-xml>

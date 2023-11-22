@@ -114,7 +114,7 @@
                 in-map="[systemMessageRemoteId:remote.systemMessageRemoteId, shopifyOrderId:order.id]"/>
 
             <!-- Check if order total is 0, there will be no payment and no transactions in this case -->
-            <if condition="Double.parseDouble(order.current_total_price) > 0.00">
+            <if condition="Double.parseDouble(order.current_total_price) > 0.00 &amp;&amp; !order.payment_terms">
                 <service-call name="mantle.shopify.ShopifyOrderServices.download#ShopifyTransactions" out-map="context"
                     in-map="[systemMessageRemoteId:remote.systemMessageRemoteId, shopifyOrderId:order.id]"/>
             </if>
@@ -127,7 +127,7 @@
                 in-map="[fulfillmentOrders:fulfillmentOrders, orderId:orderId]"/>
 
             <!-- Check if order total is 0, there will be no payment and no transactions in this case -->
-            <if condition="Double.parseDouble(order.current_total_price) > 0">
+            <if condition="order.payment_details">
                 <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyTransactions"
                     in-map="[transactions:transactions, orderId:orderId]"/>
             </if>
@@ -219,11 +219,23 @@
                 <field-map field-name="idValue" from="shippingLine.source"/></entity-find-one>
             <if condition="!carrierPtid"><return error="true" message="No PtidCarrierShopify found for idValue ${shippingLine.source}"/></if>
 
-            <!-- Find the ShipMethod based on carrier partyId and descriptions, values include Free Shipping' and 'Standard Shipping' -->
-            <entity-find-one entity-name="mantle.shipment.carrier.CarrierShipmentMethod" value-field="carrierShipmentMethod">
-                <field-map field-name="description" from="shippingLine.title"/>
-                <field-map field-name="carrierPartyId" from="carrierPtid.partyId"/></entity-find-one>
-            <if condition="!carrierShipmentMethod"><return error="true" message="No CarrierShipmentMethod found for description ${shippingLine.title}"/></if>
+            <if condition="shippingLine.code == 'custom'">
+                <then>
+                    <entity-find-one entity-name="mantle.shipment.carrier.CarrierShipmentMethod" value-field="carrierShipmentMethod">
+                        <field-map field-name="description" value="Free Shipping"/>
+                        <field-map field-name="carrierPartyId" from="carrierPtid.partyId"/></entity-find-one>
+
+                    <set field="shippingInstructions" from="shippingLine.title"/>
+                </then>
+                <else>
+                    <!-- Find the ShipMethod based on carrier partyId and descriptions, values include Free Shipping' and 'Standard Shipping' -->
+                    <entity-find-one entity-name="mantle.shipment.carrier.CarrierShipmentMethod" value-field="carrierShipmentMethod">
+                        <field-map field-name="description" from="shippingLine.title"/>
+                        <field-map field-name="carrierPartyId" from="carrierPtid.partyId"/></entity-find-one>
+                    <if condition="!carrierShipmentMethod"><return error="true" message="No CarrierShipmentMethod found for description ${shippingLine.title}"/></if>
+                    <set field="shippingInstructions" from="null"/>
+                </else>
+            </if>
 
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="createdOrder">
                 <field-map field-name="externalId" from="order.id"/></entity-find-one>
@@ -252,6 +264,21 @@
                 </else>
             </if>
 
+            <!-- Process payment terms if they exist -->
+            <if condition="order.payment_terms">
+                <log message="Processing Payment Terms ${[payment_term: order.payment_terms,
+                                    productStoreId: productStore.productStoreId,
+                                    partyId: partyId]}"/>
+                <service-call name="mantle.shopify.ShopifyOrderServices.consume#ShopifyPaymentTerms"
+                              in-map="[payment_term: order.payment_terms,
+                                    productStoreId: productStore.productStoreId,
+                                    partyId: partyId]" out-map="consumeTermsOut"/>
+                <log message="\n\n Payment Terms Consume Output: ${consumeTermsOut}\n\n"/>
+                <entity-find-one entity-name="mantle.party.agreement.AgreementTerm" value-field="paymentTerms">
+                    <field-map field-name="agreementTermId" from="consumeTermsOut.newAgreementTermId"/>
+                </entity-find-one>
+            </if>
+
             <!-- get the currency the order was placed in -->
             <entity-find-one entity-name="moqui.basic.Uom" value-field="currencyUom">
                 <field-map field-name="uomTypeEnumId" value="UT_CURRENCY_MEASURE"/>
@@ -260,6 +287,7 @@
             <set field="createdAt" from="OffsetDateTime.parse(order.created_at, DateTimeFormatter.ISO_OFFSET_DATE_TIME)"/>
             <set field="createdTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(createdAt.getOffset()).toLocalDateTime())"/>
 
+            <!-- TODO maybe settlement term here -->
             <service-call name="mantle.order.OrderServices.create#Order" in-map="[
                 productStoreId: productStoreId,
                 carrierPartyId: carrierPtid.partyId,
@@ -279,7 +307,9 @@
                 entryDate: createdTime,
                 placedDate: createdTime,
                 approvedDate: ec.user.nowTimestamp,
-                statusId: 'OrderApproved'
+                statusId: 'OrderApproved',
+                settlementTermId: paymentTerms?.settlementTermId,
+                shippingInstructions: shippingInstructions
             ]" out-map="context"/>
 
             <!--registering the shipping cost -->
@@ -333,7 +363,8 @@
                 </iterate>
             </iterate>
 
-            <if condition="order.total_amount != '0.00'">
+
+            <if condition="!order.payment_terms &amp;&amp; order.total_amount != '0.00'">
                 <set field="processedAt" from="OffsetDateTime.parse(order.processed_at, DateTimeFormatter.ISO_OFFSET_DATE_TIME)"/>
                 <set field="processedTime" from="Timestamp.valueOf(createdAt.atZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime())"/>
                 <service-call name="mantle.account.PaymentServices.create#Payment" out-map="context" in-map="[
@@ -348,6 +379,10 @@
                     toPartyId: productStore.organizationPartyId,
                     orderPartSeqId: orderPartSeqId
                 ]"/>
+            </if>
+
+            <if condition="order.note">
+                <service-call name="create#OrderNote" in-map="[orderId: orderId, noteText: order.note]"/>
             </if>
 
             <service-call name="mantle.order.OrderServices.set#OrderBillingShippingInfo" in-map="[orderId: orderId,
@@ -407,6 +442,76 @@
             <set field="payment.paymentRefNum" from="authTransaction.authorization.split('#')[0]"/>
             <set field="payment.shopifyPaymentId" from="authTransaction.id"/>
             <entity-update value-field="payment"/>
+        </actions>
+    </service>
+
+    <service verb="consume" noun="ShopifyPaymentTerms">
+        <in-parameters>
+            <parameter name="payment_term" type="Map" required="true"/>
+            <parameter name="productStoreId"/>
+            <parameter name="partyId"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="newAgreementTermId"/>
+        </out-parameters>
+        <actions>
+            <set field="shopify_terms_id" from="payment_term.payment_terms_name.replace(' ', '')"/>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
+                <select-field field-name="productStoreId"/>
+            </entity-find-one>
+            <set field="orgId" from="productStore.organizationPartyId"/>
+            <entity-find entity-name="mantle.party.agreement.Agreement" list="agreements" limit="1">
+                <econdition field-name="organizationPartyId" from="orgId"/>
+                <econdition field-name="otherPartyId" from="partyId"/>
+                <econdition field-name="agreementTypeEnumId" value="AgrSales"/>
+            </entity-find>
+
+            <!-- If no previous agreements exist for party, create agreement and term -->
+            <if condition="agreements.size() == 0">
+                <service-call name="create#mantle.party.agreement.Agreement"
+                              in-map="[agreementTypeEnumId: 'AgrSales',
+                              organizationPartyId: orgId,
+                              otherPartyId: partyId]" out-map="newAgreement"/>
+                <service-call name="create#mantle.party.agreement.AgreementTerm"
+                              in-map="[agreementId: newAgreement.agreementId,
+                              settlementTermId: shopify_terms_id]" out-map="newAgreementTerm"/>
+                <set field="newAgreementTermId" from="newAgreementTerm.agreementTermId"/>
+                <return message="Created Agreement with term ${shopify_terms_id} for party ${partyId}" error="False"/>
+            </if>
+            <!-- Else we should find the settlement terms of the agreement -->
+            <entity-find entity-name="mantle.party.agreement.AgreementTerm" list="agreementTerms">
+                <econdition field-name="agreementId" from="agreements[0].agreementId"/>
+            </entity-find>
+            <entity-find entity-name="mantle.account.invoice.SettlementTerm" list="settlementTerms">
+                <econdition field-name="termTypeEnumId" operator="like" value="TtFinPayment%"/>
+                <econdition field-name="settlementTermId" operator="in" from="agreementTerms*.settlementTermId"/>
+            </entity-find>
+
+            <set field="orderTerm" from="settlementTerms.find{ it.settlementTermId == shopify_terms_id }"/>
+            <!-- If settlement term is equal to order term do nothing -->
+            <if condition="orderTerm">
+
+                <set field="newAgreementTermId" from="agreementTerms.find {it.settlementTermId == shopify_terms_id }.agreementTermId"/>
+                <return message="Agreement with term ${shopify_terms_id} already existed for party ${partyId}" error="False"/>
+            </if>
+            <!-- There are settlement Terms but not the same as order, so update agreement term-->
+            <if condition="settlementTerms.size() &gt; 0">
+                <set field="prevSettlementTerm" from="settlementTerms.first()"/>
+                <set field="prevAgreementTerm" from="agreementTerms.find { it.settlementTermId == prevSettlementTerm.settlementTermId }"/>
+                <service-call name="update#AgreementTerm"
+                              in-map="[agreementTermId: prevAgreementTerm.agreementTermId,
+                                      settlementTermId: shopify_terms_id]"
+                              out-map="newAgreementTerm"/>
+                <set field="newAgreementTermId" from="prevAgreementTerm.agreementTermId"/>
+                <return message="Updated Terms of Agreement ${prevAgreementTerm.agreementId} for party ${partyId}" error="False"/>
+            </if>
+            <!-- Agreement exists, but no payment agreement term so create it -->
+            <service-call name="create#AgreementTerm"
+                          in-map="[agreementId: agreements[0].agreementId,
+                                  settlementTermId: shopify_terms_id]"
+                          out-map="newAgreementTerm"/>
+            <set field="newAgreementTermId" from="newAgreementTerm.agreementTermId"/>
+            <return message="Created Agreement Term with term ${shopify_terms_id} for party ${partyId}" error="False"/>
         </actions>
     </service>
 
